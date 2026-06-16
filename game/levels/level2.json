@@ -1,0 +1,24 @@
+{
+  "width": 1600,
+  "height": 720,
+  "spawn": { "x": 80, "y": 440 },
+  "finish": { "x": 1450, "y": 380, "width": 80, "height": 120 },
+  "platforms": [
+    { "x": 0, "y": 500, "width": 200, "height": 220, "color": "#2D3748" },
+    { "x": 300, "y": 450, "width": 180, "height": 30, "color": "#4A5568" },
+    { "x": 550, "y": 400, "width": 180, "height": 30, "active": false, "triggerIndex": 0, "color": "#8C5E3C" },
+    { "x": 800, "y": 350, "width": 180, "height": 30, "color": "#4A5568" },
+    { "x": 1050, "y": 420, "width": 180, "height": 30, "active": true, "triggerIndex": 1, "color": "#8C5E3C" },
+    { "x": 1300, "y": 500, "width": 300, "height": 220, "color": "#2D3748" }
+  ],
+  "switches": [
+    { "x": 120, "y": 460, "width": 30, "height": 40 },
+    { "x": 870, "y": 310, "width": 30, "height": 40 }
+  ],
+  "hazards": [
+    { "x": 200, "y": 660, "width": 1100, "height": 60, "type": "spikes" },
+    { "x": 370, "y": 430, "width": 40, "height": 20, "type": "spikes" },
+    { "x": 425, "y": 300, "width": 40, "height": 40, "type": "moving_spikes", "rangeX": 100, "rangeY": 0 },
+    { "x": 925, "y": 250, "width": 40, "height": 40, "type": "moving_spikes", "rangeX": 120, "rangeY": 0 }
+  ]
+}

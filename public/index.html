@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Don't Push Me! - วิ่งหนีตาย ขัดขาเพื่อน</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;700;900&family=Outfit:wght@400;600;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Socket.io -->
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Background grid effect -->
+    <div class="bg-grid"></div>
+    <div class="bg-glow"></div>
+
+    <!-- MAIN MENU SCREEN -->
+    <div id="screen-menu" class="screen active">
+        <div class="logo-container">
+            <h1 class="game-logo">DON'T PUSH ME!</h1>
+            <p class="game-tagline">วิ่งหนีตาย ขัดขาเพื่อน 🏃💨</p>
+        </div>
+
+        <div class="card glass">
+            <div class="input-group">
+                <label for="input-name">ชื่อของคุณ (Name)</label>
+                <input type="text" id="input-name" placeholder="ใส่ชื่อเล่น..." maxlength="12" autocomplete="off">
+            </div>
+
+            <div class="actions">
+                <button id="btn-create" class="btn btn-primary">สร้างห้องใหม่ (Create Room)</button>
+                
+                <div class="divider"><span>หรือ</span></div>
+                
+                <div class="join-group">
+                    <input type="number" id="input-code" placeholder="รหัสห้อง 4 หลัก" min="1000" max="9999">
+                    <button id="btn-join" class="btn btn-secondary">เข้าร่วมห้อง (Join Room)</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls-guide card glass">
+            <h3>🎮 วิธีควบคุมกติกา (Controls)</h3>
+            <div class="guide-grid">
+                <div class="guide-item">
+                    <kbd>A</kbd> / <kbd>D</kbd> หรือ <kbd>←</kbd> / <kbd>→</kbd>
+                    <span>เคลื่อนที่ ซ้าย/ขวา</span>
+                </div>
+                <div class="guide-item">
+                    <kbd>W</kbd> / <kbd>↑</kbd> / <kbd>Space</kbd>
+                    <span>กระโดด (Jump)</span>
+                </div>
+                <div class="guide-item">
+                    <kbd>F</kbd> / <kbd>Z</kbd>
+                    <span>💥 ผลักเพื่อน (Push)</span>
+                </div>
+                <div class="guide-item">
+                    <kbd>G</kbd> / <kbd>X</kbd>
+                    <span>🧲 ดึงเพื่อน (Pull)</span>
+                </div>
+                <div class="guide-item">
+                    <kbd>E</kbd>
+                    <span>🔘 กดสวิตช์เปิด-ปิดสะพาน</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOBBY SCREEN -->
+    <div id="screen-lobby" class="screen">
+        <div class="card glass lobby-card">
+            <h2>รหัสห้องเล่นเกม (Room Code)</h2>
+            <div class="room-code-display" id="lobby-code">----</div>
+            <p class="lobby-subtitle">แชร์รหัสนี้ให้เพื่อนๆ เข้ามาร่วมวง!</p>
+
+            <div class="lobby-content">
+                <h3>ผู้เล่นในห้อง (<span id="lobby-count">0</span>/4)</h3>
+                <div class="player-list" id="lobby-player-list">
+                    <!-- Players will be dynamically added here -->
+                </div>
+            </div>
+
+            <div class="lobby-actions">
+                <button id="btn-start" class="btn btn-success" disabled>เริ่มเกมเลย! (Start Game)</button>
+                <p id="host-tip" class="host-tip">รอหัวหน้าห้องกดเริ่มเกม (ต้องการอย่างน้อย 2 คน)...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- GAME SCREEN -->
+    <div id="screen-game" class="screen">
+        <!-- HUD Overlay -->
+        <div class="hud">
+            <div class="hud-left">
+                <div class="hud-round-info">ด่าน <span id="hud-round">1/3</span></div>
+                <div class="hud-room-code">ห้อง: <span id="hud-code">----</span></div>
+            </div>
+            
+            <div class="hud-center">
+                <div class="hud-alert" id="hud-alert-box"></div>
+            </div>
+
+            <div class="hud-right">
+                <div class="abilities">
+                    <div class="ability-slot" id="ability-push">
+                        <span class="ability-icon">💥</span>
+                        <span class="ability-key">F / Z</span>
+                        <div class="cooldown-overlay" id="cooldown-push"></div>
+                    </div>
+                    <div class="ability-slot" id="ability-pull">
+                        <span class="ability-icon">🧲</span>
+                        <span class="ability-key">G / X</span>
+                        <div class="cooldown-overlay" id="cooldown-pull"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Canvas Container -->
+        <div class="canvas-container">
+            <canvas id="gameCanvas" width="1280" height="720"></canvas>
+        </div>
+
+        <!-- 3, 2, 1 Countdown Overlay -->
+        <div id="countdown-overlay" class="countdown-overlay">
+            <span id="countdown-text">3</span>
+        </div>
+    </div>
+
+    <!-- ROUND END SCREEN -->
+    <div id="screen-round-end" class="screen">
+        <div class="card glass end-card">
+            <h1 class="round-title">จบการแข่งขันรอบนี้!</h1>
+            <p class="round-desc">สรุปคะแนนประจำด่านที่ <span id="end-round-num">1</span></p>
+            
+            <div class="finishers-flow">
+                <h3>ลำดับผู้เข้าเส้นชัย</h3>
+                <div id="finishers-list" class="finishers-list">
+                    <!-- Names of players who finished -->
+                </div>
+            </div>
+
+            <div class="scoreboard-container">
+                <table class="scoreboard-table">
+                    <thead>
+                        <tr>
+                            <th>อันดับ</th>
+                            <th>ผู้เล่น</th>
+                            <th>คะแนนที่ได้รอบนี้</th>
+                            <th>คะแนนสะสมทั้งหมด</th>
+                        </tr>
+                    </thead>
+                    <tbody id="round-scoreboard-body">
+                        <!-- Dynamic items -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="end-actions">
+                <button id="btn-next-round" class="btn btn-primary" style="display: none;">ด่านต่อไป (Next Level)</button>
+                <p id="next-round-tip" class="host-tip">รอหัวหน้าห้องกดไปด่านถัดไป...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MATCH END SCREEN -->
+    <div id="screen-match-end" class="screen">
+        <div class="card glass end-card match-end-card">
+            <div class="crown-icon">👑</div>
+            <h1 class="match-winner-name" id="match-winner">PLAYER 1</h1>
+            <p class="match-winner-sub">คือผู้รอดชีวิตที่เหลี่ยมที่สุด!</p>
+
+            <div class="scoreboard-container">
+                <table class="scoreboard-table">
+                    <thead>
+                        <tr>
+                            <th>อันดับ</th>
+                            <th>ผู้เล่น</th>
+                            <th>คะแนนสะสม</th>
+                        </tr>
+                    </thead>
+                    <tbody id="match-scoreboard-body">
+                        <!-- Dynamic scoreboard -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="end-actions">
+                <button id="btn-menu" class="btn btn-secondary">กลับหน้าหลัก (Back to Menu)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Popups -->
+    <div id="popup-error" class="popup glass">
+        <div class="popup-content">
+            <h3>⚠️ เกิดข้อผิดพลาด</h3>
+            <p id="error-message">ข้อความแจ้งเตือน...</p>
+            <button id="btn-error-close" class="btn btn-primary">ปิด</button>
+        </div>
+    </div>
+
+    <!-- Client scripts -->
+    <script src="js/ui.js"></script>
+    <script src="js/renderer.js"></script>
+    <script src="js/client.js"></script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "width": 1600,
+  "height": 720,
+  "spawn": { "x": 80, "y": 440 },
+  "finish": { "x": 1450, "y": 380, "width": 80, "height": 100 },
+  "platforms": [
+    { "x": 0, "y": 500, "width": 250, "height": 220, "color": "#2D3748" },
+    { "x": 250, "y": 500, "width": 350, "height": 20, "active": true, "triggerIndex": 0, "color": "#8C5E3C" },
+    { "x": 600, "y": 500, "width": 200, "height": 220, "color": "#2D3748" },
+    { "x": 800, "y": 500, "width": 300, "height": 20, "active": true, "triggerIndex": 1, "color": "#8C5E3C" },
+    { "x": 1100, "y": 500, "width": 150, "height": 220, "color": "#2D3748" },
+    { "x": 1250, "y": 480, "width": 350, "height": 240, "color": "#2D3748" }
+  ],
+  "switches": [
+    { "x": 120, "y": 460, "width": 30, "height": 40 },
+    { "x": 680, "y": 460, "width": 30, "height": 40 }
+  ],
+  "hazards": [
+    { "x": 250, "y": 660, "width": 350, "height": 60, "type": "spikes" },
+    { "x": 800, "y": 660, "width": 300, "height": 60, "type": "spikes" }
+  ]
+}
