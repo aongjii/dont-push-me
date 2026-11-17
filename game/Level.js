@@ -14,6 +14,7 @@ class Level {
         this.hazards = [];
         this.items = []; // stars (eat for a random power) and orbs (hold and spit)
         this.timeLimit = 90; // seconds (levels may override)
+        this.theme = 'meadow'; // visual theme: meadow | candy | volcano
         this.finishZone = { x: 1500, y: 400, width: 60, height: 120 };
         this.lavaY = 900;
         this.hasRisingLava = false;
@@ -84,6 +85,7 @@ class Level {
             }));
 
             this.timeLimit = data.timeLimit || 90;
+            this.theme = data.theme || 'meadow';
 
             // Rising lava
             this.hasRisingLava = data.hasRisingLava || false;

@@ -76,6 +76,13 @@ const Sfx = (() => {
         jump:   () => { tone({ freq: 280, freqEnd: 520, dur: 0.12, type: 'square', vol: 0.08 }); },
         land:   () => { noise({ dur: 0.06, vol: 0.12, filter: 500 }); },
         hurry:  () => { tone({ freq: 880, dur: 0.07, type: 'square', vol: 0.15 }); },
+        swallow:() => { tone({ freq: 700, freqEnd: 180, dur: 0.18, type: 'sine', vol: 0.28 }); tone({ freq: 150, dur: 0.1, type: 'triangle', vol: 0.3, delay: 0.17 }); },
+        spit:   () => { noise({ dur: 0.1, vol: 0.3, filter: 2500 }); tone({ freq: 220, freqEnd: 900, dur: 0.14, type: 'square', vol: 0.18 }); },
+        power:  () => { [392, 523, 659, 784, 1047].forEach((f, i) => tone({ freq: f, dur: 0.1, type: 'square', vol: 0.16, delay: i * 0.06 })); },
+        fire:   () => { noise({ dur: 0.22, vol: 0.3, filter: 1800 }); tone({ freq: 160, freqEnd: 90, dur: 0.2, type: 'sawtooth', vol: 0.15 }); },
+        ice:    () => { tone({ freq: 1800, freqEnd: 900, dur: 0.25, type: 'triangle', vol: 0.18 }); tone({ freq: 2400, freqEnd: 1200, dur: 0.2, type: 'sine', vol: 0.1, delay: 0.05 }); },
+        whirl:  () => { tone({ freq: 300, freqEnd: 800, dur: 0.35, type: 'sawtooth', vol: 0.14 }); tone({ freq: 800, freqEnd: 300, dur: 0.35, type: 'sawtooth', vol: 0.1, delay: 0.3 }); },
+        flap:   () => { noise({ dur: 0.07, vol: 0.12, filter: 3000 }); },
         win:    () => { [523, 659, 784, 659, 784, 1047].forEach((f, i) => tone({ freq: f, dur: 0.2, type: 'triangle', vol: 0.25, delay: i * 0.12 })); }
     };
 

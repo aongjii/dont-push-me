@@ -4,70 +4,82 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Don't Push Me! - วิ่งหนีตาย ขัดขาเพื่อน</title>
-    
-    <!-- Google Fonts -->
+
+    <!-- Google Fonts (falls back to system fonts when offline) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;700;900&family=Outfit:wght@400;600;800;900&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+
     <!-- Socket.io -->
     <script src="/socket.io/socket.io.js"></script>
-    
+
     <!-- Stylesheets -->
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <!-- Background grid effect -->
-    <div class="bg-grid"></div>
-    <div class="bg-glow"></div>
+    <!-- Flat decorative background shapes -->
+    <div class="bg-deco" aria-hidden="true">
+        <span class="blob blob-a"></span>
+        <span class="blob blob-b"></span>
+        <span class="blob blob-c"></span>
+    </div>
 
     <!-- MAIN MENU SCREEN -->
     <div id="screen-menu" class="screen active">
         <div class="logo-container">
-            <h1 class="game-logo">DON'T PUSH ME!</h1>
-            <p class="game-tagline">วิ่งหนีตาย ขัดขาเพื่อน 🏃💨</p>
+            <canvas id="menu-mascots" width="520" height="100"></canvas>
+            <h1 class="game-logo">Don't Push Me!</h1>
+            <p class="game-tagline">วิ่งหนีตาย ขัดขาเพื่อน กลืนเพื่อนแล้วพ่นทิ้ง!</p>
         </div>
 
-        <div class="card glass">
+        <div class="card">
             <div class="input-group">
-                <label for="input-name">ชื่อของคุณ (Name)</label>
+                <label for="input-name">ชื่อของคุณ</label>
                 <input type="text" id="input-name" placeholder="ใส่ชื่อเล่น..." maxlength="12" autocomplete="off">
             </div>
 
             <div class="actions">
-                <button id="btn-create" class="btn btn-primary">สร้างห้องใหม่ (Create Room)</button>
-                
+                <button id="btn-create" class="btn btn-primary">สร้างห้องใหม่</button>
+
                 <div class="divider"><span>หรือ</span></div>
-                
+
                 <div class="join-group">
                     <input type="number" id="input-code" placeholder="รหัสห้อง 4 หลัก" min="1000" max="9999">
-                    <button id="btn-join" class="btn btn-secondary">เข้าร่วมห้อง (Join Room)</button>
+                    <button id="btn-join" class="btn btn-secondary">เข้าร่วมห้อง</button>
                 </div>
             </div>
         </div>
 
-        <div class="controls-guide card glass">
-            <h3>🎮 วิธีควบคุมกติกา (Controls)</h3>
+        <div class="controls-guide card">
+            <h3>วิธีเล่น</h3>
             <div class="guide-grid">
                 <div class="guide-item">
-                    <kbd>A</kbd> / <kbd>D</kbd> หรือ <kbd>←</kbd> / <kbd>→</kbd>
-                    <span>เคลื่อนที่ ซ้าย/ขวา</span>
+                    <span class="keys"><kbd>A</kbd><kbd>D</kbd></span>
+                    <span>เดินซ้าย/ขวา (หรือลูกศร)</span>
                 </div>
                 <div class="guide-item">
-                    <kbd>W</kbd> / <kbd>↑</kbd> / <kbd>Space</kbd>
-                    <span>กระโดด (Jump)</span>
+                    <span class="keys"><kbd>W</kbd><kbd>Space</kbd></span>
+                    <span>กระโดด</span>
                 </div>
                 <div class="guide-item">
-                    <kbd>F</kbd> / <kbd>Z</kbd>
-                    <span>💥 ผลักเพื่อน (Push)</span>
+                    <span class="keys"><kbd>F</kbd></span>
+                    <span>💥 ผลัก (มีพลัง = ใช้พลัง)</span>
                 </div>
                 <div class="guide-item">
-                    <kbd>G</kbd> / <kbd>X</kbd>
-                    <span>🧲 ดึงเพื่อน (Pull)</span>
+                    <span class="keys"><kbd>G</kbd></span>
+                    <span>🧲 ดึงเพื่อนให้ค้าง</span>
+                </div>
+                <div class="guide-item guide-wide">
+                    <span class="keys"><kbd>C</kbd></span>
+                    <span>😮 <b>กดค้างเพื่ออม</b> ดาว ผลไม้ หรือเพื่อน! กดอีกครั้งเพื่อพ่น • อมดาว = ได้พลังสุ่ม (🔥 ❄️ 🌀 🪽)</span>
                 </div>
                 <div class="guide-item">
-                    <kbd>E</kbd>
-                    <span>🔘 กดสวิตช์เปิด-ปิดสะพาน</span>
+                    <span class="keys"><kbd>E</kbd></span>
+                    <span>🔘 สับสวิตช์สะพาน</span>
+                </div>
+                <div class="guide-item">
+                    <span class="keys"><kbd>1</kbd>–<kbd>4</kbd></span>
+                    <span>ส่งอีโมจิ • <kbd>M</kbd> ปิดเสียง</span>
                 </div>
             </div>
         </div>
@@ -75,8 +87,8 @@
 
     <!-- LOBBY SCREEN -->
     <div id="screen-lobby" class="screen">
-        <div class="card glass lobby-card">
-            <h2>รหัสห้องเล่นเกม (Room Code)</h2>
+        <div class="card lobby-card">
+            <h2>รหัสห้อง</h2>
             <div class="room-code-display" id="lobby-code">----</div>
             <p class="lobby-subtitle">แชร์รหัสนี้ให้เพื่อนๆ เข้ามาร่วมวง!</p>
 
@@ -88,7 +100,7 @@
             </div>
 
             <div class="lobby-actions">
-                <button id="btn-start" class="btn btn-success" disabled>เริ่มเกมเลย! (Start Game)</button>
+                <button id="btn-start" class="btn btn-success" disabled>เริ่มเกมเลย!</button>
                 <p id="host-tip" class="host-tip">รอหัวหน้าห้องกดเริ่มเกม (ต้องการอย่างน้อย 2 คน)...</p>
             </div>
         </div>
@@ -104,7 +116,7 @@
                 <div class="hud-timer">⏱ <span id="hud-timer">90</span> วิ</div>
                 <div class="hud-room-code">ห้อง: <span id="hud-code">----</span></div>
             </div>
-            
+
             <div class="hud-center">
                 <div class="hud-alert-box" id="hud-alert-box"></div>
             </div>
@@ -112,14 +124,24 @@
             <div class="hud-right">
                 <button id="btn-mute" class="btn-mute" title="เปิด/ปิดเสียง (M)">🔊</button>
                 <div class="abilities">
+                    <div class="ability-slot" id="ability-power" style="display:none">
+                        <span class="ability-icon" id="power-icon">🔥</span>
+                        <span class="ability-key" id="power-label">F</span>
+                        <div class="power-bar" id="power-bar"></div>
+                    </div>
+                    <div class="ability-slot" id="ability-inhale">
+                        <span class="ability-icon">😮</span>
+                        <span class="ability-key">C</span>
+                        <div class="state-overlay" id="inhale-state"></div>
+                    </div>
                     <div class="ability-slot" id="ability-push">
                         <span class="ability-icon">💥</span>
-                        <span class="ability-key">F / Z</span>
+                        <span class="ability-key">F</span>
                         <div class="cooldown-overlay" id="cooldown-push"></div>
                     </div>
                     <div class="ability-slot" id="ability-pull">
                         <span class="ability-icon">🧲</span>
-                        <span class="ability-key">G / X</span>
+                        <span class="ability-key">G</span>
                         <div class="cooldown-overlay" id="cooldown-pull"></div>
                     </div>
                 </div>
@@ -144,10 +166,10 @@
 
     <!-- ROUND END SCREEN -->
     <div id="screen-round-end" class="screen">
-        <div class="card glass end-card">
-            <h1 class="round-title">จบการแข่งขันรอบนี้!</h1>
+        <div class="card end-card">
+            <h1 class="round-title">จบด่านแล้ว!</h1>
             <p class="round-desc">สรุปคะแนนประจำด่านที่ <span id="end-round-num">1</span></p>
-            
+
             <div class="finishers-flow">
                 <h3>ลำดับผู้เข้าเส้นชัย</h3>
                 <div id="finishers-list" class="finishers-list">
@@ -161,8 +183,8 @@
                         <tr>
                             <th>อันดับ</th>
                             <th>ผู้เล่น</th>
-                            <th>คะแนนที่ได้รอบนี้</th>
-                            <th>คะแนนสะสมทั้งหมด</th>
+                            <th>คะแนนรอบนี้</th>
+                            <th>คะแนนรวม</th>
                         </tr>
                     </thead>
                     <tbody id="round-scoreboard-body">
@@ -172,7 +194,7 @@
             </div>
 
             <div class="end-actions">
-                <button id="btn-next-round" class="btn btn-primary" style="display: none;">ด่านต่อไป (Next Level)</button>
+                <button id="btn-next-round" class="btn btn-primary" style="display: none;">ด่านต่อไป</button>
                 <p id="next-round-tip" class="host-tip">รอหัวหน้าห้องกดไปด่านถัดไป...</p>
             </div>
         </div>
@@ -180,10 +202,10 @@
 
     <!-- MATCH END SCREEN -->
     <div id="screen-match-end" class="screen">
-        <div class="card glass end-card match-end-card">
+        <div class="card end-card match-end-card">
             <div class="crown-icon">👑</div>
             <h1 class="match-winner-name" id="match-winner">PLAYER 1</h1>
-            <p class="match-winner-sub">คือผู้รอดชีวิตที่เหลี่ยมที่สุด!</p>
+            <p class="match-winner-sub">คือผู้รอดชีวิตที่เหนือกว่าใคร!</p>
 
             <div class="scoreboard-container">
                 <table class="scoreboard-table">
@@ -201,15 +223,15 @@
             </div>
 
             <div class="end-actions">
-                <button id="btn-menu" class="btn btn-secondary">กลับหน้าหลัก (Back to Menu)</button>
+                <button id="btn-menu" class="btn btn-secondary">กลับหน้าหลัก</button>
             </div>
         </div>
     </div>
 
     <!-- Error Popups -->
-    <div id="popup-error" class="popup glass">
-        <div class="popup-content">
-            <h3>⚠️ เกิดข้อผิดพลาด</h3>
+    <div id="popup-error" class="popup">
+        <div class="popup-content card">
+            <h3>เกิดข้อผิดพลาด</h3>
             <p id="error-message">ข้อความแจ้งเตือน...</p>
             <button id="btn-error-close" class="btn btn-primary">ปิด</button>
         </div>

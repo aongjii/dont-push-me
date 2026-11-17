@@ -20,7 +20,7 @@ class GameRoom {
         this.level = null;
         this.gameLoop = new GameLoop(this);
 
-        this.colors = ['#FF4D4D', '#3399FF', '#FFCC00', '#2ECC71']; // Red, Blue, Yellow, Green
+        this.colors = ['#FF7EA8', '#5BB8FF', '#FFC93C', '#6FD98C']; // Pink, Blue, Yellow, Green
         this.finishOrder = []; // array of player ids who finished this round
 
         this.roundTimeLimit = 90 * 1000; // ms (each level can override); unfinished players score 0 when it runs out
@@ -126,7 +126,8 @@ class GameRoom {
             hasRisingLava: this.level.hasRisingLava,
             lavaSpeed: this.level.lavaSpeed,
             lavaInitialY: this.level.lavaY,
-            roundTimeLimit: this.roundTimeLimit
+            roundTimeLimit: this.roundTimeLimit,
+            theme: this.level.theme
         };
     }
 
@@ -354,6 +355,7 @@ class GameRoom {
             isGrounded: p.isGrounded,
             inhaling: p.inhaling,
             mouth: p.mouth ? p.mouth.kind : null,
+            mouthId: p.mouth && p.mouth.kind === 'player' ? p.mouth.id : null,
             swallowed: !!p.swallowedBy,
             power: p.power,
             powerMs: Math.max(0, Math.round(p.powerMs)),

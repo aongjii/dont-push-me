@@ -57,7 +57,8 @@ const inputState = {
     jump: false,
     push: false,
     pull: false,
-    interact: false
+    interact: false,
+    inhale: false
 };
 
 // Check if any keys have changed to minimize socket flood
@@ -73,7 +74,8 @@ function sendInputs() {
             inputState.jump !== lastInputState.jump ||
             inputState.push !== lastInputState.push ||
             inputState.pull !== lastInputState.pull ||
-            inputState.interact !== lastInputState.interact;
+            inputState.interact !== lastInputState.interact ||
+            inputState.inhale !== lastInputState.inhale;
 
         if (hasChanged) {
             socket.emit('input', inputState);
@@ -101,7 +103,10 @@ const keyMap = {
     'KeyG': 'pull',
     'KeyX': 'pull',
     // Interact
-    'KeyE': 'interact'
+    'KeyE': 'interact',
+    // Inhale (hold) / spit (press again)
+    'KeyC': 'inhale',
+    'KeyV': 'inhale'
 };
 
 const EMOTES = ['😂', '😡', '👋', '💀'];
@@ -276,6 +281,22 @@ socket.on('error_msg', ({ message }) => {
     UI.showError(message);
 });
 
+// A table cell with the player's colour dot and name (pastel colours are too light to use as text)
+function nameCell(p) {
+    const td = document.createElement('td');
+    const wrap = document.createElement('div');
+    wrap.className = 'name-cell';
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    dot.style.background = p.color;
+    const label = document.createElement('span');
+    label.textContent = p.name + (p.id === localPlayerId ? ' (คุณ)' : '');
+    wrap.appendChild(dot);
+    wrap.appendChild(label);
+    td.appendChild(wrap);
+    return td;
+}
+
 // Render the Lobby User list
 function updatePlayerLobbyList(players) {
     const list = document.getElementById('lobby-player-list');
@@ -284,7 +305,6 @@ function updatePlayerLobbyList(players) {
     players.forEach((p, idx) => {
         const item = document.createElement('div');
         item.className = 'player-item';
-        item.style.borderLeftColor = p.color;
 
         const dot = document.createElement('div');
         dot.className = 'player-dot';
@@ -316,6 +336,7 @@ function updatePlayerLobbyList(players) {
 // Loaded Level info
 socket.on('round_load', (data) => {
     levelData = data;
+    renderer.setTheme(data.theme);
     gameState = null;
     snapshots.length = 0;
     spectateId = null;
@@ -426,12 +447,27 @@ function interpolatedState(renderTime) {
         return ha ? { ...hb, x: lerp(ha.x, hb.x, f), y: lerp(ha.y, hb.y, f) } : hb;
     });
 
+    const lerpById = (listB, listA) => (listB || []).map(eb => {
+        const ea = (listA || []).find(e => e.id === eb.id);
+        return ea && Math.abs(eb.x - ea.x) < 300 ? { ...eb, x: lerp(ea.x, eb.x, f), y: lerp(ea.y, eb.y, f) } : eb;
+    });
+    const projectiles = lerpById(b.state.projectiles, a.state.projectiles);
+    const items = lerpById(b.state.items, a.state.items);
+
     const lavaY = (a.state.lavaY !== null && b.state.lavaY !== null)
         ? lerp(a.state.lavaY, b.state.lavaY, f)
         : b.state.lavaY;
 
-    return { ...b.state, players, hazards, lavaY };
+    return { ...b.state, players, hazards, lavaY, projectiles, items };
 }
+
+const POWER_INFO = {
+    fire:  { icon: '🔥', key: 'F', name: 'ไฟ' },
+    ice:   { icon: '❄️', key: 'F', name: 'น้ำแข็ง' },
+    spin:  { icon: '🌀', key: 'F', name: 'ปั่น' },
+    wings: { icon: '🪽', key: 'ลอย', name: 'ปีก' }
+};
+const POWER_MS = { fire: 15000, ice: 15000, spin: 15000, wings: 10000 };
 
 // Last-seen per-player flags, to detect jumps / landings / breaking free between states
 let prevPlayerFlags = {};
@@ -476,6 +512,22 @@ socket.on('game_state', (state) => {
 
         document.getElementById('hud-catchup').style.display =
             localP.catchUp && !localP.isDead && !localP.isFinished ? 'block' : 'none';
+
+        // Inhale slot lights up while sucking or when something is in your mouth
+        document.getElementById('ability-inhale').classList.toggle('active', localP.inhaling || !!localP.mouth);
+
+        // Power slot: icon + how much time is left
+        const powerSlot = document.getElementById('ability-power');
+        if (localP.power && !localP.isDead && !localP.isFinished) {
+            const info = POWER_INFO[localP.power];
+            powerSlot.style.display = 'flex';
+            document.getElementById('power-icon').textContent = info.icon;
+            document.getElementById('power-label').textContent = info.key;
+            const total = POWER_MS[localP.power];
+            document.getElementById('power-bar').style.transform = `scaleX(${Math.max(0, Math.min(1, localP.powerMs / total))})`;
+        } else {
+            powerSlot.style.display = 'none';
+        }
     }
 
     // Round timer (+ a tick each second in the last 10)
@@ -508,8 +560,13 @@ socket.on('game_effect', (effect) => {
         const pusher = gameState.players.find(p => p.id === effect.pusher);
         const victim = gameState.players.find(p => p.id === effect.victim);
         if (pusher && victim) {
-            showHudAlert(`💥 ${pusher.name} ผลัก ${victim.name}!`);
-            Sfx.play('push');
+            const verbs = {
+                spin: '🌀 ปั่นกระเด็น', fire: '🔥 พ่นไฟใส่', ice: '❄️ แช่แข็ง',
+                spit: '🎳 พ่นเพื่อนใส่', star: '⭐ ปาดาวใส่'
+            };
+            const [icon, ...verb] = (verbs[effect.kind] || '💥 ผลัก').split(' ');
+            showHudAlert(`${icon} ${pusher.name} ${verb.join(' ')} ${victim.name}!`);
+            Sfx.play(effect.kind === 'ice' ? 'ice' : 'push');
             renderer.triggerShake(180, 8);
             renderer.addParticles(victim.x + victim.width/2, victim.y + victim.height/2, victim.color, 12);
         }
@@ -554,6 +611,40 @@ socket.on('game_effect', (effect) => {
         Sfx.play('finish');
     }
 
+    if (effect.type === 'swallow') {
+        const by = gameState.players.find(p => p.id === effect.by);
+        if (effect.kind === 'player' && by) showHudAlert(`😮 ${effect.byName} กลืน ${effect.victimName} เข้าไปแล้ว! (กดรัวๆ เพื่อหนีออกมา)`, 2400);
+        Sfx.play('swallow');
+        if (by) renderer.triggerShake(90, 3);
+    }
+
+    if (effect.type === 'spit') {
+        Sfx.play('spit');
+        const by = gameState.players.find(p => p.id === effect.by);
+        if (by) renderer.addParticles(by.x + by.width / 2 + by.facing * 24, by.y + by.height / 2, '#FFD94A', 8, { spread: 220, up: 40, size: 3 });
+    }
+
+    if (effect.type === 'escape') {
+        showHudAlert(`💨 ${effect.name} ดิ้นหลุดออกมาได้!`);
+        Sfx.play('free');
+    }
+
+    if (effect.type === 'power_gain') {
+        const info = POWER_INFO[effect.power];
+        showHudAlert(`⭐ ${effect.name} ได้พลัง ${info.icon} ${info.name}!`, 2400);
+        Sfx.play('power');
+        const p = gameState.players.find(pl => pl.id === effect.id);
+        if (p) renderer.addParticles(p.x + p.width / 2, p.y + 10, '#FFD94A', 16, { spread: 300, up: 140, size: 4 });
+    }
+
+    if (effect.type === 'power_use') {
+        Sfx.play({ fire: 'fire', ice: 'ice', spin: 'whirl' }[effect.power] || 'push');
+    }
+
+    if (effect.type === 'flap') {
+        if (effect.id === localPlayerId) Sfx.play('flap');
+    }
+
     if (effect.type === 'emote') {
         renderer.addEmote(effect.player, EMOTES[effect.emote]);
         if (effect.player !== localPlayerId) Sfx.play('emote');
@@ -592,20 +683,13 @@ socket.on('round_end', ({ round, levelIndex, scoreboard, finishOrder }) => {
         
         const rankTd = document.createElement('td');
         rankTd.textContent = `#${idx + 1}`;
-        rankTd.style.fontWeight = 'bold';
-        if (idx === 0) rankTd.style.color = '#ffcc00';
+        rankTd.style.fontWeight = '700';
 
-        const nameTd = document.createElement('td');
-        nameTd.style.color = p.color;
-        nameTd.style.fontWeight = 'bold';
-        nameTd.textContent = p.name;
-        if (p.id === localPlayerId) {
-            nameTd.textContent += ' (คุณ)';
-        }
+        const nameTd = nameCell(p);
 
         const roundTd = document.createElement('td');
         roundTd.textContent = `+${p.roundPoints}` + (p.kos > 0 ? ` (KO ×${p.kos})` : '');
-        roundTd.style.color = p.roundPoints > 0 ? '#2ecc71' : '#ff4d4d';
+        roundTd.className = p.roundPoints > 0 ? 'points-gain' : 'points-none';
 
         const totalTd = document.createElement('td');
         totalTd.textContent = p.totalScore;
@@ -637,7 +721,7 @@ socket.on('round_end', ({ round, levelIndex, scoreboard, finishOrder }) => {
 // Match ended Champion announcement
 socket.on('match_end', ({ scoreboard, winner }) => {
     document.getElementById('match-winner').textContent = winner.name;
-    document.getElementById('match-winner').style.color = winner.color;
+    document.getElementById('match-winner').style.background = winner.color;
 
     const tbody = document.getElementById('match-scoreboard-body');
     tbody.innerHTML = '';
@@ -647,16 +731,9 @@ socket.on('match_end', ({ scoreboard, winner }) => {
 
         const rankTd = document.createElement('td');
         rankTd.textContent = idx === 0 ? '👑 #1' : `#${idx + 1}`;
-        rankTd.style.fontWeight = 'bold';
-        if (idx === 0) rankTd.style.color = '#ffcc00';
+        rankTd.style.fontWeight = '700';
 
-        const nameTd = document.createElement('td');
-        nameTd.style.color = p.color;
-        nameTd.style.fontWeight = 'bold';
-        nameTd.textContent = p.name;
-        if (p.id === localPlayerId) {
-            nameTd.textContent += ' (คุณ)';
-        }
+        const nameTd = nameCell(p);
 
         const scoreTd = document.createElement('td');
         scoreTd.textContent = p.totalScore;
@@ -674,3 +751,14 @@ socket.on('match_end', ({ scoreboard, winner }) => {
     Sfx.play('win');
     UI.showScreen('matchEnd');
 });
+
+// --- MENU MASCOTS: the four blobs bounce on the title screen ---
+const mascotRenderer = new Renderer('menu-mascots');
+const MASCOT_COLORS = ['#FF7EA8', '#5BB8FF', '#FFC93C', '#6FD98C'];
+function mascotLoop(now) {
+    if (UI.screens.menu.classList.contains('active')) {
+        mascotRenderer.drawMascots(now / 1000, MASCOT_COLORS);
+    }
+    requestAnimationFrame(mascotLoop);
+}
+requestAnimationFrame(mascotLoop);
