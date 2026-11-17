@@ -1,0 +1,18 @@
+# Render Blueprint: one always-on web service in Singapore.
+# Dashboard: New + > Blueprint > pick this repo (and the branch you want to deploy).
+services:
+  - type: web
+    name: dont-push-me
+    runtime: node
+    region: singapore
+    # IMPORTANT: rooms live in this one process's memory, so keep exactly ONE instance,
+    # and use a plan that never sleeps. The free plan sleeps when idle and wipes all rooms.
+    plan: starter
+    numInstances: 1
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"

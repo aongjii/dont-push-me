@@ -17,11 +17,15 @@ if (portArgIndex !== -1 && process.argv[portArgIndex + 1]) {
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
+// The page and the socket are served from the same origin, so no CORS is needed.
+// Set ALLOWED_ORIGIN (e.g. https://my-game.onrender.com) only if you host the page elsewhere.
+const io = socketIo(server, process.env.ALLOWED_ORIGIN
+    ? { cors: { origin: process.env.ALLOWED_ORIGIN.split(','), methods: ['GET', 'POST'] } }
+    : {});
+
+// Health check for hosting platforms (and a quick "is it up?" check for you)
+app.get('/healthz', (req, res) => {
+    res.json({ ok: true, rooms: Object.keys(rooms).length, uptimeSeconds: Math.round(process.uptime()) });
 });
 
 // Serve static frontend files from 'public'

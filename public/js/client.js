@@ -46,9 +46,21 @@ socket.on('connect', () => {
 
 socket.on('rejoin_failed', () => {
     clearSession();
-    // If we were mid-game, the room is gone: return to the menu
-    if (!UI.screens.menu.classList.contains('active')) window.location.reload();
+    // If we were mid-game, the room is gone (server restarted or the room closed): back to the menu
+    if (!UI.screens.menu.classList.contains('active')) {
+        try { sessionStorage.setItem('dpm-notice', 'ห้องเดิมหายไปแล้ว (เซิร์ฟเวอร์รีสตาร์ทหรือห้องถูกปิด) กรุณาสร้างห้องใหม่อีกครั้ง'); } catch (e) {}
+        window.location.reload();
+    }
 });
+
+// Shown once after the page reloads back to the menu
+try {
+    const notice = sessionStorage.getItem('dpm-notice');
+    if (notice) {
+        sessionStorage.removeItem('dpm-notice');
+        setTimeout(() => UI.showError(notice), 300);
+    }
+} catch (e) {}
 
 // Keyboard input state
 const inputState = {
