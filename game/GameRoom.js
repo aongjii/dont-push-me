@@ -1,6 +1,7 @@
 const Player = require('./Player');
 const Level = require('./Level');
 const GameLoop = require('./GameLoop');
+const { sanitizeInput } = require('./validation');
 
 class GameRoom {
     constructor(code, io) {
@@ -19,6 +20,13 @@ class GameRoom {
 
         this.colors = ['#FF4D4D', '#3399FF', '#FFCC00', '#2ECC71']; // Red, Blue, Yellow, Green
         this.finishOrder = []; // array of player ids who finished this round
+
+        this.roundTimeLimit = 90 * 1000; // ms; unfinished players score 0 when it runs out
+        this.roundTimeLeft = this.roundTimeLimit;
+
+        // Kept so a reconnecting client can be shown the current end-of-round screen
+        this.lastRoundEnd = null;
+        this.lastMatchEnd = null;
     }
 
     addPlayer(id, name) {
@@ -76,21 +84,11 @@ class GameRoom {
             p.reset(this.level.spawnX, this.level.spawnY);
         });
 
+        this.roundTimeLeft = this.roundTimeLimit;
+        this.lastRoundEnd = null;
+
         // Notify client to load screen
-        this.io.to(this.code).emit('round_load', {
-            levelIndex: this.levelIndex,
-            round: this.round,
-            maxRounds: this.maxRounds,
-            levelWidth: this.level.width,
-            levelHeight: this.level.height,
-            platforms: this.level.platforms,
-            switches: this.level.switches,
-            hazards: this.level.hazards,
-            finishZone: this.level.finishZone,
-            hasRisingLava: this.level.hasRisingLava,
-            lavaSpeed: this.level.lavaSpeed,
-            lavaInitialY: this.level.lavaY
-        });
+        this.io.to(this.code).emit('round_load', this.getRoundLoadPayload());
 
         // Start countdown interval
         if (this.countdownInterval) clearInterval(this.countdownInterval);
@@ -108,10 +106,28 @@ class GameRoom {
         }, 1000);
     }
 
+    getRoundLoadPayload() {
+        return {
+            levelIndex: this.levelIndex,
+            round: this.round,
+            maxRounds: this.maxRounds,
+            levelWidth: this.level.width,
+            levelHeight: this.level.height,
+            platforms: this.level.platforms,
+            switches: this.level.switches,
+            hazards: this.level.hazards,
+            finishZone: this.level.finishZone,
+            hasRisingLava: this.level.hasRisingLava,
+            lavaSpeed: this.level.lavaSpeed,
+            lavaInitialY: this.level.lavaY,
+            roundTimeLimit: this.roundTimeLimit
+        };
+    }
+
     handleInput(id, input) {
         const player = this.players[id];
         if (player && this.status === 'playing') {
-            player.input = { ...player.input, ...input };
+            player.input = { ...player.input, ...sanitizeInput(input) };
         }
     }
 
@@ -120,21 +136,27 @@ class GameRoom {
 
         const playersArr = Object.values(this.players);
         const alivePlayers = playersArr.filter(p => !p.isDead && !p.isFinished);
-        
-        // Track new finishes
-        playersArr.forEach(p => {
-            if (p.isFinished && !this.finishOrder.includes(p.id)) {
-                this.finishOrder.push(p.id);
-            }
-        });
 
-        // Check if everyone is either dead or finished
-        if (alivePlayers.length === 0) {
+        this.collectFinishers();
+
+        // Round ends when everyone is dead/finished, or time is up
+        if (alivePlayers.length === 0 || this.roundTimeLeft <= 0) {
             this.endRound();
         }
     }
 
+    // Record players who reached the finish since the last check, in order
+    collectFinishers() {
+        Object.values(this.players).forEach(p => {
+            if (p.isFinished && !this.finishOrder.includes(p.id)) {
+                this.finishOrder.push(p.id);
+            }
+        });
+    }
+
     endRound() {
+        if (this.status !== 'playing') return;
+        this.collectFinishers();
         this.status = 'round_end';
         this.gameLoop.stop();
 
@@ -161,12 +183,13 @@ class GameRoom {
             status: p.isFinished ? 'FINISHED' : 'DEAD'
         })).sort((a, b) => b.totalScore - a.totalScore);
 
-        this.io.to(this.code).emit('round_end', {
+        this.lastRoundEnd = {
             round: this.round,
             levelIndex: this.levelIndex,
             scoreboard: scoreboard,
             finishOrder: this.finishOrder.map(id => this.players[id]?.name || '')
-        });
+        };
+        this.io.to(this.code).emit('round_end', this.lastRoundEnd);
     }
 
     nextRound() {
@@ -191,10 +214,11 @@ class GameRoom {
             totalScore: p.score
         })).sort((a, b) => b.totalScore - a.totalScore);
 
-        this.io.to(this.code).emit('match_end', {
+        this.lastMatchEnd = {
             scoreboard: scoreboard,
             winner: scoreboard[0]
-        });
+        };
+        this.io.to(this.code).emit('match_end', this.lastMatchEnd);
     }
 
     broadcastState() {
@@ -233,7 +257,8 @@ class GameRoom {
             players: playersData,
             hazards: hazardsData,
             platforms: this.level.platforms, // send current toggle status
-            lavaY: this.level.hasRisingLava ? this.level.lavaY : null
+            lavaY: this.level.hasRisingLava ? this.level.lavaY : null,
+            timeLeft: Math.max(0, Math.ceil(this.roundTimeLeft / 1000))
         });
     }
 

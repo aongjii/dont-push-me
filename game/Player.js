@@ -12,6 +12,12 @@ class Player {
         this.isGrounded = false;
         this.facing = 1; // 1 = right, -1 = left
 
+        // Connection state (managed by server.js)
+        this.connected = true;
+        this.socketId = null;
+        this.token = null;
+        this.graceTimer = null;
+
         // Game states
         this.score = 0;
         this.isDead = false;

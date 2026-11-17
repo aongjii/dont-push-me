@@ -2,7 +2,9 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
+const crypto = require('crypto');
 const GameRoom = require('./game/GameRoom');
+const { sanitizeName, sanitizeRoomCode, createRateLimiter } = require('./game/validation');
 
 // Parse port from arguments, env or fallback to 7488
 let port = 7488;
@@ -28,6 +30,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Global state for rooms: code -> GameRoom
 const rooms = {};
 
+// How long a disconnected player's seat is held for them to come back
+const RECONNECT_GRACE_MS = 30 * 1000;
+
 // Helper to generate room code
 function generateRoomCode() {
     let code;
@@ -37,35 +42,91 @@ function generateRoomCode() {
     return code;
 }
 
+// Player ids are stable across reconnects (unlike socket ids). The 'p' prefix keeps
+// them from being integer-like, so object key order stays insertion order (host = first).
+function generatePlayerId() {
+    return 'p' + crypto.randomBytes(8).toString('hex');
+}
+
+// Socket payloads come from untrusted clients: never destructure them directly
+function asObject(x) {
+    return x && typeof x === 'object' ? x : {};
+}
+
+function publicPlayers(room) {
+    return Object.values(room.players).map(p => ({ id: p.id, name: p.name, color: p.color }));
+}
+
+function removeFromRoom(roomCode, playerId) {
+    const room = rooms[roomCode];
+    if (!room || !room.players[playerId]) return;
+
+    const player = room.players[playerId];
+    if (player.graceTimer) {
+        clearTimeout(player.graceTimer);
+        player.graceTimer = null;
+    }
+
+    room.removePlayer(playerId);
+
+    if (Object.keys(room.players).length === 0) {
+        console.log(`Deleting empty room: ${roomCode}`);
+        delete rooms[roomCode];
+    } else {
+        io.to(roomCode).emit('room_update', { players: publicPlayers(room) });
+    }
+}
+
 io.on('connection', (socket) => {
     let currentRoomCode = null;
-    let playerId = socket.id;
+    let playerId = null; // set once this socket is seated in a room
+
+    // Max 90 input/action events per second per socket (normal play sends a handful)
+    const allowInput = createRateLimiter(90, 1000);
+    // Room actions (create/join/rejoin/start/next) are far rarer
+    const allowAction = createRateLimiter(10, 5000);
 
     console.log(`Socket connected: ${socket.id}`);
 
+    function seat(room, player) {
+        currentRoomCode = room.code;
+        playerId = player.id;
+        player.socketId = socket.id;
+        player.connected = true;
+        socket.join(room.code);
+    }
+
     // Create a new room
-    socket.on('create_room', ({ playerName }) => {
+    socket.on('create_room', (payload) => {
+        const { playerName } = asObject(payload);
+        if (!allowAction() || playerId) return;
+
         const roomCode = generateRoomCode();
         const room = new GameRoom(roomCode, io);
         rooms[roomCode] = room;
-        
-        currentRoomCode = roomCode;
-        socket.join(roomCode);
 
-        const player = room.addPlayer(playerId, playerName || `Player 1`);
-        
+        const id = generatePlayerId();
+        const player = room.addPlayer(id, sanitizeName(playerName, 'Player 1'));
+        player.token = crypto.randomBytes(16).toString('hex');
+        seat(room, player);
+
         socket.emit('room_created', {
             roomCode,
-            playerId,
-            players: Object.values(room.players).map(p => ({ id: p.id, name: p.name, color: p.color }))
+            playerId: id,
+            token: player.token,
+            players: publicPlayers(room)
         });
 
-        console.log(`Room ${roomCode} created by ${playerName}`);
+        console.log(`Room ${roomCode} created by ${player.name}`);
     });
 
     // Join an existing room
-    socket.on('join_room', ({ roomCode, playerName }) => {
-        const room = rooms[roomCode];
+    socket.on('join_room', (payload) => {
+        const { roomCode, playerName } = asObject(payload);
+        if (!allowAction() || playerId) return;
+
+        const code = sanitizeRoomCode(roomCode);
+        const room = code && rooms[code];
         if (!room) {
             socket.emit('error_msg', { message: 'ไม่พบห้องนี้ในระบบ! กรุณาตรวจสอบรหัสห้องอีกครั้ง' });
             return;
@@ -81,82 +142,122 @@ io.on('connection', (socket) => {
             return;
         }
 
-        currentRoomCode = roomCode;
-        socket.join(roomCode);
-
-        const name = playerName || `Player ${Object.keys(room.players).length + 1}`;
-        const player = room.addPlayer(playerId, name);
+        const id = generatePlayerId();
+        const name = sanitizeName(playerName, `Player ${Object.keys(room.players).length + 1}`);
+        const player = room.addPlayer(id, name);
+        player.token = crypto.randomBytes(16).toString('hex');
+        seat(room, player);
 
         // Notify client
         socket.emit('room_joined', {
-            roomCode,
-            playerId,
-            players: Object.values(room.players).map(p => ({ id: p.id, name: p.name, color: p.color }))
+            roomCode: code,
+            playerId: id,
+            token: player.token,
+            players: publicPlayers(room)
         });
 
         // Notify others in room
-        io.to(roomCode).emit('room_update', {
-            players: Object.values(room.players).map(p => ({ id: p.id, name: p.name, color: p.color }))
+        io.to(code).emit('room_update', { players: publicPlayers(room) });
+
+        console.log(`${name} joined Room ${code}`);
+    });
+
+    // Take back a seat after a dropped connection or page refresh
+    socket.on('rejoin_room', (payload) => {
+        const { roomCode, playerId: wantedId, token } = asObject(payload);
+        if (!allowAction() || playerId) return;
+
+        const code = sanitizeRoomCode(roomCode);
+        const room = code && rooms[code];
+        const player = room && typeof wantedId === 'string' ? room.players[wantedId] : null;
+
+        if (!player || typeof token !== 'string' || token !== player.token) {
+            socket.emit('rejoin_failed');
+            return;
+        }
+
+        // If the old socket is somehow still around, retire it
+        if (player.socketId && player.socketId !== socket.id) {
+            const old = io.sockets.sockets.get(player.socketId);
+            if (old) old.disconnect(true);
+        }
+
+        if (player.graceTimer) {
+            clearTimeout(player.graceTimer);
+            player.graceTimer = null;
+        }
+        seat(room, player);
+
+        socket.emit('rejoined', {
+            roomCode: code,
+            playerId: player.id,
+            players: publicPlayers(room),
+            status: room.status
         });
 
-        console.log(`${name} joined Room ${roomCode}`);
+        // Bring the client back to whatever screen the room is on
+        if (room.status === 'countdown' || room.status === 'playing') {
+            socket.emit('round_load', room.getRoundLoadPayload());
+            if (room.status === 'playing') socket.emit('round_start');
+        } else if (room.status === 'round_end' && room.lastRoundEnd) {
+            socket.emit('round_end', room.lastRoundEnd);
+        } else if (room.status === 'match_end' && room.lastMatchEnd) {
+            socket.emit('match_end', room.lastMatchEnd);
+        }
+
+        io.to(code).emit('room_update', { players: publicPlayers(room) });
+        console.log(`${player.name} rejoined Room ${code}`);
     });
+
+    function isHost(room) {
+        return Object.keys(room.players)[0] === playerId;
+    }
 
     // Start Game (Only host, which is the first player in the room)
     socket.on('start_game', () => {
-        if (!currentRoomCode) return;
+        if (!allowAction() || !currentRoomCode) return;
         const room = rooms[currentRoomCode];
-        if (!room) return;
+        if (!room || !isHost(room)) return;
 
-        // Verify if sender is the host (first player in room)
-        const hostId = Object.keys(room.players)[0];
-        if (socket.id === hostId) {
-            console.log(`Starting game for room ${currentRoomCode}`);
-            room.startGame();
-        }
+        console.log(`Starting game for room ${currentRoomCode}`);
+        room.startGame();
     });
 
     // Request next round (host only)
     socket.on('next_round', () => {
-        if (!currentRoomCode) return;
+        if (!allowAction() || !currentRoomCode) return;
         const room = rooms[currentRoomCode];
-        if (!room) return;
+        if (!room || !isHost(room)) return;
 
-        const hostId = Object.keys(room.players)[0];
-        if (socket.id === hostId) {
-            room.nextRound();
-        }
+        room.nextRound();
     });
 
     // Player inputs
     socket.on('input', (inputState) => {
-        if (!currentRoomCode) return;
+        if (!currentRoomCode || !allowInput()) return;
         const room = rooms[currentRoomCode];
         if (room) {
             room.handleInput(playerId, inputState);
         }
     });
 
-    // Handle disconnection
+    // Handle disconnection: hold the seat for a while so the player can come back
     socket.on('disconnect', () => {
         console.log(`Socket disconnected: ${socket.id}`);
-        if (currentRoomCode) {
-            const room = rooms[currentRoomCode];
-            if (room) {
-                room.removePlayer(playerId);
-                
-                // If room empty, delete
-                if (Object.keys(room.players).length === 0) {
-                    console.log(`Deleting empty room: ${currentRoomCode}`);
-                    delete rooms[currentRoomCode];
-                } else {
-                    // Notify others
-                    io.to(currentRoomCode).emit('room_update', {
-                        players: Object.values(room.players).map(p => ({ id: p.id, name: p.name, color: p.color }))
-                    });
-                }
-            }
-        }
+        if (!currentRoomCode || !playerId) return;
+
+        const roomCode = currentRoomCode;
+        const room = rooms[roomCode];
+        const player = room && room.players[playerId];
+        // Ignore if this seat was already taken over by a newer socket
+        if (!player || player.socketId !== socket.id) return;
+
+        player.connected = false;
+        // Stop any held keys so a ghost doesn't keep running
+        player.input = { left: false, right: false, jump: false, push: false, pull: false, interact: false };
+
+        const leavingId = playerId;
+        player.graceTimer = setTimeout(() => removeFromRoom(roomCode, leavingId), RECONNECT_GRACE_MS);
     });
 });
 

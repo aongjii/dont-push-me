@@ -23,6 +23,33 @@ function showHudAlert(text, duration = 2000) {
     }, duration);
 }
 
+// --- SESSION (reconnect support) ---
+const SESSION_KEY = 'dpm-session';
+
+function saveSession(roomCode, playerId, token) {
+    try { sessionStorage.setItem(SESSION_KEY, JSON.stringify({ roomCode, playerId, token })); } catch (e) {}
+}
+
+function loadSession() {
+    try { return JSON.parse(sessionStorage.getItem(SESSION_KEY)); } catch (e) { return null; }
+}
+
+function clearSession() {
+    try { sessionStorage.removeItem(SESSION_KEY); } catch (e) {}
+}
+
+// On every (re)connect, try to take back our seat if we had one
+socket.on('connect', () => {
+    const session = loadSession();
+    if (session) socket.emit('rejoin_room', session);
+});
+
+socket.on('rejoin_failed', () => {
+    clearSession();
+    // If we were mid-game, the room is gone: return to the menu
+    if (!UI.screens.menu.classList.contains('active')) window.location.reload();
+});
+
 // Keyboard input state
 const inputState = {
     left: false,
@@ -149,14 +176,16 @@ document.getElementById('btn-next-round').addEventListener('click', () => {
 
 // Back to Menu
 document.getElementById('btn-menu').addEventListener('click', () => {
+    clearSession();
     window.location.reload();
 });
 
 // --- SOCKET.IO EVENT HANDLERS ---
 
-socket.on('room_created', ({ roomCode, playerId, players }) => {
+socket.on('room_created', ({ roomCode, playerId, token, players }) => {
     localPlayerId = playerId;
     currentRoomCode = roomCode;
+    saveSession(roomCode, playerId, token);
     
     document.getElementById('lobby-code').textContent = roomCode;
     document.getElementById('lobby-count').textContent = players.length;
@@ -170,9 +199,10 @@ socket.on('room_created', ({ roomCode, playerId, players }) => {
     UI.showScreen('lobby');
 });
 
-socket.on('room_joined', ({ roomCode, playerId, players }) => {
+socket.on('room_joined', ({ roomCode, playerId, token, players }) => {
     localPlayerId = playerId;
     currentRoomCode = roomCode;
+    saveSession(roomCode, playerId, token);
 
     document.getElementById('lobby-code').textContent = roomCode;
     document.getElementById('lobby-count').textContent = players.length;
@@ -181,6 +211,21 @@ socket.on('room_joined', ({ roomCode, playerId, players }) => {
     updateHostStatus(players);
     
     UI.showScreen('lobby');
+});
+
+// Seat recovered after a dropped connection / page refresh. The server then re-sends
+// whatever the room is showing (round_load, round_end, ...), so only the lobby is handled here.
+socket.on('rejoined', ({ roomCode, playerId, players, status }) => {
+    localPlayerId = playerId;
+    currentRoomCode = roomCode;
+
+    document.getElementById('lobby-code').textContent = roomCode;
+    document.getElementById('lobby-count').textContent = players.length;
+    updatePlayerLobbyList(players);
+    updateHostStatus(players);
+    document.getElementById('btn-start').disabled = players.length < 2;
+
+    if (status === 'lobby') UI.showScreen('lobby');
 });
 
 socket.on('room_update', ({ players }) => {
@@ -237,6 +282,7 @@ function updatePlayerLobbyList(players) {
 socket.on('round_load', (data) => {
     levelData = data;
     gameState = null;
+    snapshots.length = 0;
 
     // Set HUD room code
     document.getElementById('hud-code').textContent = currentRoomCode;
@@ -265,19 +311,52 @@ socket.on('round_start', () => {
     document.getElementById('countdown-overlay').style.display = 'none';
 });
 
-// Tick State update from Server
-let lastTime = Date.now();
+// --- STATE SNAPSHOTS + INTERPOLATION ---
+// The server sends ~30 states/sec. Drawing each one the moment it arrives makes motion
+// stutter whenever packets are uneven, so we keep a short buffer and draw slightly in the
+// past, blending between the two snapshots around that moment.
+const INTERP_DELAY_MS = 75;
+const snapshots = []; // { t: arrival time (ms), state }
+
+function lerp(a, b, f) { return a + (b - a) * f; }
+
+function interpolatedState(renderTime) {
+    if (snapshots.length === 0) return null;
+    const first = snapshots[0];
+    const last = snapshots[snapshots.length - 1];
+    if (renderTime <= first.t) return first.state;
+    if (renderTime >= last.t) return last.state; // no extrapolation: hold the newest state
+
+    let i = snapshots.length - 1;
+    while (i > 0 && snapshots[i - 1].t > renderTime) i--;
+    const a = snapshots[i - 1];
+    const b = snapshots[i];
+    const f = (renderTime - a.t) / (b.t - a.t || 1);
+
+    const players = b.state.players.map(pb => {
+        const pa = a.state.players.find(p => p.id === pb.id);
+        // Don't smear across big jumps (respawn, teleport)
+        if (!pa || Math.abs(pb.x - pa.x) > 300 || Math.abs(pb.y - pa.y) > 300) return pb;
+        return { ...pb, x: lerp(pa.x, pb.x, f), y: lerp(pa.y, pb.y, f) };
+    });
+
+    const hazards = b.state.hazards.map((hb, idx) => {
+        const ha = a.state.hazards[idx];
+        return ha ? { ...hb, x: lerp(ha.x, hb.x, f), y: lerp(ha.y, hb.y, f) } : hb;
+    });
+
+    const lavaY = (a.state.lavaY !== null && b.state.lavaY !== null)
+        ? lerp(a.state.lavaY, b.state.lavaY, f)
+        : b.state.lavaY;
+
+    return { ...b.state, players, hazards, lavaY };
+}
+
 socket.on('game_state', (state) => {
-    const now = Date.now();
-    const dt = (now - lastTime) / 1000;
-    lastTime = now;
-
     gameState = state;
-
-    // Draw frame
-    if (levelData) {
-        renderer.draw(state, localPlayerId, levelData, dt);
-    }
+    snapshots.push({ t: performance.now(), state });
+    // Keep ~1 second of history
+    while (snapshots.length > 40) snapshots.shift();
 
     // Update HUD Cooldown progress bars
     const localP = state.players.find(p => p.id === localPlayerId);
@@ -290,7 +369,26 @@ socket.on('game_state', (state) => {
         const pullPct = Math.min(100, Math.max(0, (localP.pullCooldown / 2500) * 100));
         document.getElementById('cooldown-pull').style.height = `${pullPct}%`;
     }
+
+    // Round timer
+    const timerEl = document.getElementById('hud-timer');
+    timerEl.textContent = state.timeLeft;
+    timerEl.parentElement.classList.toggle('urgent', state.timeLeft <= 10);
 });
+
+// Render loop: runs every display frame, independent of network rate
+let lastFrame = performance.now();
+function renderFrame(now) {
+    const dt = Math.min(0.1, (now - lastFrame) / 1000);
+    lastFrame = now;
+
+    if (levelData && UI.screens.game.classList.contains('active')) {
+        const state = interpolatedState(now - INTERP_DELAY_MS);
+        if (state) renderer.draw(state, localPlayerId, levelData, dt);
+    }
+    requestAnimationFrame(renderFrame);
+}
+requestAnimationFrame(renderFrame);
 
 // Trigger sounds / screen shakes on visual events
 socket.on('game_effect', (effect) => {
@@ -441,5 +539,6 @@ socket.on('match_end', ({ scoreboard, winner }) => {
         tbody.appendChild(tr);
     });
 
+    clearSession(); // match is over: nothing left to rejoin
     UI.showScreen('matchEnd');
 });
