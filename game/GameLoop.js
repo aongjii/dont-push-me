@@ -73,8 +73,8 @@ class GameLoop {
             const wasDead = player.isDead;
             player.update(dt, this.room.level, this.room);
 
-            // Hazard collision checks
-            if (this.room.level.checkHazards(player)) {
+            // Hazard collision checks (someone inside a mouth is carried, not exposed)
+            if (!player.swallowedBy && this.room.level.checkHazards(player)) {
                 player.die();
             }
 
@@ -84,13 +84,16 @@ class GameLoop {
             }
 
             // Finish check
-            if (this.room.level.checkFinish(player)) {
+            if (!player.swallowedBy && this.room.level.checkFinish(player)) {
+                player.dropMouth(this.room);
                 player.isFinished = true;
                 player.vx = 0;
                 player.vy = 0;
                 this.room.broadcastEffect('player_finished', { id: player.id, name: player.name });
             }
         });
+
+        this.room.updateProjectiles(dt);
 
         // Round time limit
         this.room.roundTimeLeft -= dt;

@@ -23,7 +23,9 @@ class GameRoom {
         this.colors = ['#FF4D4D', '#3399FF', '#FFCC00', '#2ECC71']; // Red, Blue, Yellow, Green
         this.finishOrder = []; // array of player ids who finished this round
 
-        this.roundTimeLimit = 90 * 1000; // ms; unfinished players score 0 when it runs out
+        this.roundTimeLimit = 90 * 1000; // ms (each level can override); unfinished players score 0 when it runs out
+        this.projectiles = []; // fireballs and spat-out stars
+        this.nextProjectileId = 1;
         this.roundTimeLeft = this.roundTimeLimit;
 
         // Kept so a reconnecting client can be shown the current end-of-round screen
@@ -86,7 +88,9 @@ class GameRoom {
             p.reset(this.level.spawnX, this.level.spawnY);
         });
 
+        this.roundTimeLimit = this.level.timeLimit * 1000;
         this.roundTimeLeft = this.roundTimeLimit;
+        this.projectiles = [];
         this.lastRoundEnd = null;
 
         // Notify client to load screen
@@ -131,11 +135,12 @@ class GameRoom {
         if (player && this.status === 'playing') {
             const clean = sanitizeInput(input);
 
-            // Mashing movement keys while pulled shakes the victim loose
-            if (player.pullDuration > 0) {
+            // Mashing movement keys while pulled (or swallowed) shakes the victim loose
+            if (player.pullDuration > 0 || player.swallowedBy) {
                 ['left', 'right', 'jump'].forEach(key => {
                     if (clean[key] && !player.input[key]) {
-                        player.breakFree(Player.TUNING.pullBreakFreePerTap);
+                        if (player.swallowedBy) player.struggle(this);
+                        else player.breakFree(Player.TUNING.pullBreakFreePerTap);
                     }
                 });
             }
@@ -170,8 +175,52 @@ class GameRoom {
         racers.forEach(p => { p.catchUp = dist(p) - lead > Player.TUNING.catchUpGap; });
     }
 
+    spawnProjectile(proj) {
+        this.projectiles.push({ id: this.nextProjectileId++, ...proj });
+    }
+
+    // Move fireballs / spat stars; they knock back the first rival they touch
+    updateProjectiles(dt) {
+        const size = 14;
+        const level = this.level;
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            const pr = this.projectiles[i];
+            pr.x += pr.vx * (dt / 1000);
+            pr.life -= dt;
+            let remove = pr.life <= 0 || pr.x < -50 || pr.x > level.width + 50;
+
+            const box = { x: pr.x - size / 2, y: pr.y - size / 2, width: size, height: size };
+
+            if (!remove && level.platforms.some(pl => pl.active &&
+                box.x < pl.x + pl.width && box.x + size > pl.x &&
+                box.y < pl.y + pl.height && box.y + size > pl.y)) {
+                remove = true;
+            }
+
+            if (!remove) {
+                const owner = this.players[pr.owner];
+                for (const p of Object.values(this.players)) {
+                    if (p.id === pr.owner || p.isDead || p.isFinished || p.swallowedBy) continue;
+                    if (!(box.x < p.x + p.width && box.x + size > p.x &&
+                          box.y < p.y + p.height && box.y + size > p.y)) continue;
+                    const dir = pr.vx >= 0 ? 1 : -1;
+                    p.vx = dir * (pr.type === 'fire' ? 450 : 650);
+                    p.vy = -250;
+                    if (owner) p.markHit(owner);
+                    p.breakFree();
+                    this.broadcastEffect('push_hit', { pusher: pr.owner, victim: p.id, dir, kind: pr.type });
+                    remove = true;
+                    break;
+                }
+            }
+
+            if (remove) this.projectiles.splice(i, 1);
+        }
+    }
+
     // Called once when a player dies. Credits the attacker if the victim was recently hit.
     handleDeath(victim) {
+        victim.dropMouth(this); // anyone we were holding comes out
         const credit = victim.hitCredit;
         victim.hitCredit = null;
 
@@ -303,6 +352,14 @@ class GameRoom {
             isFinished: p.isFinished,
             facing: p.facing,
             isGrounded: p.isGrounded,
+            inhaling: p.inhaling,
+            mouth: p.mouth ? p.mouth.kind : null,
+            swallowed: !!p.swallowedBy,
+            power: p.power,
+            powerMs: Math.max(0, Math.round(p.powerMs)),
+            spinMs: Math.max(0, Math.round(p.spinMs)),
+            spitBodyMs: Math.max(0, Math.round(p.spitBodyMs)),
+            freezeKind: p.freezeKind,
             catchUp: p.catchUp,
             pushCooldown: p.pushCooldown,
             pullCooldown: p.pullCooldown,
@@ -326,6 +383,8 @@ class GameRoom {
             players: playersData,
             hazards: hazardsData,
             platforms: this.level.platforms, // send current toggle status
+            items: this.level.items.map(it => ({ id: it.id, type: it.type, x: Math.round(it.x), y: Math.round(it.y), alive: it.alive })),
+            projectiles: this.projectiles.map(pr => ({ id: pr.id, type: pr.type, x: Math.round(pr.x), y: Math.round(pr.y), vx: pr.vx })),
             lavaY: this.level.hasRisingLava ? this.level.lavaY : null,
             timeLeft: Math.max(0, Math.ceil(this.roundTimeLeft / 1000))
         });

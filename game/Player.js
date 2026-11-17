@@ -12,6 +12,8 @@ const TUNING = {
     catchUpPushFactor: 1.2
 };
 
+const { ABILITY } = require('./abilities');
+
 class Player {
     constructor(id, name, color) {
         this.id = id;
@@ -49,6 +51,26 @@ class Player {
         this.roundKos = 0;
         this.lastEmoteAt = 0;
 
+        // Kirby-style abilities (see abilities.js)
+        this.inhaling = false;
+        this.prevInhale = false;
+        this.prevJump = false;
+        this.mouth = null;         // { kind: 'orb' } | { kind: 'player', id }
+        this.mouthMs = 0;
+        this.swallowedBy = null;   // id of the player whose mouth we're in
+        this.swallowTaps = 0;
+        this.inhaleImmunity = 0;
+        this.beingInhaledMs = 0;
+        this.power = null;         // 'fire' | 'ice' | 'spin' | 'wings'
+        this.powerMs = 0;
+        this.spinMs = 0;
+        this.spinHit = new Set();
+        this.spitBodyMs = 0;
+        this.spitBy = null;
+        this.spitHit = new Set();
+        this.flapCd = 0;
+        this.freezeKind = 'pull';  // what froze us: 'pull' | 'ice'
+
         // Input
         this.input = {
             left: false,
@@ -56,7 +78,8 @@ class Player {
             jump: false,
             push: false,
             pull: false,
-            interact: false
+            interact: false,
+            inhale: false
         };
     }
 
@@ -77,6 +100,24 @@ class Player {
         this.pullImmunity = 0;
         this.catchUp = false;
         this.roundKos = 0;
+        this.inhaling = false;
+        this.prevInhale = false;
+        this.prevJump = false;
+        this.mouth = null;
+        this.mouthMs = 0;
+        this.swallowedBy = null;
+        this.swallowTaps = 0;
+        this.inhaleImmunity = 0;
+        this.beingInhaledMs = 0;
+        this.power = null;
+        this.powerMs = 0;
+        this.spinMs = 0;
+        this.spinHit = new Set();
+        this.spitBodyMs = 0;
+        this.spitBy = null;
+        this.spitHit = new Set();
+        this.flapCd = 0;
+        this.freezeKind = 'pull';
     }
 
     get pushCooldownMax() {
@@ -102,10 +143,32 @@ class Player {
     update(dt, level, gameRoom) {
         if (this.isDead || this.isFinished) return;
 
+        // Inside someone's mouth: just ride along
+        if (this.swallowedBy) {
+            this.updateSwallowed(dt, gameRoom);
+            return;
+        }
+
         // Reduce cooldowns & effects
         if (this.pushCooldown > 0) this.pushCooldown -= dt;
         if (this.pullCooldown > 0) this.pullCooldown -= dt;
         if (this.pullImmunity > 0) this.pullImmunity -= dt;
+        if (this.inhaleImmunity > 0) this.inhaleImmunity -= dt;
+        if (this.beingInhaledMs > 0) this.beingInhaledMs -= dt;
+        if (this.flapCd > 0) this.flapCd -= dt;
+        if (this.spinMs > 0) this.spinMs -= dt;
+        if (this.spitBodyMs > 0) {
+            this.spitBodyMs -= dt;
+            this.applySpitBodyHits(gameRoom);
+        }
+        if (this.power) {
+            this.powerMs -= dt;
+            if (this.powerMs <= 0) { this.power = null; this.powerMs = 0; this.spinMs = 0; }
+        }
+        if (this.mouth) {
+            this.mouthMs -= dt;
+            if (this.mouthMs <= 0) this.spit(gameRoom);
+        }
 
         // KO credit fades with time, and is void once the victim has recovered on solid ground
         if (this.hitCredit) {
@@ -139,21 +202,39 @@ class Player {
         const jumpForce = -500;
 
         // Handle Horizontal Input & Physics
+        // Slower while sucking things in or carrying something; faster while spinning
+        const speedMul = (this.spinMs > 0 ? ABILITY.spinSpeedBoost : 1) *
+            (this.inhaling ? 0.5 : (this.mouth ? 0.8 : 1));
         let targetVx = 0;
         if (this.input.left) {
-            targetVx = -speed;
+            targetVx = -speed * speedMul;
             this.facing = -1;
         } else if (this.input.right) {
-            targetVx = speed;
+            targetVx = speed * speedMul;
             this.facing = 1;
         }
 
-        // Lerp horizontal velocity
-        this.vx += (targetVx - this.vx) * drag * (dt / 1000);
+        // Lerp horizontal velocity (a spat-out player flies ballistically, no braking)
+        if (this.spitBodyMs <= 0) {
+            this.vx += (targetVx - this.vx) * drag * (dt / 1000);
+        }
 
         // Apply Gravity
         this.vy += gravity * (dt / 1000);
         this.vy = Math.min(this.vy, 800); // Terminal velocity
+
+        // Wings power: flap in mid-air, glide while jump is held
+        const jumpPressed = this.input.jump && !this.prevJump;
+        this.prevJump = this.input.jump;
+        if (this.power === 'wings' && !this.isGrounded) {
+            if (jumpPressed && this.flapCd <= 0) {
+                this.vy = ABILITY.flapForce;
+                this.flapCd = ABILITY.flapCooldown;
+                gameRoom.broadcastEffect('flap', { id: this.id });
+            } else if (this.input.jump && this.vy > ABILITY.glideFall) {
+                this.vy = ABILITY.glideFall;
+            }
+        }
 
         // Jump
         if (this.input.jump && this.isGrounded) {
@@ -170,7 +251,22 @@ class Player {
 
         // Sabotage Actions (Only check if not pushed/pulled in action)
         if (this.input.push && this.pushCooldown <= 0) {
-            this.performPush(gameRoom);
+            if (this.power && this.power !== 'wings') this.usePower(gameRoom);
+            else this.performPush(gameRoom);
+        }
+        this.applySpinHits(gameRoom);
+
+        // Inhale: hold to suck things in; press again to spit what's in your mouth
+        const inhalePressed = this.input.inhale && !this.prevInhale;
+        this.prevInhale = this.input.inhale;
+        if (this.mouth) {
+            this.inhaling = false;
+            if (inhalePressed) this.spit(gameRoom);
+        } else if (this.input.inhale) {
+            this.inhaling = true;
+            this.performInhale(dt, gameRoom);
+        } else {
+            this.inhaling = false;
         }
         if (this.input.pull && this.pullCooldown <= 0) {
             this.performPull(gameRoom);
@@ -235,7 +331,7 @@ class Player {
 
         // Detect other players in the push box
         for (let p of Object.values(gameRoom.players)) {
-            if (p.id === this.id || p.isDead || p.isFinished) continue;
+            if (p.id === this.id || p.isDead || p.isFinished || p.swallowedBy) continue;
 
             if (p.x < pushBox.x + pushBox.width &&
                 p.x + p.width > pushBox.x &&
@@ -263,7 +359,7 @@ class Player {
 
         for (let p of Object.values(gameRoom.players)) {
             if (p.id === this.id || p.isDead || p.isFinished) continue;
-            if (p.pullImmunity > 0 || p.pullDuration > 0) continue; // can't be chain-pulled
+            if (p.swallowedBy || p.pullImmunity > 0 || p.pullDuration > 0) continue; // can't be chain-pulled
             
             // Calculate distance
             const dx = p.x + p.width/2 - (this.x + this.width/2);
@@ -281,6 +377,7 @@ class Player {
 
         if (target) {
             target.pullDuration = TUNING.pullFreeze;
+            target.freezeKind = 'pull';
             target.vx = 0;
             target.markHit(this);
             gameRoom.broadcastEffect('pull_hit', { puller: this.id, victim: target.id });
@@ -319,4 +416,5 @@ class Player {
 }
 
 Player.TUNING = TUNING;
+require('./abilities').install(Player);
 module.exports = Player;

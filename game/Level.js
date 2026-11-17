@@ -12,6 +12,8 @@ class Level {
         this.platforms = [];
         this.switches = [];
         this.hazards = [];
+        this.items = []; // stars (eat for a random power) and orbs (hold and spit)
+        this.timeLimit = 90; // seconds (levels may override)
         this.finishZone = { x: 1500, y: 400, width: 60, height: 120 };
         this.lavaY = 900;
         this.hasRisingLava = false;
@@ -68,6 +70,21 @@ class Level {
                 time: 0
             }));
 
+            // Collectibles
+            this.items = (data.items || []).map((it, i) => ({
+                id: i,
+                type: it.type === 'orb' ? 'orb' : 'star',
+                x: it.x,
+                y: it.y,
+                homeX: it.x,
+                homeY: it.y,
+                alive: true,
+                respawnMs: 0,
+                beingPulled: false
+            }));
+
+            this.timeLimit = data.timeLimit || 90;
+
             // Rising lava
             this.hasRisingLava = data.hasRisingLava || false;
             this.lavaSpeed = data.lavaSpeed || 0;
@@ -98,6 +115,25 @@ class Level {
                     haz.y = haz.startY + Math.sin(haz.time * 2) * haz.rangeY;
                 }
             }
+        });
+
+        // Collectibles: drift home when released, come back after being eaten
+        this.items.forEach(it => {
+            if (!it.alive) {
+                it.respawnMs -= dt;
+                if (it.respawnMs <= 0) {
+                    it.alive = true;
+                    it.x = it.homeX;
+                    it.y = it.homeY;
+                }
+            } else if (!it.beingPulled && (it.x !== it.homeX || it.y !== it.homeY)) {
+                const dx = it.homeX - it.x, dy = it.homeY - it.y;
+                const d = Math.hypot(dx, dy);
+                const step = 220 * (dt / 1000);
+                if (d <= step) { it.x = it.homeX; it.y = it.homeY; }
+                else { it.x += (dx / d) * step; it.y += (dy / d) * step; }
+            }
+            it.beingPulled = false;
         });
 
         // Update rising lava
