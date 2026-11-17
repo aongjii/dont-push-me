@@ -120,7 +120,7 @@ test('state broadcast carries remaining time in whole seconds', () => {
 test('a player falling off the map dies', () => {
     const { room } = startedRoom(1);
     const p = room.players.p0;
-    p.x = 5000; // far from any platform
+    p.x = -800; // outside the map: nothing to land on
     p.y = 100;
     simulate(room, 3000);
     assert.equal(p.isDead, true);
@@ -178,7 +178,7 @@ test('a hit victim who lands safely loses the KO credit', () => {
 test('falling off the map after being pushed is credited via the game loop', () => {
     const { room, io } = startedRoom(2);
     const [a, b] = [room.players.p0, room.players.p1];
-    b.x = 5000; b.y = 100;
+    b.x = -800; b.y = 100; // outside the map
     b.markHit(a);
     simulate(room, 3500);
     assert.equal(b.isDead, true);
