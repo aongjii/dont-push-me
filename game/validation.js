@@ -37,4 +37,10 @@ function createRateLimiter(max, windowMs, now = Date.now) {
     };
 }
 
-module.exports = { INPUT_KEYS, sanitizeInput, sanitizeName, sanitizeRoomCode, createRateLimiter };
+const EMOTE_COUNT = 4; // client shows 😂 😡 👋 💀 for 1-4
+
+function sanitizeEmote(raw) {
+    return Number.isInteger(raw) && raw >= 0 && raw < EMOTE_COUNT ? raw : null;
+}
+
+module.exports = { INPUT_KEYS, EMOTE_COUNT, sanitizeEmote, sanitizeInput, sanitizeName, sanitizeRoomCode, createRateLimiter };

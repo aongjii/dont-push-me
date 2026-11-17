@@ -1,7 +1,9 @@
 const Player = require('./Player');
 const Level = require('./Level');
 const GameLoop = require('./GameLoop');
-const { sanitizeInput } = require('./validation');
+const { sanitizeInput, sanitizeEmote } = require('./validation');
+
+const KO_POINTS = 3; // bonus for sending a rival to their doom
 
 class GameRoom {
     constructor(code, io) {
@@ -127,8 +129,61 @@ class GameRoom {
     handleInput(id, input) {
         const player = this.players[id];
         if (player && this.status === 'playing') {
-            player.input = { ...player.input, ...sanitizeInput(input) };
+            const clean = sanitizeInput(input);
+
+            // Mashing movement keys while pulled shakes the victim loose
+            if (player.pullDuration > 0) {
+                ['left', 'right', 'jump'].forEach(key => {
+                    if (clean[key] && !player.input[key]) {
+                        player.breakFree(Player.TUNING.pullBreakFreePerTap);
+                    }
+                });
+            }
+
+            player.input = { ...player.input, ...clean };
         }
+    }
+
+    handleEmote(id, rawEmote) {
+        const player = this.players[id];
+        const emote = sanitizeEmote(rawEmote);
+        if (!player || emote === null || this.status !== 'playing') return;
+
+        const now = Date.now();
+        if (now - player.lastEmoteAt < 1000) return;
+        player.lastEmoteAt = now;
+        this.broadcastEffect('emote', { player: id, emote });
+    }
+
+    // Players far behind the leader get shorter cooldowns and a stronger shove
+    updateCatchUp() {
+        const f = this.level.finishZone;
+        const fx = f.x + f.width / 2;
+        const fy = f.y + f.height / 2;
+        const racers = Object.values(this.players).filter(p => !p.isDead && !p.isFinished);
+        if (racers.length < 2) {
+            racers.forEach(p => { p.catchUp = false; });
+            return;
+        }
+        const dist = p => Math.hypot(p.x + p.width / 2 - fx, p.y + p.height / 2 - fy);
+        const lead = Math.min(...racers.map(dist));
+        racers.forEach(p => { p.catchUp = dist(p) - lead > Player.TUNING.catchUpGap; });
+    }
+
+    // Called once when a player dies. Credits the attacker if the victim was recently hit.
+    handleDeath(victim) {
+        const credit = victim.hitCredit;
+        victim.hitCredit = null;
+
+        const attacker = credit && credit.ms > 0 && credit.by !== victim.id ? this.players[credit.by] : null;
+        if (attacker) attacker.roundKos++;
+
+        this.broadcastEffect('player_died', {
+            id: victim.id,
+            name: victim.name,
+            killerId: attacker ? attacker.id : null,
+            killerName: attacker ? attacker.name : null
+        });
     }
 
     checkRoundEnd() {
@@ -173,11 +228,21 @@ class GameRoom {
             }
         });
 
+        // KO bonuses (kept even if the attacker later died or ran out of time)
+        Object.values(this.players).forEach(p => {
+            if (p.roundKos > 0) {
+                const bonus = p.roundKos * KO_POINTS;
+                p.score += bonus;
+                roundPoints[p.id] = (roundPoints[p.id] || 0) + bonus;
+            }
+        });
+
         // Build scoreboard
         const scoreboard = Object.values(this.players).map(p => ({
             id: p.id,
             name: p.name,
             color: p.color,
+            kos: p.roundKos,
             roundPoints: roundPoints[p.id] || 0,
             totalScore: p.score,
             status: p.isFinished ? 'FINISHED' : 'DEAD'
@@ -237,8 +302,12 @@ class GameRoom {
             isDead: p.isDead,
             isFinished: p.isFinished,
             facing: p.facing,
+            isGrounded: p.isGrounded,
+            catchUp: p.catchUp,
             pushCooldown: p.pushCooldown,
             pullCooldown: p.pullCooldown,
+            pushCooldownMax: p.pushCooldownMax,
+            pullCooldownMax: p.pullCooldownMax,
             pushDuration: p.pushDuration,
             pullDuration: p.pullDuration,
             lastPushedBy: p.lastPushedBy

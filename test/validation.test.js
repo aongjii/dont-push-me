@@ -35,3 +35,10 @@ test('rate limiter blocks bursts and recovers next window', () => {
     t = 1000;
     assert.equal(allow(), true);
 });
+
+test('sanitizeEmote accepts only indexes 0-3', () => {
+    const { sanitizeEmote } = require('../game/validation');
+    assert.equal(sanitizeEmote(0), 0);
+    assert.equal(sanitizeEmote(3), 3);
+    for (const bad of [4, -1, 1.5, '1', null, undefined, {}, NaN]) assert.equal(sanitizeEmote(bad), null);
+});

@@ -104,7 +104,41 @@ const keyMap = {
     'KeyE': 'interact'
 };
 
+const EMOTES = ['😂', '😡', '👋', '💀'];
+const emoteKeys = { Digit1: 0, Digit2: 1, Digit3: 2, Digit4: 3, Numpad1: 0, Numpad2: 1, Numpad3: 2, Numpad4: 3 };
+
+function inGame() {
+    return UI.screens.game.classList.contains('active');
+}
+
+const muteBtn = document.getElementById('btn-mute');
+function refreshMuteButton() { muteBtn.textContent = Sfx.isMuted() ? '🔇' : '🔊'; }
+refreshMuteButton();
+muteBtn.addEventListener('click', () => { Sfx.toggleMute(); refreshMuteButton(); muteBtn.blur(); });
+
 window.addEventListener('keydown', (e) => {
+    // Don't hijack typing in the menu inputs
+    if (e.target && e.target.tagName === 'INPUT') return;
+
+    if (e.code === 'KeyM' && !e.repeat) {
+        Sfx.toggleMute();
+        refreshMuteButton();
+        return;
+    }
+
+    if (inGame() && !e.repeat) {
+        if (e.code in emoteKeys) {
+            socket.emit('emote', emoteKeys[e.code]);
+            return;
+        }
+        // Dead or finished: left/right switches who you are watching
+        const me = gameState && gameState.players.find(p => p.id === localPlayerId);
+        if (me && (me.isDead || me.isFinished)) {
+            if (e.code === 'KeyA' || e.code === 'ArrowLeft') cycleSpectate(-1);
+            if (e.code === 'KeyD' || e.code === 'ArrowRight') cycleSpectate(1);
+        }
+    }
+
     const action = keyMap[e.code];
     if (action) {
         inputState[action] = true;
@@ -113,6 +147,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 window.addEventListener('keyup', (e) => {
+    if (e.target && e.target.tagName === 'INPUT') return;
     const action = keyMap[e.code];
     if (action) {
         inputState[action] = false;
@@ -283,6 +318,11 @@ socket.on('round_load', (data) => {
     levelData = data;
     gameState = null;
     snapshots.length = 0;
+    spectateId = null;
+    prevPlayerFlags = {};
+    spectateBanner.style.display = 'none';
+    document.getElementById('hud-catchup').style.display = 'none';
+    Sfx.stopMusic();
 
     // Set HUD room code
     document.getElementById('hud-code').textContent = currentRoomCode;
@@ -301,15 +341,56 @@ socket.on('countdown', ({ timer }) => {
     const txt = document.getElementById('countdown-text');
     if (timer <= 0) {
         txt.textContent = 'RUN!';
+        Sfx.play('go');
     } else {
         txt.textContent = timer;
+        Sfx.play('tick');
     }
 });
 
 // Round Start (Release movement)
 socket.on('round_start', () => {
     document.getElementById('countdown-overlay').style.display = 'none';
+    Sfx.startMusic();
 });
+
+// --- SPECTATING (after you die or finish) ---
+let spectateId = null;
+const spectateBanner = document.getElementById('hud-spectate');
+
+function spectateCandidates(state) {
+    return state.players.filter(p => p.id !== localPlayerId && !p.isDead && !p.isFinished);
+}
+
+function cycleSpectate(dir) {
+    if (!gameState) return;
+    const list = spectateCandidates(gameState);
+    if (list.length === 0) return;
+    const idx = list.findIndex(p => p.id === spectateId);
+    spectateId = list[(idx + dir + list.length) % list.length].id;
+}
+
+// Returns the id the camera should follow, and updates the "watching" banner
+function updateSpectate(state) {
+    const me = state.players.find(p => p.id === localPlayerId);
+    if (!me || (!me.isDead && !me.isFinished)) {
+        spectateId = null;
+        spectateBanner.style.display = 'none';
+        return localPlayerId;
+    }
+    const list = spectateCandidates(state);
+    if (!list.some(p => p.id === spectateId)) {
+        spectateId = list.length ? list[0].id : null;
+    }
+    const target = list.find(p => p.id === spectateId);
+    if (!target) {
+        spectateBanner.style.display = 'none';
+        return localPlayerId;
+    }
+    spectateBanner.textContent = `👀 กำลังดู ${target.name}  (A / D เปลี่ยนคน)`;
+    spectateBanner.style.display = 'block';
+    return target.id;
+}
 
 // --- STATE SNAPSHOTS + INTERPOLATION ---
 // The server sends ~30 states/sec. Drawing each one the moment it arrives makes motion
@@ -352,28 +433,57 @@ function interpolatedState(renderTime) {
     return { ...b.state, players, hazards, lavaY };
 }
 
+// Last-seen per-player flags, to detect jumps / landings / breaking free between states
+let prevPlayerFlags = {};
+let prevTimeLeft = null;
+
+function detectMotionEffects(state) {
+    state.players.forEach(p => {
+        const prev = prevPlayerFlags[p.id];
+        prevPlayerFlags[p.id] = { grounded: p.isGrounded, pulled: p.pullDuration > 0 };
+        if (!prev || p.isDead || p.isFinished) return;
+        const isLocal = p.id === localPlayerId;
+        const feetX = p.x + p.width / 2;
+        const feetY = p.y + p.height;
+
+        if (!prev.grounded && p.isGrounded && p.vy >= 0) {
+            renderer.addParticles(feetX, feetY, '#cbd5e0', 5, { spread: 120, up: 10, size: 2 });
+            if (isLocal) Sfx.play('land');
+        } else if (prev.grounded && !p.isGrounded && p.vy < -100) {
+            renderer.addParticles(feetX, feetY, '#cbd5e0', 4, { spread: 90, up: 5, size: 2 });
+            if (isLocal) Sfx.play('jump');
+        }
+        if (isLocal && prev.pulled && !p.pullDuration) Sfx.play('free');
+    });
+}
+
 socket.on('game_state', (state) => {
     gameState = state;
     snapshots.push({ t: performance.now(), state });
     // Keep ~1 second of history
     while (snapshots.length > 40) snapshots.shift();
 
-    // Update HUD Cooldown progress bars
+    detectMotionEffects(state);
+
+    // Update HUD Cooldown progress bars (max differs when the catch-up boost is active)
     const localP = state.players.find(p => p.id === localPlayerId);
     if (localP) {
-        // Push cooldown max 1200ms
-        const pushPct = Math.min(100, Math.max(0, (localP.pushCooldown / 1200) * 100));
+        const pushPct = Math.min(100, Math.max(0, (localP.pushCooldown / localP.pushCooldownMax) * 100));
         document.getElementById('cooldown-push').style.height = `${pushPct}%`;
 
-        // Pull cooldown max 2500ms
-        const pullPct = Math.min(100, Math.max(0, (localP.pullCooldown / 2500) * 100));
+        const pullPct = Math.min(100, Math.max(0, (localP.pullCooldown / localP.pullCooldownMax) * 100));
         document.getElementById('cooldown-pull').style.height = `${pullPct}%`;
+
+        document.getElementById('hud-catchup').style.display =
+            localP.catchUp && !localP.isDead && !localP.isFinished ? 'block' : 'none';
     }
 
-    // Round timer
+    // Round timer (+ a tick each second in the last 10)
     const timerEl = document.getElementById('hud-timer');
     timerEl.textContent = state.timeLeft;
     timerEl.parentElement.classList.toggle('urgent', state.timeLeft <= 10);
+    if (state.timeLeft <= 10 && state.timeLeft !== prevTimeLeft && state.timeLeft > 0) Sfx.play('hurry');
+    prevTimeLeft = state.timeLeft;
 });
 
 // Render loop: runs every display frame, independent of network rate
@@ -384,7 +494,7 @@ function renderFrame(now) {
 
     if (levelData && UI.screens.game.classList.contains('active')) {
         const state = interpolatedState(now - INTERP_DELAY_MS);
-        if (state) renderer.draw(state, localPlayerId, levelData, dt);
+        if (state) renderer.draw(state, localPlayerId, levelData, dt, updateSpectate(state));
     }
     requestAnimationFrame(renderFrame);
 }
@@ -399,6 +509,7 @@ socket.on('game_effect', (effect) => {
         const victim = gameState.players.find(p => p.id === effect.victim);
         if (pusher && victim) {
             showHudAlert(`💥 ${pusher.name} ผลัก ${victim.name}!`);
+            Sfx.play('push');
             renderer.triggerShake(180, 8);
             renderer.addParticles(victim.x + victim.width/2, victim.y + victim.height/2, victim.color, 12);
         }
@@ -408,7 +519,8 @@ socket.on('game_effect', (effect) => {
         const puller = gameState.players.find(p => p.id === effect.puller);
         const victim = gameState.players.find(p => p.id === effect.victim);
         if (puller && victim) {
-            showHudAlert(`🧲 ${puller.name} ดึงขัดขา ${victim.name}!`);
+            showHudAlert(`🧲 ${puller.name} ดึงขัดขา ${victim.name}! (กดรัวๆ เพื่อสลัดหลุด)`);
+            Sfx.play('pull');
             renderer.triggerShake(120, 4);
         }
     }
@@ -417,22 +529,40 @@ socket.on('game_effect', (effect) => {
         const player = gameState.players.find(p => p.id === effect.player);
         if (player) {
             showHudAlert(`🔘 ${player.name} สับสวิตช์สะพานแล้ว!`, 1500);
+            Sfx.play('switch');
             renderer.triggerShake(100, 3);
         }
     }
 
     if (effect.type === 'player_died') {
-        showHudAlert(`💀 ${effect.name} ร่วงลงหลุมตายอนาถ!`);
+        if (effect.killerName) {
+            showHudAlert(`😈 ${effect.killerName} ส่ง ${effect.name} ลงเหว! (+3)`, 2600);
+            if (effect.killerId === localPlayerId) Sfx.play('ko');
+        } else {
+            showHudAlert(`💀 ${effect.name} ร่วงลงหลุมตายอนาถ!`);
+        }
+        const victim = gameState.players.find(p => p.id === effect.id);
+        if (victim) {
+            renderer.addParticles(victim.x + victim.width / 2, victim.y + victim.height / 2, victim.color, 26, { spread: 420, up: 120, size: 5 });
+        }
+        Sfx.play('death');
         renderer.triggerShake(200, 10);
     }
 
     if (effect.type === 'player_finished') {
         showHudAlert(`🎉 ${effect.name} วิ่งรอดเข้าเส้นชัยสำเร็จ!`);
+        Sfx.play('finish');
+    }
+
+    if (effect.type === 'emote') {
+        renderer.addEmote(effect.player, EMOTES[effect.emote]);
+        if (effect.player !== localPlayerId) Sfx.play('emote');
     }
 });
 
 // Round ended screen
 socket.on('round_end', ({ round, levelIndex, scoreboard, finishOrder }) => {
+    Sfx.stopMusic();
     // Hide overlay
     document.getElementById('countdown-overlay').style.display = 'none';
 
@@ -474,7 +604,7 @@ socket.on('round_end', ({ round, levelIndex, scoreboard, finishOrder }) => {
         }
 
         const roundTd = document.createElement('td');
-        roundTd.textContent = `+${p.roundPoints}`;
+        roundTd.textContent = `+${p.roundPoints}` + (p.kos > 0 ? ` (KO ×${p.kos})` : '');
         roundTd.style.color = p.roundPoints > 0 ? '#2ecc71' : '#ff4d4d';
 
         const totalTd = document.createElement('td');
@@ -540,5 +670,7 @@ socket.on('match_end', ({ scoreboard, winner }) => {
     });
 
     clearSession(); // match is over: nothing left to rejoin
+    Sfx.stopMusic();
+    Sfx.play('win');
     UI.showScreen('matchEnd');
 });

@@ -14,6 +14,11 @@ class Renderer {
 
         // Visual properties
         this.particles = [];
+        this.emotes = {}; // playerId -> { emoji, start }
+    }
+
+    addEmote(playerId, emoji) {
+        this.emotes[playerId] = { emoji, start: performance.now() };
     }
 
     triggerShake(duration = 200, intensity = 5) {
@@ -21,14 +26,14 @@ class Renderer {
         this.shakeIntensity = intensity;
     }
 
-    addParticles(x, y, color, count = 8) {
+    addParticles(x, y, color, count = 8, { spread = 200, up = 100, size = 4 } = {}) {
         for (let i = 0; i < count; i++) {
             this.particles.push({
                 x,
                 y,
-                vx: (Math.random() - 0.5) * 200,
-                vy: (Math.random() - 0.5) * 200 - 100,
-                radius: Math.random() * 4 + 2,
+                vx: (Math.random() - 0.5) * spread,
+                vy: (Math.random() - 0.5) * spread - up,
+                radius: Math.random() * size + 2,
                 color,
                 alpha: 1,
                 life: 0.5 + Math.random() * 0.5 // seconds
@@ -51,7 +56,8 @@ class Renderer {
         }
     }
 
-    draw(gameState, localPlayerId, levelData, dt) {
+    // cameraTargetId: whose view to show (defaults to the local player; used when spectating)
+    draw(gameState, localPlayerId, levelData, dt, cameraTargetId = localPlayerId) {
         // Update particles
         this.updateParticles(dt);
 
@@ -68,11 +74,12 @@ class Renderer {
         const mapWidth = levelData.levelWidth;
         const mapHeight = levelData.levelHeight;
 
-        // Position camera centered on local player
-        if (localPlayer) {
+        // Position camera centered on the followed player
+        const camPlayer = gameState.players.find(p => p.id === cameraTargetId) || localPlayer;
+        if (camPlayer) {
             // Horizontal scroll target
             if (mapWidth > this.virtualWidth) {
-                this.camera.x = localPlayer.x - this.virtualWidth / 2 + localPlayer.width / 2;
+                this.camera.x = camPlayer.x - this.virtualWidth / 2 + camPlayer.width / 2;
                 this.camera.x = Math.max(0, Math.min(this.camera.x, mapWidth - this.virtualWidth));
             } else {
                 this.camera.x = (mapWidth - this.virtualWidth) / 2;
@@ -80,7 +87,7 @@ class Renderer {
 
             // Vertical scroll target
             if (mapHeight > this.virtualHeight) {
-                this.camera.y = localPlayer.y - this.virtualHeight / 2 + localPlayer.height / 2;
+                this.camera.y = camPlayer.y - this.virtualHeight / 2 + camPlayer.height / 2;
                 this.camera.y = Math.max(0, Math.min(this.camera.y, mapHeight - this.virtualHeight));
             } else {
                 this.camera.y = (mapHeight - this.virtualHeight) / 2;
@@ -489,6 +496,22 @@ class Renderer {
         if (player.pullDuration > 0) {
             this.ctx.font = '16px Outfit';
             this.ctx.fillText('🧲', px + radius, py - 40);
+        }
+
+        // 7. Emote bubble: pops in, floats up and fades over ~1.8s
+        const emote = this.emotes[player.id];
+        if (emote) {
+            const age = (performance.now() - emote.start) / 1000;
+            if (age > 1.8) {
+                delete this.emotes[player.id];
+            } else {
+                const pop = Math.min(1, age / 0.15);
+                this.ctx.globalAlpha = Math.min(1, (1.8 - age) / 0.4);
+                this.ctx.font = `${Math.round(30 * (0.6 + 0.4 * pop))}px sans-serif`;
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText(emote.emoji, px + radius, py - 46 - age * 14);
+                this.ctx.globalAlpha = 1;
+            }
         }
 
         this.ctx.restore();

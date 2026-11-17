@@ -241,6 +241,13 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Quick reactions (1-4); the room enforces its own per-player cooldown
+    socket.on('emote', (emote) => {
+        if (!currentRoomCode || !allowInput()) return;
+        const room = rooms[currentRoomCode];
+        if (room) room.handleEmote(playerId, emote);
+    });
+
     // Handle disconnection: hold the seat for a while so the player can come back
     socket.on('disconnect', () => {
         console.log(`Socket disconnected: ${socket.id}`);

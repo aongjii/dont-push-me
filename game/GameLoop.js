@@ -64,15 +64,23 @@ class GameLoop {
             this.room.level.update(dt);
         }
 
+        // Who is trailing far behind? (gets a small boost)
+        this.room.updateCatchUp();
+
         // Update Players
         const players = Object.values(this.room.players);
         players.forEach(player => {
+            const wasDead = player.isDead;
             player.update(dt, this.room.level, this.room);
 
             // Hazard collision checks
             if (this.room.level.checkHazards(player)) {
                 player.die();
-                this.room.broadcastEffect('player_died', { id: player.id, name: player.name });
+            }
+
+            // Covers hazards and falling off the map alike
+            if (player.isDead && !wasDead) {
+                this.room.handleDeath(player);
             }
 
             // Finish check

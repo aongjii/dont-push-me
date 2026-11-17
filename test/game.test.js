@@ -125,3 +125,159 @@ test('a player falling off the map dies', () => {
     simulate(room, 3000);
     assert.equal(p.isDead, true);
 });
+
+// ---------- Phase 2: KO credit, pull balance, catch-up, emotes ----------
+const Player = require('../game/Player');
+
+test('pushing a rival into a pit gives the pusher a KO bonus', () => {
+    const { room, io } = startedRoom(2);
+    const [a, b] = [room.players.p0, room.players.p1];
+    b.markHit(a);
+    b.die();
+    room.handleDeath(b);
+
+    const died = io.events.find(e => e.data.type === 'player_died');
+    assert.equal(died.data.killerName, 'P0');
+    assert.equal(died.data.name, 'P1');
+    assert.equal(a.roundKos, 1);
+
+    a.isFinished = true;
+    room.checkRoundEnd();
+    assert.equal(room.status, 'round_end');
+    assert.equal(a.score, 10 + 3, 'finish points plus KO bonus');
+    const sb = io.events.find(e => e.type === 'round_end').data.scoreboard.find(r => r.id === 'p0');
+    assert.equal(sb.kos, 1);
+    assert.equal(sb.roundPoints, 13);
+});
+
+test('dying on your own gives nobody a KO, and credit expires', () => {
+    const { room } = startedRoom(2);
+    const [a, b] = [room.players.p0, room.players.p1];
+
+    b.die(); room.handleDeath(b);
+    assert.equal(a.roundKos, 0);
+
+    // credit that has timed out no longer counts
+    const { room: r2 } = startedRoom(2);
+    const [x, y] = [r2.players.p0, r2.players.p1];
+    y.markHit(x);
+    y.hitCredit.ms = 0;
+    y.die(); r2.handleDeath(y);
+    assert.equal(x.roundKos, 0);
+});
+
+test('a hit victim who lands safely loses the KO credit', () => {
+    const { room } = startedRoom(2);
+    simulate(room, 1000); // everyone grounded
+    const [a, b] = [room.players.p0, room.players.p1];
+    b.markHit(a);
+    simulate(room, 800); // stays grounded well past the 400ms grace
+    assert.equal(b.hitCredit, null);
+});
+
+test('falling off the map after being pushed is credited via the game loop', () => {
+    const { room, io } = startedRoom(2);
+    const [a, b] = [room.players.p0, room.players.p1];
+    b.x = 5000; b.y = 100;
+    b.markHit(a);
+    simulate(room, 3500);
+    assert.equal(b.isDead, true);
+    assert.equal(a.roundKos, 1);
+    const ev = io.events.find(e => e.data.type === 'player_died');
+    assert.equal(ev.data.killerId, 'p0');
+});
+
+test('pull freezes for 1s and mashing keys breaks free early', () => {
+    const { room } = startedRoom(2);
+    simulate(room, 1000);
+    const [a, b] = [room.players.p0, room.players.p1];
+    b.pullDuration = Player.TUNING.pullFreeze;
+    assert.equal(b.pullDuration, 1000);
+
+    for (let i = 0; i < 4; i++) {
+        room.handleInput('p1', { left: true });
+        room.handleInput('p1', { left: false });
+    }
+    assert.ok(b.pullDuration <= 1000 - 4 * Player.TUNING.pullBreakFreePerTap, `still frozen ${b.pullDuration}`);
+
+    for (let i = 0; i < 6; i++) {
+        room.handleInput('p1', { jump: true });
+        room.handleInput('p1', { jump: false });
+    }
+    assert.equal(b.pullDuration, 0);
+    assert.ok(b.pullImmunity > 0, 'freed player is briefly immune');
+});
+
+test('holding a key does not count as mashing', () => {
+    const { room } = startedRoom(2);
+    const b = room.players.p1;
+    b.pullDuration = 1000;
+    room.handleInput('p1', { left: true });
+    const after = b.pullDuration;
+    room.handleInput('p1', { left: true });
+    room.handleInput('p1', { left: true });
+    assert.equal(b.pullDuration, after);
+});
+
+test('an immune or already-pulled player cannot be pulled again', () => {
+    const { room } = startedRoom(2);
+    const [a, b] = [room.players.p0, room.players.p1];
+    a.x = 100; b.x = 150; a.y = b.y = 400; a.facing = 1;
+    b.pullImmunity = 500;
+    a.performPull(room);
+    assert.equal(b.pullDuration, 0);
+
+    b.pullImmunity = 0;
+    a.pullCooldown = 0;
+    a.performPull(room);
+    assert.equal(b.pullDuration, Player.TUNING.pullFreeze);
+});
+
+test('pull freeze ends by itself and grants immunity', () => {
+    const { room } = startedRoom(2);
+    simulate(room, 500);
+    const b = room.players.p1;
+    b.pullDuration = 100;
+    simulate(room, 200);
+    assert.equal(b.pullDuration, 0);
+    assert.ok(b.pullImmunity > 0);
+});
+
+test('trailing players get catch-up help; the leader does not', () => {
+    const { room } = startedRoom(3);
+    const f = room.level.finishZone;
+    const [a, b, c] = ['p0', 'p1', 'p2'].map(id => room.players[id]);
+    a.x = f.x - 100; a.y = f.y;       // leader, near the finish
+    b.x = f.x - 300; b.y = f.y;       // within the gap
+    c.x = f.x - 1200; c.y = f.y;      // far behind
+    room.updateCatchUp();
+    assert.equal(a.catchUp, false);
+    assert.equal(b.catchUp, false);
+    assert.equal(c.catchUp, true);
+    assert.ok(c.pushCooldownMax < a.pushCooldownMax);
+    assert.ok(c.pullCooldownMax < a.pullCooldownMax);
+});
+
+test('catch-up turns off when only one racer remains', () => {
+    const { room } = startedRoom(2);
+    room.players.p0.catchUp = true;
+    room.players.p1.die();
+    room.updateCatchUp();
+    assert.equal(room.players.p0.catchUp, false);
+});
+
+test('emotes are validated and rate limited per player', () => {
+    const { room, io } = startedRoom(2);
+    const count = () => io.events.filter(e => e.type === 'game_effect' && e.data.type === 'emote').length;
+
+    room.handleEmote('p0', 2);
+    assert.equal(count(), 1);
+    room.handleEmote('p0', 1);  // too soon
+    assert.equal(count(), 1);
+    room.handleEmote('p1', 99); // invalid
+    room.handleEmote('p1', 'x');
+    room.handleEmote('p1', -1);
+    assert.equal(count(), 1);
+    room.handleEmote('p1', 0);  // different player, valid
+    assert.equal(count(), 2);
+});

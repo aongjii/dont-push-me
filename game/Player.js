@@ -1,3 +1,17 @@
+// Gameplay tuning (ms unless noted)
+const TUNING = {
+    pushCooldown: 1200,
+    pullCooldown: 2500,
+    pullFreeze: 1000,        // how long a pull holds the victim
+    pullBreakFreePerTap: 150, // each fresh key press shaves this off the freeze
+    pullImmunity: 1000,      // after a pull ends, can't be pulled again (no chain-freezing)
+    pushForce: 550,
+    hitCreditWindow: 3000,   // a death this soon after a hit counts as a KO for the attacker
+    catchUpGap: 400,         // px further from the finish than the leader to get catch-up help
+    catchUpCooldownFactor: 0.75,
+    catchUpPushFactor: 1.2
+};
+
 class Player {
     constructor(id, name, color) {
         this.id = id;
@@ -29,6 +43,11 @@ class Player {
         this.pullDuration = 0; // ms (time frozen)
         this.pushDuration = 0; // ms (time showing push effect)
         this.lastPushedBy = null; // player name who pushed them last
+        this.hitCredit = null; // { by: playerId, name, ms } - who gets the KO if we die soon
+        this.pullImmunity = 0; // ms
+        this.catchUp = false; // trailing far behind the leader: gets a small boost
+        this.roundKos = 0;
+        this.lastEmoteAt = 0;
 
         // Input
         this.input = {
@@ -54,6 +73,30 @@ class Player {
         this.pushCooldown = 0;
         this.pullCooldown = 0;
         this.lastPushedBy = null;
+        this.hitCredit = null;
+        this.pullImmunity = 0;
+        this.catchUp = false;
+        this.roundKos = 0;
+    }
+
+    get pushCooldownMax() {
+        return TUNING.pushCooldown * (this.catchUp ? TUNING.catchUpCooldownFactor : 1);
+    }
+
+    get pullCooldownMax() {
+        return TUNING.pullCooldown * (this.catchUp ? TUNING.catchUpCooldownFactor : 1);
+    }
+
+    // End a pull early (mashing keys, or being shoved). Grants brief immunity.
+    breakFree(ms = Infinity) {
+        if (this.pullDuration <= 0) return;
+        this.pullDuration = Math.max(0, this.pullDuration - ms);
+        if (this.pullDuration === 0) this.pullImmunity = TUNING.pullImmunity;
+    }
+
+    markHit(attacker) {
+        this.lastPushedBy = attacker.name;
+        this.hitCredit = { by: attacker.id, name: attacker.name, ms: TUNING.hitCreditWindow };
     }
 
     update(dt, level, gameRoom) {
@@ -62,8 +105,23 @@ class Player {
         // Reduce cooldowns & effects
         if (this.pushCooldown > 0) this.pushCooldown -= dt;
         if (this.pullCooldown > 0) this.pullCooldown -= dt;
+        if (this.pullImmunity > 0) this.pullImmunity -= dt;
+
+        // KO credit fades with time, and is void once the victim has recovered on solid ground
+        if (this.hitCredit) {
+            // While held by a pull the attacker keeps full credit
+            if (this.pullDuration > 0) this.hitCredit.ms = TUNING.hitCreditWindow;
+            this.hitCredit.ms -= dt;
+            const settled = this.isGrounded && this.hitCredit.ms < TUNING.hitCreditWindow - 400;
+            if (this.hitCredit.ms <= 0 || settled) this.hitCredit = null;
+        }
+
         if (this.pullDuration > 0) {
             this.pullDuration -= dt;
+            if (this.pullDuration <= 0) {
+                this.pullDuration = 0;
+                this.pullImmunity = TUNING.pullImmunity;
+            }
             this.vx = 0; // frozen
             // Apply gravity even if frozen
             this.vy += 1200 * (dt / 1000);
@@ -163,7 +221,7 @@ class Player {
     }
 
     performPush(gameRoom) {
-        this.pushCooldown = 1200; // 1.2s cooldown
+        this.pushCooldown = this.pushCooldownMax;
         this.pushDuration = 200; // Display push hands for 200ms
 
         // Box in front of player
@@ -185,10 +243,10 @@ class Player {
                 p.y + p.height > pushBox.y) {
                 
                 // PUSH HIT! Apply high velocity impulse
-                p.vx = this.facing * 550;
+                p.vx = this.facing * TUNING.pushForce * (this.catchUp ? TUNING.catchUpPushFactor : 1);
                 p.vy = -200; // Pop up slightly
-                p.lastPushedBy = this.name;
-                p.pullDuration = 0; // Release pull if they were pulled
+                p.markHit(this);
+                p.breakFree(); // Release pull if they were pulled
                 
                 // Play particle/event trigger
                 gameRoom.broadcastEffect('push_hit', { pusher: this.id, victim: p.id, dir: this.facing });
@@ -197,7 +255,7 @@ class Player {
     }
 
     performPull(gameRoom) {
-        this.pullCooldown = 2500; // 2.5s cooldown
+        this.pullCooldown = this.pullCooldownMax;
 
         // Check for closest player in front/around
         let target = null;
@@ -205,6 +263,7 @@ class Player {
 
         for (let p of Object.values(gameRoom.players)) {
             if (p.id === this.id || p.isDead || p.isFinished) continue;
+            if (p.pullImmunity > 0 || p.pullDuration > 0) continue; // can't be chain-pulled
             
             // Calculate distance
             const dx = p.x + p.width/2 - (this.x + this.width/2);
@@ -221,9 +280,9 @@ class Player {
         }
 
         if (target) {
-            target.pullDuration = 1500; // freeze for 1.5s
+            target.pullDuration = TUNING.pullFreeze;
             target.vx = 0;
-            target.lastPushedBy = this.name;
+            target.markHit(this);
             gameRoom.broadcastEffect('pull_hit', { puller: this.id, victim: target.id });
         }
     }
@@ -259,4 +318,5 @@ class Player {
     }
 }
 
+Player.TUNING = TUNING;
 module.exports = Player;

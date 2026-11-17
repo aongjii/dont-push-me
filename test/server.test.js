@@ -133,3 +133,24 @@ test('malformed payloads do not crash the server', async () => {
     s.disconnect();
     s2.disconnect();
 });
+
+test('emotes are broadcast to the whole room during a round', async () => {
+    const host = await connect();
+    host.emit('create_room', { playerName: 'Host' });
+    const created = await once(host, 'room_created');
+    const guest = await connect();
+    guest.emit('join_room', { roomCode: created.roomCode, playerName: 'Guest' });
+    await once(guest, 'room_joined');
+
+    host.emit('start_game');
+    await once(guest, 'round_start', 6000);
+
+    const seen = new Promise(resolve => guest.on('game_effect', e => { if (e.type === 'emote') resolve(e); }));
+    host.emit('emote', 2);
+    const effect = await seen;
+    assert.equal(effect.emote, 2);
+    assert.equal(effect.player, created.playerId);
+
+    host.disconnect();
+    guest.disconnect();
+});
