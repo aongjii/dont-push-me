@@ -574,6 +574,7 @@ function updatePowerCard(localP) {
     const card = document.getElementById('power-card');
     if (!localP.power || localP.isDead || localP.isFinished) {
         card.style.display = 'none';
+        TouchUI.onPower(null);
         return;
     }
     const info = POWER_INFO[localP.power];
@@ -589,6 +590,7 @@ function updatePowerCard(localP) {
             `กระโดดซ้ำกลางอากาศเพื่อกระพือ (เหลือ ${localP.flaps} ครั้ง) • กดค้างเพื่อร่อน`;
     }
     card.classList.toggle('nudge', !powerUsed);
+    TouchUI.onPower(localP.power);
     card.classList.toggle('cooling', localP.powerCd > 0);
 }
 

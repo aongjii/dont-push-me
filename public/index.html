@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <title>Don't Push Me! - วิ่งหนีตาย ขัดขาเพื่อน</title>
 
     <!-- Google Fonts (falls back to system fonts when offline) -->
@@ -99,6 +99,7 @@
             </div>
 
             <div class="hud-right">
+                <button id="btn-fullscreen" class="btn-mute" title="เต็มจอ" style="display:none"><i data-icon="fullscreen"></i></button>
                 <button id="btn-leave-game" class="btn-mute" title="ออกจากห้อง" data-leave><i data-icon="door"></i></button>
                 <button id="btn-mute" class="btn-mute" title="เปิด/ปิดเสียง (M)"><i data-icon="sound_on"></i></button>
                 <div class="abilities">
@@ -144,6 +145,27 @@
         <div class="canvas-container">
             <canvas id="gameCanvas" width="1280" height="720"></canvas>
         </div>
+
+        <!-- On-screen controls (phones / tablets only; see js/touch.js) -->
+        <div id="touch-controls" class="touch-controls">
+            <div id="tc-pad" class="tc-pad">
+                <span class="tc-side tc-l"><i data-icon="arrow_left" data-size="34"></i></span>
+                <span class="tc-side tc-r"><i data-icon="arrow_right" data-size="34"></i></span>
+            </div>
+            <button id="tc-emote" class="tc-btn tc-small"><i data-icon="chat" data-size="26"></i></button>
+            <div id="tc-emotes" class="tc-emotes">
+                <button class="tc-btn tc-small"><i data-icon="laugh" data-size="26"></i></button>
+                <button class="tc-btn tc-small"><i data-icon="angry" data-size="26"></i></button>
+                <button class="tc-btn tc-small"><i data-icon="wave" data-size="26"></i></button>
+                <button class="tc-btn tc-small"><i data-icon="skull" data-size="26"></i></button>
+            </div>
+            <button id="tc-jump" class="tc-btn tc-jump"><i data-icon="arrow_up" data-size="40"></i></button>
+            <button id="tc-push" class="tc-btn"><i data-icon="push" data-size="30"></i></button>
+            <button id="tc-pull" class="tc-btn"><i data-icon="pull" data-size="30"></i></button>
+            <button id="tc-inhale" class="tc-btn"><i data-icon="inhale" data-size="30"></i></button>
+            <button id="tc-power" class="tc-btn"><i data-icon="star" data-size="30"></i></button>
+        </div>
+        <div class="rotate-hint"><i data-icon="fullscreen" data-size="40"></i><span>หมุนจอเป็นแนวนอนเพื่อเล่น</span></div>
 
         <!-- 3, 2, 1 Countdown Overlay -->
         <div id="countdown-overlay" class="countdown-overlay">
@@ -257,6 +279,9 @@
                 <div class="guide-item"><span class="keys"><kbd>H</kbd></span><span>เปิดหน้านี้</span></div>
             </div>
 
+            <h3>เล่นบนมือถือ</h3>
+            <p class="help-note">ปุ่มบนจอ: <b>ลูกศรซ้าย/ขวา</b> เดิน (ลากนิ้วสลับด้านได้) • <b>ลูกศรขึ้น</b> กระโดด • <b>ดาวระเบิด</b> ผลัก • <b>แม่เหล็ก</b> ดึง • <b>หน้าอ้าปาก</b> กดค้างเพื่ออม กดอีกครั้งเพื่อพ่น • <b>ไอคอนพลัง</b> ใช้พลัง • <b>หน้าหัวเราะ</b> เปิดอีโมจิ ควรหมุนจอแนวนอน และกดปุ่มเต็มจอมุมขวาบนเพื่อให้เห็นเกมเต็มที่</p>
+
             <h3><i data-icon="star"></i> พลังจากดาว</h3>
             <p class="help-note">เดินไปใกล้ดาว แล้ว <b>กด C ค้างไว้</b> เพื่ออมดาว จะได้พลังสุ่ม (ใช้ได้ 15 วินาที) แล้วกด <b>V</b> เพื่อใช้</p>
             <div class="power-grid">
@@ -298,5 +323,6 @@
     <script src="js/renderer.js"></script>
     <script src="js/skin-ui.js"></script>
     <script src="js/client.js"></script>
+    <script src="js/touch.js"></script>
 </body>
 </html>
