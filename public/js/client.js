@@ -261,6 +261,12 @@ socket.on('room_reset', ({ players }) => {
     UI.showScreen('lobby');
 });
 
+socket.on('kicked', () => {
+    clearSession();
+    try { sessionStorage.setItem('dpm-notice', 'หัวหน้าห้องเชิญคุณออกจากห้อง'); } catch (e) {}
+    window.location.reload();
+});
+
 // Leave the room (lobby, in-game and results screens all have a button)
 let leaving = false;
 function leaveRoom() {
@@ -359,6 +365,18 @@ function nameCell(p) {
     return td;
 }
 
+// Host-only: a small button next to each other player to remove them from the room
+function kickButton(p) {
+    const b = document.createElement('button');
+    b.className = 'kick-btn';
+    b.title = `เชิญ ${p.name} ออกจากห้อง`;
+    b.appendChild(Icons.svg('kick', 20));
+    b.addEventListener('click', () => {
+        if (window.confirm(`เชิญ ${p.name} ออกจากห้อง?`)) socket.emit('kick', { playerId: p.id });
+    });
+    return b;
+}
+
 // Keep the dress-up screen in step with what the server decided for us (it can change a taken colour)
 function syncMySkin(players) {
     const mine = players.find(p => p.id === localPlayerId);
@@ -406,6 +424,8 @@ function updatePlayerLobbyList(players) {
             host.className = 'host-tag';
             host.textContent = 'HOST';
             item.appendChild(host);
+        } else if (players[0].id === localPlayerId) {
+            item.appendChild(kickButton(p));
         }
 
         list.appendChild(item);
@@ -990,3 +1010,36 @@ setInterval(() => {
         pingEl.parentElement.className = 'hud-ping ' + (ms < 80 ? 'good' : ms < 160 ? 'ok' : 'bad');
     });
 }, 2000);
+
+// --- INVITE LINK: ?room=1234 fills in the room code; the lobby button copies such a link ---
+(() => {
+    const room = new URLSearchParams(location.search).get('room');
+    if (room && /^\d{4}$/.test(room)) {
+        document.getElementById('input-code').value = room;
+        const note = document.getElementById('invite-note');
+        note.textContent = `คุณถูกชวนเข้าห้อง ${room} - ใส่ชื่อแล้วกด "เข้าร่วมห้อง"`;
+        note.style.display = 'block';
+        document.getElementById('input-name').focus();
+    }
+
+    const btn = document.getElementById('btn-copy-link');
+    btn.addEventListener('click', async () => {
+        const url = `${location.origin}${location.pathname}?room=${currentRoomCode}`;
+        let ok = false;
+        try {
+            await navigator.clipboard.writeText(url);
+            ok = true;
+        } catch (e) {
+            // clipboard API unavailable (e.g. plain http): fall back to a temporary text box
+            const box = document.createElement('textarea');
+            box.value = url;
+            document.body.appendChild(box);
+            box.select();
+            try { ok = document.execCommand('copy'); } catch (err) {}
+            box.remove();
+        }
+        const label = btn.querySelector('span');
+        label.textContent = ok ? 'คัดลอกแล้ว' : url;
+        setTimeout(() => { label.textContent = 'คัดลอกลิงก์เชิญ'; }, 2500);
+    });
+})();

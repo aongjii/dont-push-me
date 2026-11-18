@@ -1,6 +1,10 @@
 const fs = require('fs');
 const path = require('path');
 
+// A switched platform that has been flipped away from its normal state returns by itself after
+// this long, so nobody can be locked out of the rest of a (very long) level for good.
+const SWITCH_RESTORE_MS = 7000;
+
 class Level {
     constructor(levelIndex) {
         this.levelIndex = levelIndex;
@@ -43,6 +47,8 @@ class Level {
                 width: plat.width,
                 height: plat.height,
                 active: plat.active !== undefined ? plat.active : true,
+                initialActive: plat.active !== undefined ? plat.active : true,
+                returnMs: 0, // > 0 while flipped away from its normal state: time until it comes back
                 triggerIndex: plat.triggerIndex !== undefined ? plat.triggerIndex : null,
                 color: plat.color || '#4A5568'
             }));
@@ -53,7 +59,8 @@ class Level {
                 y: sw.y,
                 width: sw.width || 30,
                 height: sw.height || 40,
-                active: sw.active || false
+                active: sw.active || false,
+                initialActive: sw.active || false
             }));
 
             // Load hazards
@@ -106,7 +113,34 @@ class Level {
         }
     }
 
+    // Flip a switch and every platform wired to it. Returns the switch's new state.
+    toggleSwitch(idx) {
+        const sw = this.switches[idx];
+        if (!sw) return null;
+        sw.active = !sw.active;
+        this.platforms.forEach(p => {
+            if (p.triggerIndex !== idx) return;
+            p.active = !p.active;
+            // away from its normal state -> it will come back on its own
+            p.returnMs = p.active === p.initialActive ? 0 : SWITCH_RESTORE_MS;
+        });
+        return sw.active;
+    }
+
     update(dt) {
+        // Switched platforms that were flipped away go back to normal after a while
+        this.platforms.forEach(p => {
+            if (p.returnMs > 0) {
+                p.returnMs -= dt;
+                if (p.returnMs <= 0) {
+                    p.returnMs = 0;
+                    p.active = p.initialActive;
+                    const sw = this.switches[p.triggerIndex];
+                    if (sw) sw.active = sw.initialActive;
+                }
+            }
+        });
+
         // Update hazards (e.g. moving platforms/hazards)
         this.hazards.forEach(haz => {
             if (haz.type === 'moving_spikes' || haz.type === 'moving_platform') {
@@ -192,4 +226,5 @@ class Level {
     }
 }
 
+Level.SWITCH_RESTORE_MS = SWITCH_RESTORE_MS;
 module.exports = Level;

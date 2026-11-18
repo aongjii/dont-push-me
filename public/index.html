@@ -38,6 +38,8 @@
                 <input type="text" id="input-name" placeholder="ใส่ชื่อเล่น..." maxlength="12" autocomplete="off">
             </div>
 
+            <p id="invite-note" class="invite-note" style="display:none"></p>
+
             <div class="actions">
                 <button id="btn-create" class="btn btn-primary">สร้างห้องใหม่</button>
 
@@ -62,6 +64,7 @@
             <h2>รหัสห้อง</h2>
             <div class="room-code-display" id="lobby-code">----</div>
             <p class="lobby-subtitle">แชร์รหัสนี้ให้เพื่อนๆ เข้ามาร่วมวง!</p>
+            <button id="btn-copy-link" class="btn btn-secondary btn-small"><i data-icon="link"></i><span>คัดลอกลิงก์เชิญ</span></button>
 
             <div class="lobby-content">
                 <h3>ผู้เล่นในห้อง (<span id="lobby-count">0</span>/4)</h3>

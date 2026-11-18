@@ -285,6 +285,29 @@ io.on('connection', (socket) => {
         if (room.resetToLobby()) io.to(currentRoomCode).emit('room_reset', { players: publicPlayers(room) });
     });
 
+    // Host removes someone from the waiting room
+    socket.on('kick', (payload) => {
+        if (!allowAction() || !currentRoomCode) return;
+        const room = rooms[currentRoomCode];
+        if (!room || !isHost(room) || room.status !== 'lobby') return;
+
+        const { playerId: targetId } = asObject(payload);
+        if (typeof targetId !== 'string' || targetId === playerId) return;
+        const target = room.players[targetId];
+        if (!target) return;
+
+        const code = currentRoomCode;
+        const targetSocket = target.socketId && io.sockets.sockets.get(target.socketId);
+        if (targetSocket) {
+            targetSocket.emit('kicked');
+            targetSocket.leave(code);
+        }
+        removeFromRoom(code, targetId);
+        console.log(`${target.name} was removed from Room ${code} by the host`);
+        // give the message time to arrive before the connection closes
+        if (targetSocket) setTimeout(() => targetSocket.disconnect(true), 300);
+    });
+
     // Quick reactions (1-4); the room enforces its own per-player cooldown
     socket.on('emote', (emote) => {
         if (!currentRoomCode || !allowInput()) return;

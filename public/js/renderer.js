@@ -264,8 +264,19 @@ class Renderer {
         ctx.save();
 
         if (!plat.active) {
-            // A removed plank: just a faint dashed outline so you can see where it was
-            ctx.strokeStyle = 'rgba(43,33,64,0.25)';
+            // A removed plank: a dashed outline where it was, filling in as it gets close to coming back
+            const total = 7000; // keep in step with SWITCH_RESTORE_MS on the server
+            const progress = plat.returnMs > 0 ? 1 - plat.returnMs / total : 0;
+            const soon = plat.returnMs > 0 && plat.returnMs < 1500;
+            if (progress > 0) {
+                ctx.fillStyle = th.wood;
+                ctx.globalAlpha = soon ? (Math.floor(this.time * 8) % 2 ? 0.7 : 0.25) : 0.12 + 0.3 * progress;
+                ctx.beginPath();
+                ctx.roundRect(x, y, w, h, 6);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+            ctx.strokeStyle = soon ? 'rgba(190,131,72,0.9)' : 'rgba(43,33,64,0.3)';
             ctx.setLineDash([6, 6]);
             ctx.lineWidth = 2;
             ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
@@ -422,29 +433,49 @@ class Renderer {
         ctx.restore();
     }
 
-    // A respawn flag: grey until you've reached it, then pink
+    // A respawn flag: tall and outlined so it's easy to spot. White until you reach it, then pink with a tick.
     drawCheckpoint(cp, reached) {
         const ctx = this.ctx;
-        const wave = Math.sin(this.time * 5 + cp.x) * (reached ? 3 : 1);
+        const top = cp.y - 92;
+        const wave = Math.sin(this.time * 5 + cp.x) * (reached ? 4 : 1.5);
         ctx.save();
-        ctx.strokeStyle = INK;
-        ctx.lineWidth = 3;
+        ctx.lineJoin = 'round';
         ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(cp.x, cp.y);
-        ctx.lineTo(cp.x, cp.y - 56);
-        ctx.stroke();
-        ctx.fillStyle = reached ? '#FF7EA8' : '#C8D4EA';
-        ctx.beginPath();
-        ctx.moveTo(cp.x + 1, cp.y - 56);
-        ctx.lineTo(cp.x + 30, cp.y - 48 + wave);
-        ctx.lineTo(cp.x + 1, cp.y - 36);
-        ctx.closePath();
-        ctx.fill();
+
+        // base plate
         ctx.fillStyle = INK;
         ctx.beginPath();
-        ctx.arc(cp.x, cp.y - 58, 3.2, 0, Math.PI * 2);
+        ctx.roundRect(cp.x - 12, cp.y - 5, 24, 6, 3);
         ctx.fill();
+
+        // pole
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(cp.x, cp.y - 3);
+        ctx.lineTo(cp.x, top);
+        ctx.stroke();
+        ctx.fillStyle = '#FFD94A';
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(cp.x, top - 3, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // pennant
+        ctx.fillStyle = reached ? '#FF7EA8' : '#FFFFFF';
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(cp.x + 2, top + 2);
+        ctx.lineTo(cp.x + 46, top + 16 + wave);
+        ctx.lineTo(cp.x + 2, top + 34);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        if (reached) Icons.draw(ctx, 'check', cp.x + 16, top + 18 + wave * 0.4, 16);
         ctx.restore();
     }
 

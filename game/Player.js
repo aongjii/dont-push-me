@@ -427,17 +427,10 @@ class Player {
             const dist = Math.sqrt(dx*dx + dy*dy);
 
             if (dist < range) {
-                // Toggle switch status
-                sw.active = !sw.active;
-                
-                // Toggle target platforms linked to this switch index
-                level.platforms.forEach(plat => {
-                    if (plat.triggerIndex === idx) {
-                        plat.active = !plat.active;
-                    }
-                });
+                // Flip the switch and its platforms (they come back by themselves after a while)
+                const active = level.toggleSwitch(idx);
 
-                gameRoom.broadcastEffect('switch_toggle', { player: this.id, switchIndex: idx, active: sw.active });
+                gameRoom.broadcastEffect('switch_toggle', { player: this.id, switchIndex: idx, active });
             }
         });
     }

@@ -335,3 +335,46 @@ test('no emoji are left in the shipped game code (icons are our own)', () => {
     }
     assert.deepEqual(found, []);
 });
+
+test('host can remove a player from the waiting room; others cannot; not mid-game', async () => {
+    const host = await connect();
+    host.emit('create_room', { playerName: 'Host' });
+    const created = await once(host, 'room_created');
+    const guest = await connect();
+    guest.emit('join_room', { roomCode: created.roomCode, playerName: 'Guest' });
+    const joined = await once(guest, 'room_joined');
+    const third = await connect();
+    third.emit('join_room', { roomCode: created.roomCode, playerName: 'Third' });
+    const joined3 = await once(third, 'room_joined');
+
+    // a non-host cannot kick anyone
+    guest.emit('kick', { playerId: joined3.playerId });
+    await new Promise(r => setTimeout(r, 200));
+    host.emit('kick', { playerId: created.playerId }); // and the host cannot kick themselves
+    host.emit('kick', 'garbage');
+    await new Promise(r => setTimeout(r, 200));
+    const health = await (await fetch(`${URL}/healthz`)).json();
+    assert.ok(health.rooms >= 1);
+
+    // the host kicks the guest: the guest is told, and everyone else sees the new list
+    const told = once(guest, 'kicked');
+    const update = until(host, 'room_update', d => d.players.length === 2 && !d.players.some(p => p.id === joined.playerId));
+    host.emit('kick', { playerId: joined.playerId });
+    await told;
+    const after = await update;
+    assert.deepEqual(after.players.map(p => p.name), ['Host', 'Third']);
+
+    // and the kicked player is out of the room: their commands do nothing
+    guest.emit('start_game');
+    guest.emit('set_skin', { face: 'abe' });
+    await new Promise(r => setTimeout(r, 300));
+
+    // no kicking once the game has started
+    host.emit('start_game');
+    await once(third, 'round_start', 6000);
+    host.emit('kick', { playerId: joined3.playerId });
+    const state = await new Promise(resolve => third.once('game_state', resolve));
+    assert.equal(state.players.length, 2, 'nobody was removed mid-game');
+
+    host.disconnect(); guest.disconnect(); third.disconnect();
+});
