@@ -235,3 +235,101 @@ test('level files declare collectibles', () => {
         assert.ok(Array.isArray(lv.items));
     }
 });
+
+
+// ---------- Balance: surviving a spit, limited wings, spit cooldown ----------
+const Movement = require('../shared/movement');
+
+// Spat from the edge of the ground over a pit (the bridge is cut). Returns whether the victim lives.
+function spitOverPit(react) {
+    const { room, ps: [a, b] } = setup(2);
+    room.level.hazards = [{ x: 320, y: 660, width: 380, height: 60, type: 'spikes' }];
+    room.level.platforms.forEach(p => { if (p.triggerIndex === 0) p.active = false; });
+    a.x = 262; a.y = 460; a.facing = 1; b.x = 262; b.y = 460;
+    a.swallow(b, room);
+    a.spit(room);
+    for (let t = 0; t < 3500 && !b.isDead && !(b.isGrounded && t > 150); t += 16.67) {
+        react(b, t);
+        room.gameLoop.update(16.67);
+    }
+    return !b.isDead;
+}
+
+test('a player spat over a pit dies if they do nothing', () => {
+    assert.equal(spitOverPit(() => {}), false);
+});
+
+test('a player spat over a pit can survive: hop to brake, then walk back', () => {
+    const survives = spitOverPit((b, t) => { b.input.jump = t >= 100 && t < 150; b.input.left = t >= 100; });
+    assert.equal(survives, true);
+});
+
+test('the escape window is forgiving: pressing hop up to ~0.5s after the spit still works', () => {
+    for (const at of [0, 150, 300, 450, 550]) {
+        const ok = spitOverPit((b, t) => { b.input.jump = t >= at && t < at + 50; b.input.left = t >= at; });
+        assert.equal(ok, true, `hop pressed ${at}ms after the spit was too late`);
+    }
+});
+
+test('the recovery hop works once, then is spent', () => {
+    const { room, ps: [a, b] } = setup(2);
+    a.x = 262; a.facing = 1; b.x = 262;
+    a.swallow(b, room); a.spit(room);
+    assert.equal(b.recover, 1);
+    let hops = 0;
+    room.io.events.length = 0;
+    for (let t = 0; t < 700; t += 16.67) {
+        b.input.jump = Math.floor(t / 100) % 2 === 0; // mash jump
+        room.gameLoop.update(16.67);
+    }
+    hops = effects(room.io, 'recover').length;
+    assert.equal(hops, 1);
+    assert.equal(b.recover === 0 || b.isGrounded, true);
+});
+
+test('a spat-out player is no longer under server control (they can steer after the first moments)', () => {
+    const { room, ps: [a, b] } = setup(2);
+    a.x = 262; b.x = 262; a.swallow(b, room); a.spit(room);
+    assert.equal(b.serverControlled(), false);
+    // just after launch: ballistic (ignores steering)
+    assert.equal(b.movementMods().ballistic, true);
+    run(room, 300);
+    assert.equal(b.movementMods().ballistic, false);
+});
+
+test('the spitter cannot inhale again straight away', () => {
+    const { room, ps: [a, b] } = setup(2);
+    a.swallow(b, room); a.spit(room);
+    assert.ok(a.inhaleCd > 0);
+    a.input.inhale = true;
+    run(room, 200);
+    assert.equal(a.inhaling, false);
+    run(room, 1000);
+    assert.equal(a.inhaling, true);
+});
+
+test('wings give a limited number of flaps, then only gliding', () => {
+    const { room, ps: [a] } = setup(1);
+    a.gainPower('wings', room);
+    assert.equal(a.flaps, Movement.MOVE.flapsPerPower);
+    // lift off, then tap jump as fast as allowed
+    a.input.jump = true; run(room, 40); a.input.jump = false;
+    let flaps = 0;
+    for (let i = 0; i < 40; i++) {
+        run(room, 100);
+        a.input.jump = true; run(room, 20); a.input.jump = false;
+    }
+    flaps = effects(room.io, 'flap').length;
+    assert.equal(flaps, Movement.MOVE.flapsPerPower, 'flapped more than allowed');
+    assert.equal(a.flaps, 0);
+});
+
+test('getting a new wings power refills the flaps; other powers have none', () => {
+    const { room, ps: [a] } = setup(1);
+    a.gainPower('wings', room);
+    a.flaps = 1;
+    a.gainPower('wings', room);
+    assert.equal(a.flaps, Movement.MOVE.flapsPerPower);
+    a.gainPower('fire', room);
+    assert.equal(a.flaps, 0);
+});

@@ -253,3 +253,31 @@ test('rematch: only works after a finished match, resets scores, keeps the playe
     assert.equal(room.status, 'countdown');
     assert.equal(room.round, 1);
 });
+
+test('being swallowed then spat out over a pit: the victim controls themselves again and stays in sync', () => {
+    const { room } = startRoom(2);
+    room.level.hazards = [{ x: 320, y: 660, width: 380, height: 60, type: 'spikes' }];
+    room.level.platforms.forEach(p => { if (p.triggerIndex === 0) p.active = false; });
+    const [a, b] = [room.players.p0, room.players.p1];
+    a.x = 262; a.y = 460; a.facing = 1; b.x = 262; b.y = 460;
+
+    const predictor = new Predictor();
+    ready(room, predictor, 'p1');
+    simulate({ ms: 300, latencyMs: 80, room, predictor, id: 'p1', keysAt: () => ({}) });
+
+    a.swallow(b, room);
+    simulate({ ms: 400, latencyMs: 80, room, predictor, id: 'p1', keysAt: () => ({ left: true }) });
+    assert.equal(predictor.enabled, false, 'no prediction while swallowed');
+
+    a.spit(room);
+    // the victim reacts 250ms after the spit: hop, then walk back
+    const t0 = 0;
+    const log = simulate({
+        ms: 2500, latencyMs: 80, room, predictor, id: 'p1',
+        keysAt: t => ({ jump: t >= 250 && t < 300, left: t >= 250 && t < 1500 })
+    });
+    assert.equal(b.isDead, false, 'victim survived');
+    assert.equal(predictor.enabled, true, 'prediction resumed');
+    const end = log[log.length - 1];
+    assert.ok(Math.abs(end.view.x - end.server.x) < 15, `desynced by ${end.view.x - end.server.x}px`);
+});

@@ -790,3 +790,32 @@ canvas {
 @media (max-width: 640px) {
     .power-grid { grid-template-columns: 1fr; }
 }
+
+/* Coach banner: tells you what to do when you're swallowed or spat out */
+.coach {
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 106;
+    background: #FFF1BF;
+    border: 3px solid var(--yellow);
+    border-radius: 18px;
+    padding: 12px 26px 16px;
+    font-size: 1.25rem;
+    font-weight: 700;
+    text-align: center;
+    pointer-events: none;
+    min-width: 320px;
+    animation: nudge 0.5s ease-in-out infinite alternate;
+}
+
+.coach-bar {
+    height: 8px;
+    border-radius: 4px;
+    background: rgba(43, 33, 64, 0.12);
+    margin-top: 10px;
+    overflow: hidden;
+}
+
+#coach-fill { height: 100%; width: 0; background: var(--pink); transition: width 0.08s linear; }

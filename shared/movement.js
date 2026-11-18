@@ -17,7 +17,11 @@
         jumpBufferMs: 120,     // a jump pressed this long before landing still counts
         flapForce: -380,       // wings power
         flapCooldown: 280,
+        flapsPerPower: 8,      // wings are limited: this many flaps, then only gliding
         glideFall: 110,
+        spitGravity: 0.45,     // a spat-out player floats down slowly for a moment (time to react)
+        recoverForce: -480,    // the one "wriggle hop" a spat-out player gets
+        recoverBrake: 0.4,     // ...which also kills most of their forward speed
         spinBoost: 1.25,
         inhaleSlow: 0.5,
         mouthSlow: 0.8
@@ -69,10 +73,12 @@
     //   keys:  { left, right, jump, inhale }
     //   world: { getCollidingTiles(p) }
     //   mods:  { spin, mouth, wings, ballistic }  (status effects the server knows about)
+    //          ballistic = just spat out: flies in a straight line, no steering, for a moment
+    //          spat = still in the "just spat out" state (falls slowly)
     // Returns { flapped } so the server can announce wing flaps.
     function stepMovement(p, keys, dt, world, mods) {
         mods = mods || {};
-        const out = { flapped: false };
+        const out = { flapped: false, recovered: false };
 
         if (p.flapCd > 0) p.flapCd -= dt;
 
@@ -93,7 +99,7 @@
         // A spat-out player flies ballistically (no braking)
         if (!mods.ballistic) p.vx += (targetVx - p.vx) * MOVE.drag * (dt / 1000);
 
-        p.vy += MOVE.gravity * (dt / 1000);
+        p.vy += MOVE.gravity * (mods.spat ? MOVE.spitGravity : 1) * (dt / 1000);
         p.vy = Math.min(p.vy, MOVE.terminal);
 
         // Jump input: remember a recent press so a slightly-early tap still works
@@ -108,11 +114,18 @@
             p.isGrounded = false;
             p.coyote = 0;
             p.jbuf = 0;
+        } else if (pressed && p.recover > 0 && !p.isGrounded) {
+            // Spat out and flying towards a pit? One hop in mid-air to brake and climb.
+            p.vy = MOVE.recoverForce;
+            p.vx *= MOVE.recoverBrake;
+            p.recover = 0;
+            out.recovered = true;
         } else if (mods.wings && !p.isGrounded) {
-            // Wings: flap with a fresh press in mid-air, glide while jump is held
-            if (pressed && p.flapCd <= 0) {
+            // Wings: flap with a fresh press in mid-air (limited), glide while jump is held
+            if (pressed && p.flapCd <= 0 && p.flaps > 0) {
                 p.vy = MOVE.flapForce;
                 p.flapCd = MOVE.flapCooldown;
+                p.flaps--;
                 out.flapped = true;
             } else if (keys.jump && p.vy > MOVE.glideFall) {
                 p.vy = MOVE.glideFall;
@@ -125,14 +138,18 @@
         p.y += p.vy * (dt / 1000);
         resolveVertical(p, world);
 
-        if (p.isGrounded) p.coyote = MOVE.coyoteMs;
-        else if (p.coyote > 0) p.coyote -= dt;
+        if (p.isGrounded) {
+            p.coyote = MOVE.coyoteMs;
+            p.recover = 0; // safe on the ground again
+        } else if (p.coyote > 0) {
+            p.coyote -= dt;
+        }
 
         return out;
     }
 
     // The physics-relevant fields of a player, for copying between server and client
-    const FIELDS = ['x', 'y', 'vx', 'vy', 'isGrounded', 'facing', 'coyote', 'jbuf', 'prevJump', 'flapCd'];
+    const FIELDS = ['x', 'y', 'vx', 'vy', 'isGrounded', 'facing', 'coyote', 'jbuf', 'prevJump', 'flapCd', 'flaps', 'recover'];
 
     return { MOVE, KEY, FIELDS, encodeKeys, decodeKeys, stepMovement, resolveHorizontal, resolveVertical };
 });

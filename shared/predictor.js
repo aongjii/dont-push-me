@@ -15,6 +15,9 @@
 })(typeof self !== 'undefined' ? self : this, function (Movement) {
 
     const { MOVE, FIELDS } = Movement;
+    // Matches ABILITY.spitBodyMs - ABILITY.spitBallisticMs on the server: while the spat-out timer is
+    // above this, the player is still in the straight-line part of the flight
+    const ME_SPIT_BALLISTIC_FLOOR = 300;
     const MAX_PENDING = 120;       // 2 seconds of commands
     const SNAP_DISTANCE = 80;      // bigger corrections than this are applied instantly
     const SMOOTH_SECONDS = 0.1;
@@ -89,8 +92,7 @@
 
             const before = this.state && this.enabled ? { x: this.state.x, y: this.state.y } : null;
 
-            const forced = me.isDead || me.isFinished || me.swallowed ||
-                me.pullDuration > 0 || me.spitBodyMs > 0;
+            const forced = me.isDead || me.isFinished || me.swallowed || me.pullDuration > 0;
 
             while (this.pending.length && this.pending[0].s <= me.ack) this.pending.shift();
 
@@ -101,7 +103,8 @@
                 spin: me.spinMs > 0,
                 mouth: !!me.mouth,
                 wings: me.power === 'wings',
-                ballistic: false
+                spat: me.spitBodyMs > 0,
+                ballistic: me.spitBodyMs > ME_SPIT_BALLISTIC_FLOOR
             };
 
             if (forced) {

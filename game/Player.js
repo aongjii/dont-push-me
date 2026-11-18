@@ -38,6 +38,8 @@ class Player {
         this.jbuf = 0;       // ms left on a buffered jump press
         this.prevJump = false;
         this.flapCd = 0;
+        this.flaps = 0;      // wings: flaps left
+        this.recover = 0;    // 1 = has an unused mid-air recovery hop (after being spat out)
 
         // Client-driven movement (see GameRoom.handleCmds)
         this.usesCmds = false;   // true once this player has sent movement commands
@@ -75,6 +77,7 @@ class Player {
         this.inhaling = false;
         this.prevInhale = false;
         this.powerCd = 0;          // cooldown of the power key
+        this.inhaleCd = 0;         // can't inhale again for a moment after spitting
         this.mouth = null;         // { kind: 'orb' } | { kind: 'player', id }
         this.mouthMs = 0;
         this.swallowedBy = null;   // id of the player whose mouth we're in
@@ -125,7 +128,10 @@ class Player {
         this.prevJump = false;
         this.coyote = 0;
         this.jbuf = 0;
+        this.flaps = 0;
+        this.recover = 0;
         this.powerCd = 0;
+        this.inhaleCd = 0;
         this.ackSeq = 0;
         this.prevKeys = 0;
         this.inhaleEdge = false;
@@ -183,6 +189,7 @@ class Player {
         if (this.inhaleImmunity > 0) this.inhaleImmunity -= dt;
         if (this.beingInhaledMs > 0) this.beingInhaledMs -= dt;
         if (this.powerCd > 0) this.powerCd -= dt;
+        if (this.inhaleCd > 0) this.inhaleCd -= dt;
         if (this.spinMs > 0) this.spinMs -= dt;
         if (this.spitBodyMs > 0) {
             this.spitBodyMs -= dt;
@@ -227,6 +234,7 @@ class Player {
         if (!this.movesFromCmds()) {
             const res = Movement.stepMovement(this, this.input, dt, level, this.movementMods());
             if (res.flapped) gameRoom.broadcastEffect('flap', { id: this.id });
+            if (res.recovered) gameRoom.broadcastEffect('recover', { id: this.id });
         }
 
         // Sabotage Actions (Only check if not pushed/pulled in action)
@@ -246,7 +254,7 @@ class Player {
         if (this.mouth) {
             this.inhaling = false;
             if (inhalePressed) this.spit(gameRoom);
-        } else if (this.input.inhale) {
+        } else if (this.input.inhale && this.inhaleCd <= 0) {
             this.inhaling = true;
             this.performInhale(dt, gameRoom);
         } else {
@@ -286,18 +294,20 @@ class Player {
             spin: this.spinMs > 0,
             mouth: !!this.mouth,
             wings: this.power === 'wings',
-            ballistic: this.spitBodyMs > 0
+            spat: this.spitBodyMs > 0,
+            // just spat out: straight-line flight for the first moments, then you can steer
+            ballistic: this.spitBodyMs > ABILITY.spitBodyMs - ABILITY.spitBallisticMs
         };
     }
 
     // True while this player's walking/jumping is driven by their own commands
     movesFromCmds() {
-        return this.usesCmds && this.spitBodyMs <= 0 && Date.now() - this.lastCmdAt < CMD_STALL_MS;
+        return this.usesCmds && Date.now() - this.lastCmdAt < CMD_STALL_MS;
     }
 
     // Is the server (not the player) currently in charge of where they go?
     serverControlled() {
-        return this.isDead || this.isFinished || !!this.swallowedBy || this.pullDuration > 0 || this.spitBodyMs > 0;
+        return this.isDead || this.isFinished || !!this.swallowedBy || this.pullDuration > 0;
     }
 
     // Apply one client command: record the held keys, and move one fixed step if the player is free
@@ -319,6 +329,7 @@ class Player {
         if (!canMove || this.serverControlled()) return;
         const res = Movement.stepMovement(this, keys, Movement.MOVE.step, level, this.movementMods());
         if (res.flapped) room.broadcastEffect('flap', { id: this.id });
+        if (res.recovered) room.broadcastEffect('recover', { id: this.id });
     }
 
     performPush(gameRoom) {

@@ -116,6 +116,10 @@
 
         <div class="hud-spectate" id="hud-spectate" style="display:none"></div>
         <div class="power-toast" id="power-toast" style="display:none"></div>
+        <div class="coach" id="coach" style="display:none">
+            <span id="coach-text"></span>
+            <div class="coach-bar" id="coach-bar"><div id="coach-fill"></div></div>
+        </div>
         <div class="power-card" id="power-card" style="display:none">
             <span class="pc-icon" id="power-icon">🔥</span>
             <div class="pc-text">
@@ -232,7 +236,7 @@
                 <div class="power-item"><span class="pi">🔥</span><div><b>ไฟ</b><span>กด V พ่นลูกไฟพุ่งไปข้างหน้า ชนใครคนนั้นกระเด็น</span></div></div>
                 <div class="power-item"><span class="pi">❄️</span><div><b>น้ำแข็ง</b><span>กด V แช่แข็งคนที่อยู่ข้างหน้า 1 วินาที</span></div></div>
                 <div class="power-item"><span class="pi">🌀</span><div><b>ปั่น</b><span>กด V หมุนติ้วชนทุกคนรอบตัว เดินเร็วขึ้นด้วย</span></div></div>
-                <div class="power-item"><span class="pi">🪽</span><div><b>ปีก</b><span>ไม่ต้องกด V: กดกระโดดซ้ำกลางอากาศเพื่อกระพือ กดค้างเพื่อร่อน</span></div></div>
+                <div class="power-item"><span class="pi">🪽</span><div><b>ปีก</b><span>ไม่ต้องกด V: กดกระโดดซ้ำกลางอากาศเพื่อกระพือ (8 ครั้ง) กดค้างเพื่อร่อน</span></div></div>
             </div>
 
             <h3>😮 อมของและอมเพื่อน</h3>
@@ -240,6 +244,7 @@
                 <li><b>ผลไม้ 🍎</b> อมไว้ในปาก แล้วกด C อีกครั้งเพื่อพ่นเป็นดาวพุ่งใส่คนอื่น</li>
                 <li><b>เพื่อน</b> ถ้าอยู่ใกล้ๆ จะถูกดูดเข้าไป (วิ่งหนีทันได้) พอกลืนแล้วพ่นออกไปชนคนอื่น หรือพ่นลงเหวเพื่อรับโบนัส KO +3</li>
                 <li>ถูกกลืน? <b>กดปุ่มเดิน/กระโดดรัวๆ</b> เพื่อดิ้นออกมา ไม่งั้นจะถูกพ่นเองใน 3 วินาที</li>
+                <li>ถูกพ่นออกมาเหนือหลุม? <b>กด Space ทันที</b> เพื่อกระโดดเบรกกลางอากาศ (ใช้ได้ครั้งเดียว) แล้วเดินกลับเข้าฝั่ง</li>
                 <li>ถูกดึง? กดปุ่มเดิน/กระโดดรัวๆ เพื่อสลัดหลุดเร็วขึ้น</li>
             </ul>
 

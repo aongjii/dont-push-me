@@ -3,6 +3,7 @@ const Level = require('./Level');
 const GameLoop = require('./GameLoop');
 const { sanitizeInput, sanitizeEmote } = require('./validation');
 const Movement = require('../shared/movement');
+const { ABILITY } = require('./abilities');
 
 const KO_POINTS = 3; // bonus for sending a rival to their doom
 const MAX_CMDS_PER_MESSAGE = 30;
@@ -414,6 +415,10 @@ class GameRoom {
             jbuf: p.jbuf,
             prevJump: p.prevJump,
             flapCd: p.flapCd,
+            flaps: p.flaps,
+            recover: p.recover,
+            swallowTaps: p.swallowTaps,
+            tapsNeeded: ABILITY.escapeTaps,
             powerCd: Math.max(0, Math.round(p.powerCd)),
             inhaling: p.inhaling,
             mouth: p.mouth ? p.mouth.kind : null,

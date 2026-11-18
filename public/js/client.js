@@ -396,6 +396,7 @@ socket.on('round_load', (data) => {
     outbox = [];
     powerUsed = false;
     document.getElementById('power-card').style.display = 'none';
+    document.getElementById('coach').style.display = 'none';
     spectateId = null;
     prevPlayerFlags = {};
     spectateBanner.style.display = 'none';
@@ -553,8 +554,30 @@ function updatePowerCard(localP) {
     document.getElementById('power-key').textContent = info.key;
     document.getElementById('power-bar').style.transform =
         `scaleX(${Math.max(0, Math.min(1, localP.powerMs / POWER_MS[localP.power]))})`;
+    if (localP.power === 'wings') {
+        document.getElementById('power-how').textContent =
+            `กระโดดซ้ำกลางอากาศเพื่อกระพือ (เหลือ ${localP.flaps} ครั้ง) • กดค้างเพื่อร่อน`;
+    }
     card.classList.toggle('nudge', !powerUsed);
     card.classList.toggle('cooling', localP.powerCd > 0);
+}
+
+// Big hint when you're swallowed (mash keys) or spat out over danger (hop!)
+function updateCoach(p) {
+    const coach = document.getElementById('coach');
+    const bar = document.getElementById('coach-bar');
+    if (p.swallowed) {
+        coach.style.display = 'block';
+        document.getElementById('coach-text').textContent = '😮 ถูกกลืนแล้ว! กดปุ่มเดิน/กระโดดรัวๆ เพื่อดิ้นออก';
+        bar.style.display = 'block';
+        document.getElementById('coach-fill').style.width = `${Math.min(100, (p.swallowTaps / p.tapsNeeded) * 100)}%`;
+    } else if (p.spitBodyMs > 0 && p.recover > 0 && !p.isGrounded && !p.isDead) {
+        coach.style.display = 'block';
+        document.getElementById('coach-text').textContent = '💨 ถูกพ่น! กด Space เพื่อกระโดดเบรก!';
+        bar.style.display = 'none';
+    } else {
+        coach.style.display = 'none';
+    }
 }
 
 let toastTimer = null;
@@ -625,6 +648,7 @@ socket.on('game_state', (state) => {
         document.getElementById('ability-inhale').classList.toggle('active', localP.inhaling || !!localP.mouth);
 
         updatePowerCard(localP);
+        updateCoach(localP);
     }
 
     // Round timer (+ a tick each second in the last 10)
@@ -740,6 +764,12 @@ socket.on('game_effect', (effect) => {
     if (effect.type === 'power_use') {
         if (effect.id === localPlayerId) powerUsed = true;
         Sfx.play({ fire: 'fire', ice: 'ice', spin: 'whirl' }[effect.power] || 'push');
+    }
+
+    if (effect.type === 'recover') {
+        Sfx.play('flap');
+        const p = gameState.players.find(pl => pl.id === effect.id);
+        if (p) renderer.addParticles(p.x + p.width / 2, p.y + p.height, '#FFFFFF', 10, { spread: 180, up: 20, size: 3 });
     }
 
     if (effect.type === 'flap') {

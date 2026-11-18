@@ -1,6 +1,8 @@
 // Kirby-style abilities for Player: inhale things, swallow rivals, spit them out as
 // projectiles, and eat stars for a random temporary power. Installed onto Player.prototype.
 
+const Movement = require('../shared/movement');
+
 const POWERS = ['fire', 'ice', 'spin', 'wings'];
 
 const ABILITY = {
@@ -15,7 +17,9 @@ const ABILITY = {
 
     spitSpeed: 720,
     spitBodySpeed: 520,
-    spitBodyMs: 700,       // a spat-out player is a living bowling ball this long
+    spitBodyMs: 550,       // a spat-out player is a living bowling ball this long...
+    spitBallisticMs: 250,  // ...but can only steer/hop after the first quarter second
+    spitCooldown: 900,     // the spitter can't inhale again straight away (no chain-swallowing)
     spitKnock: 560,
 
     powerMs: { fire: 15000, ice: 15000, spin: 15000, wings: 10000 },
@@ -25,7 +29,7 @@ const ABILITY = {
     iceFreeze: 1000,
     spinMs: 800,
     spinRadius: 55,
-    spinKnock: 620,
+    spinKnock: 560,
     spinSpeedBoost: 1.25,
 
     flapForce: -380,
@@ -52,6 +56,7 @@ function install(Player) {
         gainPower(type, room) {
             this.power = type;
             this.powerMs = ABILITY.powerMs[type];
+            this.flaps = type === 'wings' ? Movement.MOVE.flapsPerPower : 0;
             if (room) room.broadcastEffect('power_gain', { id: this.id, name: this.name, power: type });
         },
 
@@ -152,8 +157,10 @@ function install(Player) {
                 victim.spitBodyMs = ABILITY.spitBodyMs;
                 victim.spitBy = this.id;
                 victim.spitHit = new Set();
+                victim.recover = 1; // one mid-air hop to brake and climb (see shared/movement.js)
                 victim.markHit(this); // if they end up in a pit, the spitter gets the KO
             }
+            this.inhaleCd = ABILITY.spitCooldown;
             room.broadcastEffect('spit', { by: this.id, kind: mouth.kind });
         },
 
@@ -167,6 +174,7 @@ function install(Player) {
             const hx = holder ? holder.x : this.x;
             const hy = holder ? holder.y : this.y;
             this.release(hx, hy, -(holder ? holder.facing : 1) * 120, -280);
+            this.recover = 1;
             room.broadcastEffect('escape', { id: this.id, name: this.name });
         },
 
