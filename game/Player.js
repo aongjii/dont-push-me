@@ -57,6 +57,12 @@ class Player {
         this.token = null;
         this.graceTimer = null;
 
+        // Lives: you can die and come back at your last checkpoint until you run out
+        this.respawnsLeft = 2;   // 3 lives per round = this + the current one
+        this.respawnMs = 0;      // > 0 while dead and waiting to come back
+        this.cpIndex = -1;       // furthest checkpoint reached this round
+        this.invulnMs = 0;       // spikes/lava can't hurt for a moment after respawning
+
         // Game states
         this.score = 0;
         this.isDead = false;
@@ -124,6 +130,10 @@ class Player {
         this.pullImmunity = 0;
         this.catchUp = false;
         this.roundKos = 0;
+        this.respawnsLeft = 2;
+        this.respawnMs = 0;
+        this.cpIndex = -1;
+        this.invulnMs = 0;
         this.inhaling = false;
         this.prevInhale = false;
         this.prevJump = false;
@@ -191,6 +201,7 @@ class Player {
         if (this.beingInhaledMs > 0) this.beingInhaledMs -= dt;
         if (this.powerCd > 0) this.powerCd -= dt;
         if (this.inhaleCd > 0) this.inhaleCd -= dt;
+        if (this.invulnMs > 0) this.invulnMs -= dt;
         if (this.spinMs > 0) this.spinMs -= dt;
         if (this.spitBodyMs > 0) {
             this.spitBodyMs -= dt;

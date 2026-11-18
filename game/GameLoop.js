@@ -71,13 +71,24 @@ class GameLoop {
         const players = Object.values(this.room.players);
         players.forEach(player => {
             player.moveBudget = Math.min(500, player.moveBudget + dt * 1.05);
+
+            // Dead but with a life left: count down, then come back at the last checkpoint
+            if (player.isDead && player.respawnMs > 0) {
+                player.respawnMs -= dt;
+                if (player.respawnMs <= 0) {
+                    player.respawnMs = 0;
+                    this.room.respawn(player);
+                }
+            }
+
             const wasDead = player.isDead;
             player.update(dt, this.room.level, this.room);
 
             // Hazard collision checks (someone inside a mouth is carried, not exposed)
-            if (!player.swallowedBy && this.room.level.checkHazards(player)) {
+            if (!player.swallowedBy && player.invulnMs <= 0 && this.room.level.checkHazards(player)) {
                 player.die();
             }
+            if (!player.isDead && !player.isFinished) this.room.updateCheckpoints(player);
 
             // Covers hazards and falling off the map alike
             if (player.isDead && !wasDead) {

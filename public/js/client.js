@@ -426,6 +426,7 @@ socket.on('round_load', (data) => {
     powerUsed = false;
     document.getElementById('power-card').style.display = 'none';
     document.getElementById('coach').style.display = 'none';
+    shownLives = null;
     spectateId = null;
     prevPlayerFlags = {};
     spectateBanner.style.display = 'none';
@@ -591,6 +592,18 @@ function updatePowerCard(localP) {
     card.classList.toggle('cooling', localP.powerCd > 0);
 }
 
+// Hearts in the HUD: how many lives you have left this round
+const TOTAL_LIVES = 3;
+const RESPAWN_MS = 3000; // keep in step with GameRoom
+let shownLives = null;
+function renderLives(n) {
+    if (n === shownLives) return;
+    shownLives = n;
+    const box = document.getElementById('hud-lives');
+    box.replaceChildren();
+    for (let i = 0; i < TOTAL_LIVES; i++) box.appendChild(Icons.svg(i < n ? 'heart' : 'heart_empty', 20));
+}
+
 function setCoachText(icon, text) {
     document.getElementById('coach-text').replaceChildren(Icons.svg(icon, 26), document.createTextNode(text));
 }
@@ -608,6 +621,11 @@ function updateCoach(p) {
         coach.style.display = 'block';
         setCoachText('wind', 'ถูกพ่น! กด Space เพื่อกระโดดเบรก!');
         bar.style.display = 'none';
+    } else if (p.isDead && p.respawnMs > 0) {
+        coach.style.display = 'block';
+        setCoachText('heart', `ฟื้นอีก ${Math.ceil(p.respawnMs / 1000)} วินาที (เหลือ ${p.lives} ชีวิต)`);
+        bar.style.display = 'block';
+        document.getElementById('coach-fill').style.width = `${Math.min(100, (1 - p.respawnMs / RESPAWN_MS) * 100)}%`;
     } else {
         coach.style.display = 'none';
     }
@@ -683,6 +701,7 @@ socket.on('game_state', (state) => {
 
         updatePowerCard(localP);
         updateCoach(localP);
+        renderLives(localP.lives);
     }
 
     // Round timer (+ a tick each second in the last 10)
@@ -798,6 +817,19 @@ socket.on('game_effect', (effect) => {
     if (effect.type === 'power_use') {
         if (effect.id === localPlayerId) powerUsed = true;
         Sfx.play({ fire: 'fire', ice: 'ice', spin: 'whirl' }[effect.power] || 'push');
+    }
+
+    if (effect.type === 'checkpoint') {
+        if (effect.id === localPlayerId) {
+            showHudAlert('บันทึกจุดเกิดใหม่แล้ว', 1500, 'flag');
+            Sfx.play('tick');
+        }
+    }
+
+    if (effect.type === 'respawn') {
+        const p = gameState.players.find(pl => pl.id === effect.id);
+        if (p) renderer.addParticles(p.x + p.width / 2, p.y + p.height / 2, p.color, 18, { spread: 320, up: 80, size: 4 });
+        if (effect.id === localPlayerId) Sfx.play('power');
     }
 
     if (effect.type === 'recover') {

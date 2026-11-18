@@ -938,3 +938,6 @@ canvas {
 .swatch .icon { width: 16px; height: 16px; }
 .finisher-badge .icon, .name-cell .icon { vertical-align: -4px; }
 .host-tip .icon { vertical-align: -5px; }
+
+.hud-lives { display: flex; gap: 3px; margin: 3px 0 2px; }
+.hud-lives .icon { width: 20px; height: 20px; }

@@ -13,6 +13,7 @@ class Level {
         this.switches = [];
         this.hazards = [];
         this.items = []; // stars (eat for a random power) and orbs (hold and spit)
+        this.checkpoints = []; // respawn flags: { x: centre, y: ground top }, in order of progress
         this.timeLimit = 90; // seconds (levels may override)
         this.theme = 'meadow'; // visual theme: meadow | candy | volcano
         this.finishZone = { x: 1500, y: 400, width: 60, height: 120 };
@@ -84,6 +85,7 @@ class Level {
                 beingPulled: false
             }));
 
+            this.checkpoints = (data.checkpoints || []).map(c => ({ x: c.x, y: c.y }));
             this.timeLimit = data.timeLimit || 90;
             this.theme = data.theme || 'meadow';
 

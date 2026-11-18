@@ -162,6 +162,7 @@ class Renderer {
             }
         });
         gameState.hazards.forEach(h => this.drawHazard(h));
+        (levelData.checkpoints || []).forEach((cp, i) => this.drawCheckpoint(cp, !!localPlayer && localPlayer.cp >= i));
         // Only the closest item shows the "hold C" hint, so overlapping hints don't clutter the screen
         const items = (gameState.items || []).filter(it => it.alive);
         let nearest = null;
@@ -421,6 +422,32 @@ class Renderer {
         ctx.restore();
     }
 
+    // A respawn flag: grey until you've reached it, then pink
+    drawCheckpoint(cp, reached) {
+        const ctx = this.ctx;
+        const wave = Math.sin(this.time * 5 + cp.x) * (reached ? 3 : 1);
+        ctx.save();
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(cp.x, cp.y);
+        ctx.lineTo(cp.x, cp.y - 56);
+        ctx.stroke();
+        ctx.fillStyle = reached ? '#FF7EA8' : '#C8D4EA';
+        ctx.beginPath();
+        ctx.moveTo(cp.x + 1, cp.y - 56);
+        ctx.lineTo(cp.x + 30, cp.y - 48 + wave);
+        ctx.lineTo(cp.x + 1, cp.y - 36);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = INK;
+        ctx.beginPath();
+        ctx.arc(cp.x, cp.y - 58, 3.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
     drawLava(lavaY, mapWidth, mapHeight) {
         const ctx = this.ctx;
         const th = this.theme;
@@ -634,6 +661,10 @@ class Renderer {
             mouthColor = '#FF6B6B';
         }
 
+        // blink while invulnerable after respawning
+        const blinking = player.invulnMs > 0 && Math.floor(t * 14) % 2 === 0;
+        if (blinking) { ctx.save(); ctx.globalAlpha = 0.4; }
+
         this.drawCharacter({
             x: cx + (frozen === 'pull' ? (Math.random() - 0.5) * 3 : 0),
             y: feetY,
@@ -654,6 +685,8 @@ class Renderer {
             rot: rolling ? t * 20 * (player.facing || 1) : (tumbling ? t * 9 * Math.sign(player.vx) : 0),
             flapping: player.power === 'wings' && !player.isGrounded
         });
+
+        if (blinking) ctx.restore();
 
         // Suction streaks in front of the mouth
         if (player.inhaling) this.drawInhale(player);

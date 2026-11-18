@@ -10,6 +10,10 @@ const KO_POINTS = 3; // bonus for sending a rival to their doom
 const MAX_CMDS_PER_MESSAGE = 30;
 const MOVE_BUDGET_CAP = 500;     // ms of banked movement (covers a burst after a lag spike)
 const MOVE_BUDGET_RATE = 1.05;   // a little slack for clock drift between client and server
+const LIVES_PER_ROUND = 3;
+const RESPAWN_MS = 3000;         // how long you wait after dying
+const INVULN_MS = 2000;          // spikes/lava can't hurt right after you come back
+const LAVA_SAFETY_MARGIN = 140;  // don't respawn closer than this to rising lava (px)
 
 class GameRoom {
     constructor(code, io) {
@@ -150,7 +154,9 @@ class GameRoom {
             lavaSpeed: this.level.lavaSpeed,
             lavaInitialY: this.level.lavaY,
             roundTimeLimit: this.roundTimeLimit,
-            theme: this.level.theme
+            theme: this.level.theme,
+            checkpoints: this.level.checkpoints,
+            lives: LIVES_PER_ROUND
         };
     }
 
@@ -293,6 +299,73 @@ class GameRoom {
     }
 
     // Called once when a player dies. Credits the attacker if the victim was recently hit.
+    // Where this player would come back to: their furthest checkpoint, or an earlier one / the
+    // start if lava has risen past it. null = nowhere safe, so they're out for this round.
+    pickRespawn(player) {
+        const level = this.level;
+        const safe = (pt) => !level.hasRisingLava || pt.y + 40 < level.lavaY - LAVA_SAFETY_MARGIN;
+        const at = (cp) => ({ x: cp.x - 15, y: cp.y - 40 });
+
+        for (let i = Math.min(player.cpIndex, level.checkpoints.length - 1); i >= 0; i--) {
+            const pt = at(level.checkpoints[i]);
+            if (safe(pt)) return pt;
+        }
+        const idx = Object.keys(this.players).indexOf(player.id);
+        const start = { x: level.spawnX + Math.max(0, idx) * 40, y: level.spawnY };
+        return safe(start) ? start : null;
+    }
+
+    // Called when a player dies: schedule the comeback if they have a life and somewhere safe to go
+    scheduleRespawn(player) {
+        if (player.respawnsLeft > 0 && this.pickRespawn(player)) {
+            player.respawnsLeft--;
+            player.respawnMs = RESPAWN_MS;
+        } else {
+            player.respawnMs = 0; // out of the round
+        }
+    }
+
+    respawn(player) {
+        const pt = this.pickRespawn(player);
+        if (!pt) {
+            player.respawnMs = 0; // lava got there first: out for good
+            return;
+        }
+        player.x = pt.x;
+        player.y = pt.y;
+        player.vx = 0;
+        player.vy = 0;
+        player.isDead = false;
+        player.isGrounded = false;
+        player.invulnMs = INVULN_MS;
+        player.power = null;
+        player.powerMs = 0;
+        player.spinMs = 0;
+        player.spitBodyMs = 0;
+        player.pullDuration = 0;
+        player.swallowedBy = null;
+        player.mouth = null;
+        player.hitCredit = null;
+        player.recover = 0;
+        player.coyote = 0;
+        player.jbuf = 0;
+        this.broadcastEffect('respawn', { id: player.id, name: player.name });
+    }
+
+    // Reaching a checkpoint flag saves your respawn spot (the furthest one counts)
+    updateCheckpoints(player) {
+        const cps = this.level.checkpoints;
+        for (let i = cps.length - 1; i > player.cpIndex; i--) {
+            const cp = cps[i];
+            const feet = player.y + player.height;
+            if (Math.abs(player.x + player.width / 2 - cp.x) < 50 && feet <= cp.y + 8 && feet >= cp.y - 120) {
+                player.cpIndex = i;
+                this.broadcastEffect('checkpoint', { id: player.id, name: player.name, index: i });
+                break;
+            }
+        }
+    }
+
     handleDeath(victim) {
         victim.dropMouth(this); // anyone we were holding comes out
         const credit = victim.hitCredit;
@@ -301,19 +374,23 @@ class GameRoom {
         const attacker = credit && credit.ms > 0 && credit.by !== victim.id ? this.players[credit.by] : null;
         if (attacker) attacker.roundKos++;
 
+        this.scheduleRespawn(victim);
+
         this.broadcastEffect('player_died', {
             id: victim.id,
             name: victim.name,
             killerId: attacker ? attacker.id : null,
-            killerName: attacker ? attacker.name : null
+            killerName: attacker ? attacker.name : null,
+            willRespawn: victim.respawnMs > 0
         });
     }
 
     checkRoundEnd() {
         if (this.status !== 'playing') return;
 
+        // Still in the round: not finished, and not out of lives (a player waiting to respawn counts)
         const playersArr = Object.values(this.players);
-        const alivePlayers = playersArr.filter(p => !p.isDead && !p.isFinished);
+        const alivePlayers = playersArr.filter(p => !p.isFinished && !(p.isDead && p.respawnMs <= 0));
 
         this.collectFinishers();
 
@@ -437,6 +514,10 @@ class GameRoom {
             flapCd: p.flapCd,
             flaps: p.flaps,
             recover: p.recover,
+            lives: p.isDead && p.respawnMs <= 0 ? 0 : p.respawnsLeft + 1,
+            respawnMs: Math.max(0, Math.round(p.respawnMs)),
+            invulnMs: Math.max(0, Math.round(p.invulnMs)),
+            cp: p.cpIndex,
             swallowTaps: p.swallowTaps,
             tapsNeeded: ABILITY.escapeTaps,
             powerCd: Math.max(0, Math.round(p.powerCd)),

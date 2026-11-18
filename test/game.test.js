@@ -132,6 +132,7 @@ const Player = require('../game/Player');
 test('pushing a rival into a pit gives the pusher a KO bonus', () => {
     const { room, io } = startedRoom(2);
     const [a, b] = [room.players.p0, room.players.p1];
+    b.respawnsLeft = 0; // this is B's last life, so they are out of the round
     b.markHit(a);
     b.die();
     room.handleDeath(b);

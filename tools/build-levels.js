@@ -16,9 +16,11 @@ function write(index, data) {
 
 // ---------------------------------------------------------------- level 1: bridges
 function level1() {
-    const platforms = [], switches = [], hazards = [], items = [];
+    const platforms = [], switches = [], hazards = [], items = [], checkpoints = [];
     let x = 0;
     let sw = 0;
+    // Respawn flag standing on solid ground (never on a removable bridge)
+    const checkpoint = (cx) => checkpoints.push({ x: cx, y: GROUND_Y });
 
     const ground = (w) => { platforms.push({ x, y: GROUND_Y, width: w, height: 220 }); x += w; };
     const pit = (w) => { hazards.push({ x, y: 660, width: w, height: 60, type: 'spikes' }); x += w; };
@@ -36,11 +38,11 @@ function level1() {
 
     ground(320); item('orb', 200, 470); item('star', 270, 470);
     bridge(380);
-    ground(320); item('star', x - 120, 470);
+    ground(320); item('star', x - 120, 470); checkpoint(x - 200);
     pit(130);
     ground(200);
     bridge(450);
-    ground(260); item('orb', x - 100, 470);
+    ground(260); item('orb', x - 100, 470); checkpoint(x - 190);
 
     // stepping stones up and over a spike floor
     const stairStart = x;
@@ -52,14 +54,14 @@ function level1() {
     hazards.push({ x: stairStart + 100 + 2 * 240 + 50, y: 250, width: 40, height: 40, type: 'moving_spikes', rangeX: 40, rangeY: 0 });
     item('star', stairStart + 100 + 1 * 240 + 70, 320);
     x = sx; // landing starts right after the last gap
-    ground(350); item('orb', x - 150, 470);
+    ground(350); item('orb', x - 150, 470); checkpoint(x - 250);
     bridge(520);
-    ground(240); item('star', x - 100, 470);
+    ground(240); item('star', x - 100, 470); checkpoint(x - 170);
 
     // pillar hop: narrow pillars with spike gaps
     for (let i = 0; i < 5; i++) { platforms.push({ x, y: GROUND_Y, width: 100, height: 220 }); x += 100; pit(120); }
     x -= 120; hazards.pop(); // no pit after the last pillar
-    ground(300); item('orb', x - 120, 470); item('star', x - 60, 470);
+    ground(300); item('orb', x - 120, 470); item('star', x - 60, 470); checkpoint(x - 220);
     bridge(300);
     ground(450);
 
@@ -70,13 +72,14 @@ function level1() {
         width, height: 720,
         spawn: { x: 80, y: 440 },
         finish: { x: width - 180, y: 380, width: 80, height: 120 },
-        platforms, switches, hazards, items
+        platforms, switches, hazards, items, checkpoints
     });
 }
 
 // ---------------------------------------------------------------- level 2: floating factory
 function level2() {
-    const platforms = [], switches = [], hazards = [], items = [];
+    const platforms = [], switches = [], hazards = [], items = [], checkpoints = [];
+    const CHECKPOINT_AT = [3, 7, 12, 16, 20, 25]; // which floating platforms get a respawn flag
     platforms.push({ x: 0, y: 500, width: 240, height: 220 });
     items.push({ type: 'orb', x: 150, y: 470 }, { type: 'star', x: 200, y: 470 });
 
@@ -98,6 +101,7 @@ function level2() {
         const plat = { x, y, width: w, height: 30 };
         if (flag === 'cut') { plat.active = true; plat.triggerIndex = sw; plat.color = WOOD; pendingSwitch = sw; sw++; }
         platforms.push(plat);
+        if (CHECKPOINT_AT.includes(i)) checkpoints.push({ x: x + w / 2, y });
         if (flag === 'spikes') {
             hazards.push({ x: x + w / 2 - 20, y: y - 40, width: 40, height: 40, type: 'moving_spikes', rangeX: Math.min(60, w / 2 - 20), rangeY: 0 });
         }
@@ -123,13 +127,14 @@ function level2() {
         width, height: 720,
         spawn: { x: 80, y: 440 },
         finish: { x: width - 200, y: 380, width: 80, height: 120 },
-        platforms, switches, hazards, items
+        platforms, switches, hazards, items, checkpoints
     });
 }
 
 // ---------------------------------------------------------------- level 3: lava tower
 function level3() {
-    const platforms = [], switches = [], hazards = [], items = [];
+    const platforms = [], switches = [], hazards = [], items = [], checkpoints = [];
+    const CHECKPOINT_AT = [4, 11, 17, 22, 28]; // climbing-platform numbers that get a respawn flag
     const FLOOR = 3150;
     platforms.push({ x: 0, y: FLOOR, width: 900, height: 100 });
     items.push({ type: 'orb', x: 200, y: FLOOR - 30 }, { type: 'star', x: 300, y: FLOOR - 30 });
@@ -145,6 +150,7 @@ function level3() {
         const plat = { x, y, width: w, height: 30 };
         if (n % 9 === 5) { plat.active = true; plat.triggerIndex = sw; plat.color = WOOD; }
         platforms.push(plat);
+        if (CHECKPOINT_AT.includes(n)) checkpoints.push({ x: x + w / 2, y });
         // the switch sits on the platform AFTER the removable one, so you cut it behind you
         if (n % 9 === 6) { switches.push({ x: x + 20, y: y - 40, width: 30, height: 40 }); sw++; }
         if (n % 10 === 4) items.push({ type: 'star', x: x + w / 2, y: y - 30 });
@@ -171,7 +177,7 @@ function level3() {
         hasRisingLava: true,
         lavaSpeed: 34,
         lavaInitialY: FLOOR + 250,
-        platforms, switches, hazards, items
+        platforms, switches, hazards, items, checkpoints
     });
 }
 
