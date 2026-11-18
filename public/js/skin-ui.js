@@ -138,6 +138,9 @@ const SkinUI = (() => {
         stopPreview();
     }
 
+    // the pasted Abe face may finish loading after the screen is already open
+    window.addEventListener('abe-ready', () => { if (overlay.classList.contains('active')) refresh(); });
+
     document.querySelectorAll('.btn-skin').forEach(b => b.addEventListener('click', open));
     document.getElementById('btn-skin-done').addEventListener('click', close);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });

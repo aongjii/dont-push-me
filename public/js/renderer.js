@@ -3,6 +3,18 @@
 
 const INK = '#2B2140';
 
+// The "Abe" face is a real picture pasted flat onto the cartoon blob (funny because it clashes).
+// Until it has loaded, the hand-drawn vector face below is used instead.
+const ABE_FACE = (() => {
+    const holder = { img: new Image(), ready: false };
+    holder.img.onload = () => {
+        holder.ready = true;
+        window.dispatchEvent(new Event('abe-ready'));
+    };
+    holder.img.src = 'img/abe.png';
+    return holder;
+})();
+
 const THEMES = {
     meadow: {
         sky: '#9ADBFF', cloud: '#FFFFFF', hillFar: '#A8E4B9', hillNear: '#82D49C',
@@ -900,6 +912,11 @@ class Renderer {
         const ey = -3;
         const fx = f * 3; // face looks toward travel direction
 
+        if (face === 'abe' && ABE_FACE.ready) {
+            this.drawPastedFace(o, f, fx);
+            return;
+        }
+
         if (o.mood === 'dead') {
             ctx.strokeStyle = INK;
             ctx.lineWidth = 2.2;
@@ -971,6 +988,47 @@ class Renderer {
         }
 
         this.drawFaceExtras(face, fx, ey);
+    }
+
+    // A flat photo-style sticker over the face, clipped to an oval. Only the things that must stay
+    // readable are drawn on top of it: an open mouth while inhaling, and X eyes when dead.
+    drawPastedFace(o, f, fx) {
+        const ctx = this.ctx;
+        const cx = fx * 0.6, cy = -2, rx = 14.6, ry = 13.8; // a bit above centre so overalls / scarf still show below
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.drawImage(ABE_FACE.img, cx - rx, cy - ry, rx * 2, ry * 2);
+        ctx.restore();
+
+        ctx.strokeStyle = 'rgba(43, 33, 64, 0.45)';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        if (o.mood === 'dead') {
+            ctx.strokeStyle = '#E74C3C';
+            ctx.lineWidth = 2.4;
+            ctx.lineCap = 'round';
+            [-6.5, 6.5].forEach(x => {
+                ctx.beginPath();
+                ctx.moveTo(fx + x - 3, -6); ctx.lineTo(fx + x + 3, 0);
+                ctx.moveTo(fx + x + 3, -6); ctx.lineTo(fx + x - 3, 0);
+                ctx.stroke();
+            });
+        } else if (o.inhaling) {
+            ctx.fillStyle = '#7A2E48';
+            ctx.beginPath();
+            ctx.ellipse(fx + f * 3, 6, 6, 6.8, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#FF8FA8';
+            ctx.beginPath();
+            ctx.ellipse(fx + f * 3, 9, 3.6, 2.6, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
     }
 
     drawEyes(face, fx, ey, ex, f, o) {

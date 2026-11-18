@@ -310,3 +310,12 @@ test('skins: sent on create/join, colour clash resolved, changes shared in the l
 
     host.disconnect(); guest.disconnect();
 });
+
+test('the pasted Abe face image is served', async () => {
+    const res = await fetch(`${URL}/img/abe.png`);
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('content-type'), 'image/png');
+    const bytes = Buffer.from(await res.arrayBuffer());
+    assert.ok(bytes.length > 1000 && bytes.length < 400000, `unexpected size ${bytes.length}`);
+    assert.equal(bytes.subarray(1, 4).toString(), 'PNG');
+});
