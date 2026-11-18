@@ -279,6 +279,21 @@ io.on('connection', (socket) => {
         if (room) room.handleEmote(playerId, emote);
     });
 
+    // Leave the room for good: the seat is freed right away (unlike a dropped connection,
+    // which is held for a while so the player can come back)
+    socket.on('leave_room', (ack) => {
+        if (currentRoomCode && playerId) {
+            const code = currentRoomCode;
+            const leavingId = playerId;
+            currentRoomCode = null;
+            playerId = null;
+            socket.leave(code);
+            removeFromRoom(code, leavingId);
+            console.log(`Player left Room ${code}`);
+        }
+        if (typeof ack === 'function') ack();
+    });
+
     // Handle disconnection: hold the seat for a while so the player can come back
     socket.on('disconnect', () => {
         console.log(`Socket disconnected: ${socket.id}`);

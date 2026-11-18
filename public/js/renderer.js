@@ -150,7 +150,17 @@ class Renderer {
             }
         });
         gameState.hazards.forEach(h => this.drawHazard(h));
-        (gameState.items || []).forEach(it => { if (it.alive) this.drawItem(it, localPlayer); });
+        // Only the closest item shows the "hold C" hint, so overlapping hints don't clutter the screen
+        const items = (gameState.items || []).filter(it => it.alive);
+        let nearest = null;
+        if (localPlayer) {
+            let best = 190;
+            items.forEach(it => {
+                const d = Math.hypot(it.x - (localPlayer.x + localPlayer.width / 2), it.y - (localPlayer.y + localPlayer.height / 2));
+                if (d < best) { best = d; nearest = it; }
+            });
+        }
+        items.forEach(it => this.drawItem(it, localPlayer, it === nearest));
 
         // Players: others first, local on top
         const players = gameState.players.filter(p => !p.swallowed);
@@ -484,7 +494,7 @@ class Renderer {
     }
 
     // ----------------------------------------------------------- collectibles
-    drawItem(it, localPlayer) {
+    drawItem(it, localPlayer, showHint) {
         const ctx = this.ctx;
         const bob = Math.sin(this.time * 3 + it.id) * 4;
         ctx.save();
@@ -535,9 +545,8 @@ class Renderer {
         ctx.restore();
 
         // Hint when you're close enough to inhale it
-        if (localPlayer && !localPlayer.isDead && !localPlayer.isFinished && !localPlayer.mouth && !localPlayer.inhaling) {
-            const d = Math.hypot(it.x - (localPlayer.x + localPlayer.width / 2), it.y - (localPlayer.y + localPlayer.height / 2));
-            if (d < 190) this.drawKeyPrompt(it.x, it.y - 34, 'C', 'ค้างเพื่ออม');
+        if (showHint && localPlayer && !localPlayer.isDead && !localPlayer.isFinished && !localPlayer.mouth && !localPlayer.inhaling) {
+            this.drawKeyPrompt(it.x, it.y - 34, 'C', 'ค้างเพื่ออม');
         }
     }
 

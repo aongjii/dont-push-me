@@ -255,11 +255,22 @@ socket.on('room_reset', ({ players }) => {
     UI.showScreen('lobby');
 });
 
-// Back to Menu
-document.getElementById('btn-menu').addEventListener('click', () => {
-    clearSession();
-    window.location.reload();
-});
+// Leave the room (lobby, in-game and results screens all have a button)
+let leaving = false;
+function leaveRoom() {
+    if (leaving) return;
+    // Mid-round it's easy to click by accident, so ask first
+    if (inGame() && !window.confirm('ออกจากห้องกลางเกม? คุณจะกลับเข้ามาที่เดิมไม่ได้')) return;
+    leaving = true;
+    clearInputs();
+    predictor.active = false;
+
+    const finish = () => { clearSession(); window.location.reload(); };
+    // Wait for the server to confirm (so the seat is freed), but don't hang if it doesn't answer
+    const fallback = setTimeout(finish, 1500);
+    socket.emit('leave_room', () => { clearTimeout(fallback); finish(); });
+}
+document.querySelectorAll('[data-leave]').forEach(b => b.addEventListener('click', () => { b.blur(); leaveRoom(); }));
 
 // --- SOCKET.IO EVENT HANDLERS ---
 

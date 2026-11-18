@@ -70,6 +70,7 @@
             <div class="lobby-actions">
                 <button id="btn-start" class="btn btn-success" disabled>เริ่มเกมเลย!</button>
                 <button class="btn btn-secondary btn-help">📖 วิธีเล่น</button>
+                <button class="btn btn-leave" data-leave>ออกจากห้อง</button>
                 <p id="host-tip" class="host-tip">รอหัวหน้าห้องกดเริ่มเกม (ต้องการอย่างน้อย 2 คน)...</p>
             </div>
         </div>
@@ -91,6 +92,7 @@
             </div>
 
             <div class="hud-right">
+                <button id="btn-leave-game" class="btn-mute" title="ออกจากห้อง" data-leave>🚪</button>
                 <button id="btn-mute" class="btn-mute" title="เปิด/ปิดเสียง (M)">🔊</button>
                 <div class="abilities">
                     <div class="ability-slot" id="ability-inhale">
@@ -170,6 +172,7 @@
             <div class="end-actions">
                 <button id="btn-next-round" class="btn btn-primary" style="display: none;">ด่านต่อไป</button>
                 <p id="next-round-tip" class="host-tip">รอหัวหน้าห้องกดไปด่านถัดไป...</p>
+                <button class="btn btn-leave" data-leave>ออกจากห้อง</button>
             </div>
         </div>
     </div>
@@ -199,7 +202,7 @@
             <div class="end-actions">
                 <button id="btn-rematch" class="btn btn-primary" style="display:none">เล่นอีกรอบ (กลับห้องรอ)</button>
                 <p id="rematch-tip" class="host-tip">รอหัวหน้าห้องกดเล่นอีกรอบ...</p>
-                <button id="btn-menu" class="btn btn-secondary">กลับหน้าหลัก</button>
+                <button id="btn-menu" class="btn btn-leave" data-leave>ออกจากห้อง</button>
             </div>
         </div>
     </div>

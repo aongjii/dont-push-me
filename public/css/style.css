@@ -776,6 +776,17 @@ canvas {
     to { transform: translateX(-50%) scale(1); opacity: 1; }
 }
 
+/* Leave room */
+.btn-leave {
+    background: transparent;
+    color: var(--danger);
+    border: 2px solid var(--line);
+}
+
+.btn-leave:hover { background: #FFECEC; border-color: var(--danger); }
+
+.lobby-actions .btn-leave, .end-actions .btn-leave { display: block; width: 100%; margin-top: 10px; }
+
 @media (max-width: 640px) {
     .power-grid { grid-template-columns: 1fr; }
 }
