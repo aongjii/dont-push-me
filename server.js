@@ -331,7 +331,7 @@ io.on('connection', (socket) => {
 // Run server
 server.listen(port, () => {
     console.log(`===============================================`);
-    console.log(`🎮 Don't Push Me! server running on:`);
-    console.log(`👉 http://localhost:${port}`);
+    console.log(`Don't Push Me! server running on:`);
+    console.log(`  -> http://localhost:${port}`);
     console.log(`===============================================`);
 });

@@ -37,7 +37,7 @@ function createRateLimiter(max, windowMs, now = Date.now) {
     };
 }
 
-const EMOTE_COUNT = 4; // client shows 😂 😡 👋 💀 for 1-4
+const EMOTE_COUNT = 4; // client shows laugh / angry / wave / skull icons for 1-4
 
 function sanitizeEmote(raw) {
     return Number.isInteger(raw) && raw >= 0 && raw < EMOTE_COUNT ? raw : null;

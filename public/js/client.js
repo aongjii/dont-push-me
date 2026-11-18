@@ -1,3 +1,6 @@
+// Turn every <i data-icon="..."> placeholder into our own SVG icon
+Icons.hydrate();
+
 const socket = io();
 
 // Client state variables
@@ -14,9 +17,11 @@ const renderer = new Renderer('gameCanvas');
 const hudAlertBox = document.getElementById('hud-alert-box');
 let alertTimeout = null;
 
-function showHudAlert(text, duration = 2000) {
+function showHudAlert(text, duration = 2000, icon = null) {
     if (alertTimeout) clearTimeout(alertTimeout);
-    hudAlertBox.textContent = text;
+    hudAlertBox.replaceChildren();
+    if (icon) hudAlertBox.appendChild(Icons.svg(icon, 20));
+    hudAlertBox.appendChild(document.createTextNode(text));
     hudAlertBox.style.display = 'block';
     alertTimeout = setTimeout(() => {
         hudAlertBox.style.display = 'none';
@@ -128,7 +133,7 @@ const keyMap = {
     'KeyV': 'power'
 };
 
-const EMOTES = ['😂', '😡', '👋', '💀'];
+const EMOTES = ['laugh', 'angry', 'wave', 'skull']; // icon names (see icons.js)
 const emoteKeys = { Digit1: 0, Digit2: 1, Digit3: 2, Digit4: 3, Numpad1: 0, Numpad2: 1, Numpad3: 2, Numpad4: 3 };
 
 function inGame() {
@@ -136,7 +141,7 @@ function inGame() {
 }
 
 const muteBtn = document.getElementById('btn-mute');
-function refreshMuteButton() { muteBtn.textContent = Sfx.isMuted() ? '🔇' : '🔊'; }
+function refreshMuteButton() { Icons.set(muteBtn, Sfx.isMuted() ? 'sound_off' : 'sound_on', 22); }
 refreshMuteButton();
 muteBtn.addEventListener('click', () => { Sfx.toggleMute(); refreshMuteButton(); muteBtn.blur(); });
 
@@ -491,7 +496,7 @@ function updateSpectate(state) {
         spectateBanner.style.display = 'none';
         return localPlayerId;
     }
-    spectateBanner.textContent = `👀 กำลังดู ${target.name}  (A / D เปลี่ยนคน)`;
+    spectateBanner.replaceChildren(Icons.svg('eyes', 22), document.createTextNode(`กำลังดู ${target.name}  (A / D เปลี่ยนคน)`));
     spectateBanner.style.display = 'block';
     return target.id;
 }
@@ -553,10 +558,10 @@ function interpolatedStateRaw(renderTime) {
 }
 
 const POWER_INFO = {
-    fire:  { icon: '🔥', name: 'ไฟ',      key: 'V',     how: 'พ่นลูกไฟใส่คนข้างหน้า' },
-    ice:   { icon: '❄️', name: 'น้ำแข็ง', key: 'V',     how: 'แช่แข็งคนที่อยู่ข้างหน้า' },
-    spin:  { icon: '🌀', name: 'ปั่น',    key: 'V',     how: 'หมุนติ้วชนทุกคนรอบตัวให้กระเด็น' },
-    wings: { icon: '🪽', name: 'ปีก',     key: 'Space', how: 'กดกระโดดซ้ำกลางอากาศเพื่อกระพือ • กดค้างเพื่อร่อน' }
+    fire:  { icon: 'fire',  name: 'ไฟ',      key: 'V',     how: 'พ่นลูกไฟใส่คนข้างหน้า' },
+    ice:   { icon: 'ice',   name: 'น้ำแข็ง', key: 'V',     how: 'แช่แข็งคนที่อยู่ข้างหน้า' },
+    spin:  { icon: 'spin',  name: 'ปั่น',    key: 'V',     how: 'หมุนติ้วชนทุกคนรอบตัวให้กระเด็น' },
+    wings: { icon: 'wings', name: 'ปีก',     key: 'Space', how: 'กดกระโดดซ้ำกลางอากาศเพื่อกระพือ • กดค้างเพื่อร่อน' }
 };
 const POWER_MS = { fire: 15000, ice: 15000, spin: 15000, wings: 10000 };
 
@@ -572,7 +577,7 @@ function updatePowerCard(localP) {
     }
     const info = POWER_INFO[localP.power];
     card.style.display = 'flex';
-    document.getElementById('power-icon').textContent = info.icon;
+    Icons.set(document.getElementById('power-icon'), info.icon, 34);
     document.getElementById('power-name').textContent = `พลัง${info.name}`;
     document.getElementById('power-how').textContent = info.how;
     document.getElementById('power-key').textContent = info.key;
@@ -586,18 +591,22 @@ function updatePowerCard(localP) {
     card.classList.toggle('cooling', localP.powerCd > 0);
 }
 
+function setCoachText(icon, text) {
+    document.getElementById('coach-text').replaceChildren(Icons.svg(icon, 26), document.createTextNode(text));
+}
+
 // Big hint when you're swallowed (mash keys) or spat out over danger (hop!)
 function updateCoach(p) {
     const coach = document.getElementById('coach');
     const bar = document.getElementById('coach-bar');
     if (p.swallowed) {
         coach.style.display = 'block';
-        document.getElementById('coach-text').textContent = '😮 ถูกกลืนแล้ว! กดปุ่มเดิน/กระโดดรัวๆ เพื่อดิ้นออก';
+        setCoachText('inhale', 'ถูกกลืนแล้ว! กดปุ่มเดิน/กระโดดรัวๆ เพื่อดิ้นออก');
         bar.style.display = 'block';
         document.getElementById('coach-fill').style.width = `${Math.min(100, (p.swallowTaps / p.tapsNeeded) * 100)}%`;
     } else if (p.spitBodyMs > 0 && p.recover > 0 && !p.isGrounded && !p.isDead) {
         coach.style.display = 'block';
-        document.getElementById('coach-text').textContent = '💨 ถูกพ่น! กด Space เพื่อกระโดดเบรก!';
+        setCoachText('wind', 'ถูกพ่น! กด Space เพื่อกระโดดเบรก!');
         bar.style.display = 'none';
     } else {
         coach.style.display = 'none';
@@ -610,7 +619,8 @@ function showPowerToast(info) {
     el.innerHTML = '';
     const big = document.createElement('div');
     big.className = 'toast-title';
-    big.textContent = `${info.icon} ได้พลัง${info.name}!`;
+    big.appendChild(Icons.svg(info.icon, 34));
+    big.appendChild(document.createTextNode(`ได้พลัง${info.name}!`));
     const how = document.createElement('div');
     how.className = 'toast-how';
     how.textContent = info.key === 'V' ? `กดปุ่ม V เพื่อ${info.how}` : info.how;
@@ -708,11 +718,11 @@ socket.on('game_effect', (effect) => {
         const victim = gameState.players.find(p => p.id === effect.victim);
         if (pusher && victim) {
             const verbs = {
-                spin: '🌀 ปั่นกระเด็น', fire: '🔥 พ่นไฟใส่', ice: '❄️ แช่แข็ง',
-                spit: '🎳 พ่นเพื่อนใส่', star: '⭐ ปาดาวใส่'
+                spin: ['spin', 'ปั่นกระเด็น'], fire: ['fire', 'พ่นไฟใส่'], ice: ['ice', 'แช่แข็ง'],
+                spit: ['inhale', 'พ่นเพื่อนใส่'], star: ['star', 'ปาดาวใส่']
             };
-            const [icon, ...verb] = (verbs[effect.kind] || '💥 ผลัก').split(' ');
-            showHudAlert(`${icon} ${pusher.name} ${verb.join(' ')} ${victim.name}!`);
+            const [icon, verb] = verbs[effect.kind] || ['push', 'ผลัก'];
+            showHudAlert(`${pusher.name} ${verb} ${victim.name}!`, 2000, icon);
             Sfx.play(effect.kind === 'ice' ? 'ice' : 'push');
             renderer.triggerShake(180, 8);
             renderer.addParticles(victim.x + victim.width/2, victim.y + victim.height/2, victim.color, 12);
@@ -723,7 +733,7 @@ socket.on('game_effect', (effect) => {
         const puller = gameState.players.find(p => p.id === effect.puller);
         const victim = gameState.players.find(p => p.id === effect.victim);
         if (puller && victim) {
-            showHudAlert(`🧲 ${puller.name} ดึงขัดขา ${victim.name}! (กดรัวๆ เพื่อสลัดหลุด)`);
+            showHudAlert(`${puller.name} ดึงขัดขา ${victim.name}! (กดรัวๆ เพื่อสลัดหลุด)`, 2000, 'pull');
             Sfx.play('pull');
             renderer.triggerShake(120, 4);
         }
@@ -732,7 +742,7 @@ socket.on('game_effect', (effect) => {
     if (effect.type === 'switch_toggle') {
         const player = gameState.players.find(p => p.id === effect.player);
         if (player) {
-            showHudAlert(`🔘 ${player.name} สับสวิตช์สะพานแล้ว!`, 1500);
+            showHudAlert(`${player.name} สับสวิตช์สะพานแล้ว!`, 1500, 'lever');
             Sfx.play('switch');
             renderer.triggerShake(100, 3);
         }
@@ -740,10 +750,10 @@ socket.on('game_effect', (effect) => {
 
     if (effect.type === 'player_died') {
         if (effect.killerName) {
-            showHudAlert(`😈 ${effect.killerName} ส่ง ${effect.name} ลงเหว! (+3)`, 2600);
+            showHudAlert(`${effect.killerName} ส่ง ${effect.name} ลงเหว! (+3)`, 2600, 'burst');
             if (effect.killerId === localPlayerId) Sfx.play('ko');
         } else {
-            showHudAlert(`💀 ${effect.name} ร่วงลงหลุมตายอนาถ!`);
+            showHudAlert(`${effect.name} ร่วงลงหลุมตายอนาถ!`, 2000, 'skull');
         }
         const victim = gameState.players.find(p => p.id === effect.id);
         if (victim) {
@@ -754,13 +764,13 @@ socket.on('game_effect', (effect) => {
     }
 
     if (effect.type === 'player_finished') {
-        showHudAlert(`🎉 ${effect.name} วิ่งรอดเข้าเส้นชัยสำเร็จ!`);
+        showHudAlert(`${effect.name} วิ่งรอดเข้าเส้นชัยสำเร็จ!`, 2000, 'flag');
         Sfx.play('finish');
     }
 
     if (effect.type === 'swallow') {
         const by = gameState.players.find(p => p.id === effect.by);
-        if (effect.kind === 'player' && by) showHudAlert(`😮 ${effect.byName} กลืน ${effect.victimName} เข้าไปแล้ว! (กดรัวๆ เพื่อหนีออกมา)`, 2400);
+        if (effect.kind === 'player' && by) showHudAlert(`${effect.byName} กลืน ${effect.victimName} เข้าไปแล้ว! (กดรัวๆ เพื่อหนีออกมา)`, 2400, 'inhale');
         Sfx.play('swallow');
         if (by) renderer.triggerShake(90, 3);
     }
@@ -772,13 +782,13 @@ socket.on('game_effect', (effect) => {
     }
 
     if (effect.type === 'escape') {
-        showHudAlert(`💨 ${effect.name} ดิ้นหลุดออกมาได้!`);
+        showHudAlert(`${effect.name} ดิ้นหลุดออกมาได้!`, 2000, 'wind');
         Sfx.play('free');
     }
 
     if (effect.type === 'power_gain') {
         const info = POWER_INFO[effect.power];
-        showHudAlert(`⭐ ${effect.name} ได้พลัง ${info.icon} ${info.name}!`, 2400);
+        showHudAlert(`${effect.name} ได้พลัง${info.name}!`, 2400, info.icon);
         Sfx.play('power');
         if (effect.id === localPlayerId) { powerUsed = false; showPowerToast(info); }
         const p = gameState.players.find(pl => pl.id === effect.id);
@@ -820,7 +830,10 @@ socket.on('round_end', ({ round, levelIndex, scoreboard, finishOrder }) => {
     finList.innerHTML = '';
     
     if (finishOrder.length === 0) {
-        finList.innerHTML = '<span class="host-tip">ไม่มีใครรอดเลยในรอบนี้... 💀</span>';
+        const none = document.createElement('span');
+        none.className = 'host-tip';
+        none.append('ไม่มีใครรอดเลยในรอบนี้... ', Icons.svg('skull', 20));
+        finList.appendChild(none);
     } else {
         finishOrder.forEach((name, idx) => {
             const badge = document.createElement('span');
@@ -886,7 +899,8 @@ socket.on('match_end', ({ scoreboard, winner }) => {
         const tr = document.createElement('tr');
 
         const rankTd = document.createElement('td');
-        rankTd.textContent = idx === 0 ? '👑 #1' : `#${idx + 1}`;
+        if (idx === 0) rankTd.append(Icons.svg('crown', 20), ' #1');
+        else rankTd.textContent = `#${idx + 1}`;
         rankTd.style.fontWeight = '700';
 
         const nameTd = nameCell(p);

@@ -911,3 +911,30 @@ canvas {
     .skin-layout { flex-direction: column; align-items: center; }
     .skin-options { width: 100%; }
 }
+
+/* ------------------------------------------------ Icons (our own, see js/icons.js) */
+.icon { display: inline-block; vertical-align: middle; flex-shrink: 0; }
+.btn .icon { margin-right: 8px; vertical-align: -5px; }
+.btn-mute .icon { margin: 0; width: 22px; height: 22px; vertical-align: middle; }
+.ability-icon { display: flex; align-items: center; justify-content: center; }
+.ability-icon .icon { width: 26px; height: 26px; }
+.pc-icon { display: flex; }
+.pc-icon .icon { width: 38px; height: 38px; }
+.crown-icon { display: flex; justify-content: center; }
+.crown-icon .icon { width: 76px; height: 76px; }
+.power-item .pi { display: flex; }
+.power-item .pi .icon { width: 34px; height: 34px; }
+.hud-emotes span { display: inline-flex; align-items: center; gap: 4px; }
+.hud-emotes .icon { width: 24px; height: 24px; }
+.hud-alert-box .icon { margin-right: 8px; vertical-align: -5px; }
+.power-toast .toast-title .icon { margin-right: 10px; width: 36px; height: 36px; vertical-align: -8px; }
+.coach #coach-text .icon { margin-right: 10px; vertical-align: -7px; }
+.hud-spectate .icon { margin-right: 8px; vertical-align: -6px; }
+.help-card h3 .icon, .skin-card h2 .icon { margin-right: 6px; vertical-align: -5px; }
+.guide-item .icon, .help-list .icon { margin-right: 4px; vertical-align: -4px; }
+.hud-catchup .icon, .hud-timer .icon, .hud-ping .icon { width: 16px; height: 16px; margin-right: 4px; vertical-align: -3px; }
+.hud-timer .icon { width: 18px; height: 18px; }
+.popup-content h3 .icon { vertical-align: -5px; }
+.swatch .icon { width: 16px; height: 16px; }
+.finisher-badge .icon, .name-cell .icon { vertical-align: -4px; }
+.host-tip .icon { vertical-align: -5px; }

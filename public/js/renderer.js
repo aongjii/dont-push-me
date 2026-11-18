@@ -661,9 +661,7 @@ class Renderer {
         this.drawNameTag(player, isLocal);
 
         if (frozen) {
-            ctx.font = '18px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(frozen === 'ice' ? '❄️' : '🧲', cx, player.y - 36);
+            Icons.draw(ctx, frozen === 'ice' ? 'ice' : 'pull', cx, player.y - 40, 20);
         }
 
         // Emote bubble: pops in, floats up and fades over ~1.8s
@@ -676,9 +674,7 @@ class Renderer {
                 const pop = Math.min(1, age / 0.15);
                 ctx.save();
                 ctx.globalAlpha = Math.min(1, (1.8 - age) / 0.4);
-                ctx.font = `${Math.round(30 * (0.6 + 0.4 * pop))}px sans-serif`;
-                ctx.textAlign = 'center';
-                ctx.fillText(emote.emoji, cx, player.y - 54 - age * 14);
+                Icons.draw(ctx, emote.emoji, cx, player.y - 62 - age * 14, Math.round(34 * (0.6 + 0.4 * pop)));
                 ctx.restore();
             }
         }

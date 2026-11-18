@@ -319,3 +319,19 @@ test('the pasted Abe face image is served', async () => {
     assert.ok(bytes.length > 1000 && bytes.length < 400000, `unexpected size ${bytes.length}`);
     assert.equal(bytes.subarray(1, 4).toString(), 'PNG');
 });
+
+test('no emoji are left in the shipped game code (icons are our own)', () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const root = path.join(__dirname, '..');
+    const files = ['public/index.html', 'server.js', ...['public/js', 'public/css', 'game', 'shared'].flatMap(d =>
+        fs.readdirSync(path.join(root, d)).filter(f => /\.(js|css)$/.test(f)).map(f => `${d}/${f}`))];
+    const isEmoji = (cp) => (cp >= 0x1F000 && cp <= 0x1FFFF) || (cp >= 0x2600 && cp <= 0x27BF) ||
+        (cp >= 0x2B00 && cp <= 0x2BFF) || (cp >= 0x23E9 && cp <= 0x23FF) || cp === 0xFE0F;
+    const found = [];
+    for (const f of files) {
+        const text = fs.readFileSync(path.join(root, f), 'utf8');
+        for (const ch of text) if (isEmoji(ch.codePointAt(0))) found.push(`${f}: ${ch}`);
+    }
+    assert.deepEqual(found, []);
+});

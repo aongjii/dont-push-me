@@ -61,7 +61,7 @@ const SkinUI = (() => {
                 b.style.background = c.hex;
                 b.title = used ? `${c.name} (มีคนใช้แล้ว)` : c.name;
                 b.disabled = used;
-                if (used) b.textContent = '✕';
+                if (used) b.appendChild(Icons.svg('cross', 16));
                 b.addEventListener('click', () => choose('color', c.hex));
                 grid.appendChild(b);
             });
