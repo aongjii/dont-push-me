@@ -1034,19 +1034,25 @@ class Renderer {
                 });
                 break;
             case 'abe':
-                // narrowed, confident eyes
+                // eyes gently closed: a heavy lid line with little lash flicks and a soft shadow under
                 ex.forEach(x => {
-                    ctx.fillStyle = '#FFFFFF';
-                    ctx.beginPath(); ctx.ellipse(fx + x, ey + 0.5, 4.3, 2.9, 0, 0, Math.PI * 2); ctx.fill();
-                    ctx.fillStyle = INK;
-                    ctx.beginPath(); ctx.arc(fx + x + f * 1.4, ey + 0.8, 2.1, 0, Math.PI * 2); ctx.fill();
-                    // heavy upper lid
+                    const side = Math.sign(x);
                     ctx.strokeStyle = INK;
-                    ctx.lineWidth = 2.2;
+                    ctx.lineWidth = 2.6;
                     ctx.beginPath();
-                    ctx.moveTo(fx + x - 4.6, ey - 0.6);
-                    ctx.quadraticCurveTo(fx + x, ey - 3.8, fx + x + 4.6, ey - 0.6);
+                    ctx.arc(fx + x, ey - 1.2, 4.5, 0.1 * Math.PI, 0.9 * Math.PI);
                     ctx.stroke();
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(fx + x + side * 4.3, ey + 1.2);
+                    ctx.lineTo(fx + x + side * 6.6, ey + 2.4);
+                    ctx.stroke();
+                    ctx.globalAlpha = 0.28;
+                    ctx.lineWidth = 1.4;
+                    ctx.beginPath();
+                    ctx.arc(fx + x, ey - 0.4, 5.6, 0.2 * Math.PI, 0.8 * Math.PI);
+                    ctx.stroke();
+                    ctx.globalAlpha = 1;
                 });
                 break;
             case 'smirk':
@@ -1103,19 +1109,34 @@ class Renderer {
                 ctx.beginPath(); ctx.ellipse(fx, 7.2, 2.8, 3.8, 0, 0, Math.PI * 2); ctx.fill();
                 break;
             case 'abe': {
-                // a wide, confident grin with teeth
-                ctx.fillStyle = '#FFFFFF';
+                // full, closed lips: lighter upper lip, a little fuller lower lip
+                ctx.lineWidth = 1.5;
+                ctx.lineJoin = 'round';
+                ctx.fillStyle = '#F6C6C8';
                 ctx.beginPath();
-                ctx.moveTo(fx - 8, 3.2);
-                ctx.quadraticCurveTo(fx, 14.5, fx + 8, 3.2);
-                ctx.quadraticCurveTo(fx, 6, fx - 8, 3.2);
+                ctx.moveTo(fx - 7.5, 10);
+                ctx.quadraticCurveTo(fx - 3.6, 7.4, fx, 8.7);
+                ctx.quadraticCurveTo(fx + 3.6, 7.4, fx + 7.5, 10);
+                ctx.quadraticCurveTo(fx, 10.9, fx - 7.5, 10);
                 ctx.closePath();
                 ctx.fill();
                 ctx.stroke();
-                ctx.lineWidth = 1;
-                [-3.5, 0, 3.5].forEach(x => {
-                    ctx.beginPath(); ctx.moveTo(fx + x, 5.2); ctx.lineTo(fx + x, 8.6 - Math.abs(x) * 0.3); ctx.stroke();
-                });
+                ctx.fillStyle = '#EBA0A8';
+                ctx.beginPath();
+                ctx.moveTo(fx - 7.5, 10);
+                ctx.quadraticCurveTo(fx, 10.9, fx + 7.5, 10);
+                ctx.quadraticCurveTo(fx + 4.6, 14.6, fx, 14.6);
+                ctx.quadraticCurveTo(fx - 4.6, 14.6, fx - 7.5, 10);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                // a little shine on the lower lip
+                ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+                ctx.lineWidth = 1.2;
+                ctx.beginPath();
+                ctx.moveTo(fx - 2.2, 12.6);
+                ctx.lineTo(fx + 0.8, 12.6);
+                ctx.stroke();
                 break;
             }
             default:
@@ -1154,15 +1175,41 @@ class Renderer {
             });
             ctx.globalAlpha = 1;
         } else if (face === 'abe') {
-            // thick brows, one raised
-            ctx.lineWidth = 3.8;
-            ctx.beginPath(); ctx.moveTo(fx - 11.5, ey - 6.3); ctx.lineTo(fx - 2.2, ey - 5.2); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(fx + 2.5, ey - 6.5); ctx.quadraticCurveTo(fx + 7, ey - 12.5, fx + 11.5, ey - 7.5); ctx.stroke();
-            // stubble
-            ctx.fillStyle = 'rgba(43, 33, 64, 0.5)';
-            [[-9, 6.5], [-6.5, 10], [-3, 12.3], [0, 13], [3, 12.3], [6.5, 10], [9, 6.5],
-             [-11, 2.5], [11, 2.5], [-4.5, 9.5], [4.5, 9.5], [-1.5, 10.5], [1.5, 10.5], [-8, 3.2], [8, 3.2]].forEach(([x, y]) => {
-                ctx.beginPath(); ctx.arc(fx + x, y, 0.85, 0, Math.PI * 2); ctx.fill();
+            // thick, bushy brows slanting up towards the middle
+            ctx.lineWidth = 4.4;
+            [-1, 1].forEach(side => {
+                ctx.beginPath();
+                ctx.moveTo(fx + side * 12.5, ey - 3.2);
+                ctx.quadraticCurveTo(fx + side * 7.5, ey - 8.2, fx + side * 2, ey - 9.2);
+                ctx.stroke();
+                // wiry hairs along the top
+                ctx.lineWidth = 1.3;
+                [[10, -6.2, 11, -8.2], [7.2, -7.8, 7.6, -10.2], [4.4, -8.8, 4.2, -11.2]].forEach(([x1, y1, x2, y2]) => {
+                    ctx.beginPath();
+                    ctx.moveTo(fx + side * x1, ey + y1 + 0.4);
+                    ctx.lineTo(fx + side * x2, ey + y2 + 0.4);
+                    ctx.stroke();
+                });
+                ctx.lineWidth = 4.4;
+            });
+            // a long nose: shaded bridge, rounded tip, dark nostrils
+            ctx.lineWidth = 1.3;
+            ctx.globalAlpha = 0.45;
+            ctx.beginPath();
+            ctx.moveTo(fx - 1.6, ey - 4);
+            ctx.quadraticCurveTo(fx - 2.4, ey + 2, fx - 3.4, ey + 6.6);
+            ctx.stroke();
+            ctx.globalAlpha = 0.8;
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            ctx.arc(fx, ey + 5.6, 4.4, 0.12 * Math.PI, 0.88 * Math.PI);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = INK;
+            [-1, 1].forEach(side => {
+                ctx.beginPath();
+                ctx.ellipse(fx + side * 2.3, ey + 7.4, 1.5, 1, side * 0.3, 0, Math.PI * 2);
+                ctx.fill();
             });
         }
     }
