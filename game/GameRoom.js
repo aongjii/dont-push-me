@@ -2,8 +2,12 @@ const Player = require('./Player');
 const Level = require('./Level');
 const GameLoop = require('./GameLoop');
 const { sanitizeInput, sanitizeEmote } = require('./validation');
+const Movement = require('../shared/movement');
 
 const KO_POINTS = 3; // bonus for sending a rival to their doom
+const MAX_CMDS_PER_MESSAGE = 30;
+const MOVE_BUDGET_CAP = 500;     // ms of banked movement (covers a burst after a lag spike)
+const MOVE_BUDGET_RATE = 1.05;   // a little slack for clock drift between client and server
 
 class GameRoom {
     constructor(code, io) {
@@ -84,8 +88,9 @@ class GameRoom {
         this.level = new Level(this.levelIndex);
 
         // Reset players to spawn coordinates
-        Object.values(this.players).forEach(p => {
-            p.reset(this.level.spawnX, this.level.spawnY);
+        // Spread the spawn points so players aren't stacked inside each other
+        Object.values(this.players).forEach((p, i) => {
+            p.reset(this.level.spawnX + i * 40, this.level.spawnY);
         });
 
         this.roundTimeLimit = this.level.timeLimit * 1000;
@@ -133,7 +138,7 @@ class GameRoom {
 
     handleInput(id, input) {
         const player = this.players[id];
-        if (player && this.status === 'playing') {
+        if (player && !player.usesCmds && this.status === 'playing') {
             const clean = sanitizeInput(input);
 
             // Mashing movement keys while pulled (or swallowed) shakes the victim loose
@@ -148,6 +153,56 @@ class GameRoom {
 
             player.input = { ...player.input, ...clean };
         }
+    }
+
+    // Movement commands from a client: [{ s: sequence number, k: held-key bits }, ...].
+    // Each command moves that player exactly one fixed step, which is what lets the client
+    // predict its own movement and the server agree with it.
+    handleCmds(id, cmds) {
+        const player = this.players[id];
+        if (!player || this.status !== 'playing' || !Array.isArray(cmds)) return;
+
+        player.usesCmds = true;
+        const K = Movement.KEY;
+
+        for (const c of cmds.slice(0, MAX_CMDS_PER_MESSAGE)) {
+            if (!c || !Number.isInteger(c.s) || !Number.isInteger(c.k) || c.k < 0 || c.k > 255) continue;
+            if (c.s <= player.lastSeq) continue; // old or duplicate
+            player.lastSeq = c.s;
+            player.ackSeq = c.s;
+            player.lastCmdAt = Date.now();
+
+            // Mashing movement keys while pulled / swallowed shakes the victim loose
+            if (player.pullDuration > 0 || player.swallowedBy) {
+                [K.left, K.right, K.jump].forEach(bit => {
+                    if ((c.k & bit) && !(player.prevKeys & bit)) {
+                        if (player.swallowedBy) player.struggle(this);
+                        else player.breakFree(Player.TUNING.pullBreakFreePerTap);
+                    }
+                });
+            }
+
+            // Movement is limited to real time (plus a little slack) so a client
+            // can't speed itself up by sending commands faster than it should.
+            const canMove = player.moveBudget >= Movement.MOVE.step;
+            if (canMove) player.moveBudget -= Movement.MOVE.step;
+            player.applyCmd(c.k, this.level, this, canMove);
+        }
+    }
+
+    // Back to the waiting room for another match with the same people
+    resetToLobby() {
+        if (this.status !== 'match_end') return false;
+        this.status = 'lobby';
+        this.gameLoop.stop();
+        this.projectiles = [];
+        this.finishOrder = [];
+        this.lastRoundEnd = null;
+        this.lastMatchEnd = null;
+        this.levelIndex = 1;
+        this.round = 1;
+        Object.values(this.players).forEach(p => { p.score = 0; });
+        return true;
     }
 
     handleEmote(id, rawEmote) {
@@ -353,6 +408,13 @@ class GameRoom {
             isFinished: p.isFinished,
             facing: p.facing,
             isGrounded: p.isGrounded,
+            // for the owner's client-side prediction (see shared/movement.js)
+            ack: p.ackSeq,
+            coyote: p.coyote,
+            jbuf: p.jbuf,
+            prevJump: p.prevJump,
+            flapCd: p.flapCd,
+            powerCd: Math.max(0, Math.round(p.powerCd)),
             inhaling: p.inhaling,
             mouth: p.mouth ? p.mouth.kind : null,
             mouthId: p.mouth && p.mouth.kind === 'player' ? p.mouth.id : null,

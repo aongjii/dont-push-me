@@ -154,3 +154,56 @@ test('emotes are broadcast to the whole room during a round', async () => {
     host.disconnect();
     guest.disconnect();
 });
+
+test('movement commands move the player and are acknowledged in game_state', async () => {
+    const host = await connect();
+    host.emit('create_room', { playerName: 'Host' });
+    const created = await once(host, 'room_created');
+    const guest = await connect();
+    guest.emit('join_room', { roomCode: created.roomCode, playerName: 'Guest' });
+    await once(guest, 'room_joined');
+    host.emit('start_game');
+    await once(host, 'round_start', 6000);
+
+    const RIGHT = 2;
+    const cmds = [];
+    for (let i = 1; i <= 20; i++) cmds.push({ s: i, k: RIGHT });
+    const stateAfter = new Promise(resolve => host.on('game_state', st => {
+        const me = st.players.find(p => p.id === created.playerId);
+        if (me.ack >= 20) resolve(me);
+    }));
+    const before = await new Promise(resolve => host.once('game_state', st => resolve(st.players.find(p => p.id === created.playerId))));
+    host.emit('cmds', cmds);
+    const me = await stateAfter;
+    assert.ok(me.x > before.x + 10, `did not move: ${before.x} -> ${me.x}`);
+    assert.equal(me.ack, 20);
+
+    // garbage is ignored without crashing
+    host.emit('cmds', 'nope');
+    host.emit('cmds', [{ s: 'x' }]);
+    host.emit('ping_check', 0, () => {});
+    await new Promise(r => setTimeout(r, 100));
+    guest.emit('ping_check', 0, () => {});
+    const pong = await new Promise(resolve => guest.emit('ping_check', 0, () => resolve('pong')));
+    assert.equal(pong, 'pong');
+
+    host.disconnect();
+    guest.disconnect();
+});
+
+test('only the host can start a rematch, and only after the match', async () => {
+    const host = await connect();
+    host.emit('create_room', { playerName: 'Host' });
+    const created = await once(host, 'room_created');
+    host.emit('rematch'); // lobby: nothing to rematch, must not crash or emit
+    await assert.rejects(once(host, 'room_reset', 300), /timeout/);
+    host.disconnect();
+});
+
+test('health endpoint reports the server is up', async () => {
+    const res = await fetch(`${URL}/healthz`);
+    const body = await res.json();
+    assert.equal(body.ok, true);
+    const shared = await fetch(`${URL}/shared/movement.js`);
+    assert.equal(shared.status, 200);
+});

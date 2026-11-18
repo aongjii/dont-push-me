@@ -164,7 +164,7 @@ test('fire power shoots a fireball; powers expire', () => {
     const { room, ps: [a, b] } = setup(2);
     b.x = 160;
     a.gainPower('fire', room);
-    a.input.push = true; run(room, 50); a.input.push = false;
+    a.input.power = true; run(room, 50); a.input.power = false;
     assert.equal(room.projectiles.length, 1);
     assert.equal(room.projectiles[0].type, 'fire');
     run(room, 500);
@@ -178,7 +178,7 @@ test('ice power freezes a rival in front for 1s', () => {
     const { room, ps: [a, b] } = setup(2);
     b.x = 110;
     a.gainPower('ice', room);
-    a.input.push = true; run(room, 50); a.input.push = false;
+    a.input.power = true; run(room, 50); a.input.power = false;
     assert.ok(b.pullDuration > 0);
     assert.equal(b.freezeKind, 'ice');
     run(room, ABILITY.iceFreeze + 200);
@@ -189,7 +189,7 @@ test('spin power knocks nearby rivals away exactly once per spin', () => {
     const { room, io, ps: [a, b] } = setup(2);
     b.x = a.x + 20;
     a.gainPower('spin', room);
-    a.input.push = true; run(room, 50); a.input.push = false;
+    a.input.power = true; run(room, 50); a.input.power = false;
     run(room, 200);
     assert.equal(effects(io, 'push_hit').filter(e => e.kind === 'spin').length, 1);
     assert.ok(Math.abs(b.vx) > 100 || Math.abs(b.x - a.x) > 40);

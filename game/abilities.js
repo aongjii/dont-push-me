@@ -185,11 +185,11 @@ function install(Player) {
             this.vy = 0;
         },
 
-        // F while holding a power: fire a fireball / freeze / spin
+        // V while holding a power: fire a fireball / freeze / spin
         usePower(room) {
             const type = this.power;
             const m = this.mouthPoint();
-            this.pushCooldown = ABILITY.powerCooldown[type];
+            this.powerCd = ABILITY.powerCooldown[type];
             this.pushDuration = 200;
             room.broadcastEffect('power_use', { id: this.id, power: type });
 

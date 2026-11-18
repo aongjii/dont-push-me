@@ -30,6 +30,8 @@ app.get('/healthz', (req, res) => {
 
 // Serve static frontend files from 'public'
 app.use(express.static(path.join(__dirname, 'public')));
+// Physics code shared with the browser (client-side prediction)
+app.use('/shared', express.static(path.join(__dirname, 'shared')));
 
 // Global state for rooms: code -> GameRoom
 const rooms = {};
@@ -191,6 +193,11 @@ io.on('connection', (socket) => {
             player.graceTimer = null;
         }
         seat(room, player);
+        // The new page numbers its commands from 1 again
+        player.lastSeq = 0;
+        player.ackSeq = 0;
+        player.prevKeys = 0;
+        player.usesCmds = false;
 
         socket.emit('rejoined', {
             roomCode: code,
@@ -245,6 +252,26 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Movement commands, a few per message (see GameRoom.handleCmds)
+    socket.on('cmds', (cmds) => {
+        if (!currentRoomCode || !allowInput()) return;
+        const room = rooms[currentRoomCode];
+        if (room) room.handleCmds(playerId, cmds);
+    });
+
+    // Latency probe for the on-screen ping display
+    socket.on('ping_check', (_, ack) => {
+        if (typeof ack === 'function' && allowInput()) ack();
+    });
+
+    // Host sends everyone back to the waiting room after a match
+    socket.on('rematch', () => {
+        if (!allowAction() || !currentRoomCode) return;
+        const room = rooms[currentRoomCode];
+        if (!room || !isHost(room)) return;
+        if (room.resetToLobby()) io.to(currentRoomCode).emit('room_reset', { players: publicPlayers(room) });
+    });
+
     // Quick reactions (1-4); the room enforces its own per-player cooldown
     socket.on('emote', (emote) => {
         if (!currentRoomCode || !allowInput()) return;
@@ -264,6 +291,7 @@ io.on('connection', (socket) => {
         if (!player || player.socketId !== socket.id) return;
 
         player.connected = false;
+        player.usesCmds = false; // the server moves a disconnected player itself
         // Stop any held keys so a ghost doesn't keep running
         player.input = { left: false, right: false, jump: false, push: false, pull: false, interact: false };
 

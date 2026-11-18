@@ -654,3 +654,128 @@ canvas {
     .game-logo { font-size: 2.4rem; }
     .guide-grid { grid-template-columns: 1fr; }
 }
+
+/* ------------------------------------------------ Help, power card, toast, ping */
+.btn-help-menu { margin-top: 14px; width: 100%; max-width: 480px; }
+.lobby-actions .btn-help { margin-top: 10px; display: block; width: 100%; }
+
+.help-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(43, 33, 64, 0.45);
+    z-index: 900;
+    justify-content: center;
+    align-items: center;
+    padding: 16px;
+    overflow-y: auto;
+}
+
+.help-overlay.active { display: flex; }
+
+.help-card {
+    max-width: 680px;
+    text-align: left;
+    max-height: 100%;
+    overflow-y: auto;
+}
+
+.help-card h2 { text-align: center; margin-bottom: 4px; }
+.help-card h3 { margin: 18px 0 10px; font-size: 1rem; }
+.help-note { font-size: 0.92rem; color: var(--muted); margin-bottom: 10px; line-height: 1.5; }
+.help-card .btn { display: block; margin: 18px auto 0; }
+
+.help-list { padding-left: 20px; font-size: 0.92rem; line-height: 1.6; }
+.help-list li { margin-bottom: 4px; }
+
+.power-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
+.power-item {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    background: #FFF6D6;
+    border-radius: 12px;
+    padding: 10px 12px;
+}
+
+.power-item .pi { font-size: 1.7rem; }
+.power-item div { display: flex; flex-direction: column; font-size: 0.85rem; line-height: 1.35; }
+.power-item b { font-size: 0.95rem; }
+
+.hud-ping { font-variant-numeric: tabular-nums; }
+.hud-ping.good { color: #1F9D63; }
+.hud-ping.ok { color: #B07A00; }
+.hud-ping.bad { color: var(--danger); font-weight: 700; }
+
+/* What power you hold, and how to use it */
+.power-card {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    display: none;
+    align-items: center;
+    gap: 12px;
+    background: #FFF8DF;
+    border: 3px solid var(--yellow);
+    border-radius: 18px;
+    padding: 8px 16px 14px;
+    min-width: 300px;
+    pointer-events: none;
+}
+
+.power-card .pc-icon { font-size: 2rem; }
+.power-card .pc-text { display: flex; flex-direction: column; font-size: 0.85rem; line-height: 1.3; flex: 1; text-align: left; }
+.power-card .pc-text b { font-size: 1.05rem; }
+.power-card kbd { font-size: 1rem; padding: 4px 12px; border-color: var(--yellow); }
+
+.pc-track {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 5px;
+    height: 5px;
+    border-radius: 3px;
+    background: rgba(255, 201, 60, 0.3);
+    overflow: hidden;
+}
+
+#power-bar { height: 100%; width: 100%; background: var(--yellow); transform-origin: left; }
+
+.power-card.nudge { animation: nudge 0.7s ease-in-out infinite alternate; }
+.power-card.cooling { opacity: 0.7; }
+
+@keyframes nudge {
+    from { transform: translateX(-50%) scale(1); }
+    to { transform: translateX(-50%) scale(1.06); }
+}
+
+/* Big message when you get a power */
+.power-toast {
+    position: absolute;
+    top: 22%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 105;
+    background: var(--ink);
+    color: #FFFFFF;
+    border-radius: 20px;
+    padding: 14px 30px;
+    text-align: center;
+    pointer-events: none;
+    animation: popToast 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.power-toast .toast-title { font-size: 1.8rem; font-weight: 700; }
+.power-toast .toast-how { font-size: 1.05rem; margin-top: 4px; color: #FFE08A; }
+
+@keyframes popToast {
+    from { transform: translateX(-50%) scale(0.6); opacity: 0; }
+    to { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
+@media (max-width: 640px) {
+    .power-grid { grid-template-columns: 1fr; }
+}

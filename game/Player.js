@@ -1,3 +1,7 @@
+// If a command-driven player sends nothing for this long, the server moves them itself
+// (so a dropped connection can't leave someone hovering in mid-air)
+const CMD_STALL_MS = 250;
+
 // Gameplay tuning (ms unless noted)
 const TUNING = {
     pushCooldown: 1200,
@@ -13,6 +17,7 @@ const TUNING = {
 };
 
 const { ABILITY } = require('./abilities');
+const Movement = require('../shared/movement');
 
 class Player {
     constructor(id, name, color) {
@@ -27,6 +32,21 @@ class Player {
         this.height = 40;
         this.isGrounded = false;
         this.facing = 1; // 1 = right, -1 = left
+
+        // Jump feel (see shared/movement.js)
+        this.coyote = 0;     // ms left to still jump after leaving a ledge
+        this.jbuf = 0;       // ms left on a buffered jump press
+        this.prevJump = false;
+        this.flapCd = 0;
+
+        // Client-driven movement (see GameRoom.handleCmds)
+        this.usesCmds = false;   // true once this player has sent movement commands
+        this.ackSeq = 0;         // last command number the server has processed
+        this.lastSeq = 0;
+        this.lastCmdAt = 0;
+        this.moveBudget = 0;     // ms of movement the client is allowed to "spend"
+        this.prevKeys = 0;
+        this.inhaleEdge = false; // an inhale press happened since the last tick
 
         // Connection state (managed by server.js)
         this.connected = true;
@@ -54,7 +74,7 @@ class Player {
         // Kirby-style abilities (see abilities.js)
         this.inhaling = false;
         this.prevInhale = false;
-        this.prevJump = false;
+        this.powerCd = 0;          // cooldown of the power key
         this.mouth = null;         // { kind: 'orb' } | { kind: 'player', id }
         this.mouthMs = 0;
         this.swallowedBy = null;   // id of the player whose mouth we're in
@@ -68,7 +88,6 @@ class Player {
         this.spitBodyMs = 0;
         this.spitBy = null;
         this.spitHit = new Set();
-        this.flapCd = 0;
         this.freezeKind = 'pull';  // what froze us: 'pull' | 'ice'
 
         // Input
@@ -79,7 +98,8 @@ class Player {
             push: false,
             pull: false,
             interact: false,
-            inhale: false
+            inhale: false,
+            power: false
         };
     }
 
@@ -103,6 +123,13 @@ class Player {
         this.inhaling = false;
         this.prevInhale = false;
         this.prevJump = false;
+        this.coyote = 0;
+        this.jbuf = 0;
+        this.powerCd = 0;
+        this.ackSeq = 0;
+        this.prevKeys = 0;
+        this.inhaleEdge = false;
+        this.moveBudget = 200;
         this.mouth = null;
         this.mouthMs = 0;
         this.swallowedBy = null;
@@ -155,7 +182,7 @@ class Player {
         if (this.pullImmunity > 0) this.pullImmunity -= dt;
         if (this.inhaleImmunity > 0) this.inhaleImmunity -= dt;
         if (this.beingInhaledMs > 0) this.beingInhaledMs -= dt;
-        if (this.flapCd > 0) this.flapCd -= dt;
+        if (this.powerCd > 0) this.powerCd -= dt;
         if (this.spinMs > 0) this.spinMs -= dt;
         if (this.spitBodyMs > 0) {
             this.spitBodyMs -= dt;
@@ -195,69 +222,26 @@ class Player {
         }
         if (this.pushDuration > 0) this.pushDuration -= dt;
 
-        const speed = 250;
-        const accel = 1500;
-        const drag = 10;
-        const gravity = 1200;
-        const jumpForce = -500;
-
-        // Handle Horizontal Input & Physics
-        // Slower while sucking things in or carrying something; faster while spinning
-        const speedMul = (this.spinMs > 0 ? ABILITY.spinSpeedBoost : 1) *
-            (this.inhaling ? 0.5 : (this.mouth ? 0.8 : 1));
-        let targetVx = 0;
-        if (this.input.left) {
-            targetVx = -speed * speedMul;
-            this.facing = -1;
-        } else if (this.input.right) {
-            targetVx = speed * speedMul;
-            this.facing = 1;
+        // Movement. A client that sends commands is moved by applyCmd() as they arrive;
+        // everyone else (and any player the server has taken control of) is stepped here.
+        if (!this.movesFromCmds()) {
+            const res = Movement.stepMovement(this, this.input, dt, level, this.movementMods());
+            if (res.flapped) gameRoom.broadcastEffect('flap', { id: this.id });
         }
-
-        // Lerp horizontal velocity (a spat-out player flies ballistically, no braking)
-        if (this.spitBodyMs <= 0) {
-            this.vx += (targetVx - this.vx) * drag * (dt / 1000);
-        }
-
-        // Apply Gravity
-        this.vy += gravity * (dt / 1000);
-        this.vy = Math.min(this.vy, 800); // Terminal velocity
-
-        // Wings power: flap in mid-air, glide while jump is held
-        const jumpPressed = this.input.jump && !this.prevJump;
-        this.prevJump = this.input.jump;
-        if (this.power === 'wings' && !this.isGrounded) {
-            if (jumpPressed && this.flapCd <= 0) {
-                this.vy = ABILITY.flapForce;
-                this.flapCd = ABILITY.flapCooldown;
-                gameRoom.broadcastEffect('flap', { id: this.id });
-            } else if (this.input.jump && this.vy > ABILITY.glideFall) {
-                this.vy = ABILITY.glideFall;
-            }
-        }
-
-        // Jump
-        if (this.input.jump && this.isGrounded) {
-            this.vy = jumpForce;
-            this.isGrounded = false;
-        }
-
-        // Apply velocities to positions and resolve collisions
-        this.x += this.vx * (dt / 1000);
-        this.resolveHorizontalCollisions(level);
-
-        this.y += this.vy * (dt / 1000);
-        this.resolveVerticalCollisions(level);
 
         // Sabotage Actions (Only check if not pushed/pulled in action)
         if (this.input.push && this.pushCooldown <= 0) {
-            if (this.power && this.power !== 'wings') this.usePower(gameRoom);
-            else this.performPush(gameRoom);
+            this.performPush(gameRoom);
+        }
+        // Power key (V): fire / ice / spin. Wings are passive (jump in mid-air).
+        if (this.input.power && this.power && this.power !== 'wings' && this.powerCd <= 0) {
+            this.usePower(gameRoom);
         }
         this.applySpinHits(gameRoom);
 
         // Inhale: hold to suck things in; press again to spit what's in your mouth
-        const inhalePressed = this.input.inhale && !this.prevInhale;
+        const inhalePressed = this.inhaleEdge || (this.input.inhale && !this.prevInhale);
+        this.inhaleEdge = false;
         this.prevInhale = this.input.inhale;
         if (this.mouth) {
             this.inhaling = false;
@@ -289,31 +273,52 @@ class Player {
     }
 
     resolveHorizontalCollisions(level) {
-        const tiles = level.getCollidingTiles(this);
-        for (let tile of tiles) {
-            if (this.vx > 0) { // Moving right
-                this.x = tile.x - this.width;
-                this.vx = 0;
-            } else if (this.vx < 0) { // Moving left
-                this.x = tile.x + tile.width;
-                this.vx = 0;
-            }
-        }
+        Movement.resolveHorizontal(this, level);
     }
 
     resolveVerticalCollisions(level) {
-        this.isGrounded = false;
-        const tiles = level.getCollidingTiles(this);
-        for (let tile of tiles) {
-            if (this.vy > 0) { // Falling down
-                this.y = tile.y - this.height;
-                this.vy = 0;
-                this.isGrounded = true;
-            } else if (this.vy < 0) { // Moving up
-                this.y = tile.y + tile.height;
-                this.vy = 0;
-            }
-        }
+        Movement.resolveVertical(this, level);
+    }
+
+    // Status effects that change how movement behaves (shared with the client's prediction)
+    movementMods() {
+        return {
+            spin: this.spinMs > 0,
+            mouth: !!this.mouth,
+            wings: this.power === 'wings',
+            ballistic: this.spitBodyMs > 0
+        };
+    }
+
+    // True while this player's walking/jumping is driven by their own commands
+    movesFromCmds() {
+        return this.usesCmds && this.spitBodyMs <= 0 && Date.now() - this.lastCmdAt < CMD_STALL_MS;
+    }
+
+    // Is the server (not the player) currently in charge of where they go?
+    serverControlled() {
+        return this.isDead || this.isFinished || !!this.swallowedBy || this.pullDuration > 0 || this.spitBodyMs > 0;
+    }
+
+    // Apply one client command: record the held keys, and move one fixed step if the player is free
+    applyCmd(bits, level, room, canMove = true) {
+        const K = Movement.KEY;
+        const keys = Movement.decodeKeys(bits);
+
+        if ((bits & K.inhale) && !(this.prevKeys & K.inhale)) this.inhaleEdge = true;
+        if ((bits & K.interact) && !(this.prevKeys & K.interact)) this.input.interact = true;
+        this.prevKeys = bits;
+        this.input.left = keys.left;
+        this.input.right = keys.right;
+        this.input.jump = keys.jump;
+        this.input.push = keys.push;
+        this.input.pull = keys.pull;
+        this.input.inhale = keys.inhale;
+        this.input.power = keys.power;
+
+        if (!canMove || this.serverControlled()) return;
+        const res = Movement.stepMovement(this, keys, Movement.MOVE.step, level, this.movementMods());
+        if (res.flapped) room.broadcastEffect('flap', { id: this.id });
     }
 
     performPush(gameRoom) {

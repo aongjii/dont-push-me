@@ -1,4 +1,4 @@
-const INPUT_KEYS = ['left', 'right', 'jump', 'push', 'pull', 'interact', 'inhale'];
+const INPUT_KEYS = ['left', 'right', 'jump', 'push', 'pull', 'interact', 'inhale', 'power'];
 
 // Keep only known boolean input keys; ignore anything else a client sends.
 function sanitizeInput(raw) {

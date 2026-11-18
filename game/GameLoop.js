@@ -70,6 +70,7 @@ class GameLoop {
         // Update Players
         const players = Object.values(this.room.players);
         players.forEach(player => {
+            player.moveBudget = Math.min(500, player.moveBudget + dt * 1.05);
             const wasDead = player.isDead;
             player.update(dt, this.room.level, this.room);
 

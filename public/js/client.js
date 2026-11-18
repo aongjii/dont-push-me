@@ -62,7 +62,7 @@ try {
     }
 } catch (e) {}
 
-// Keyboard input state
+// Keyboard state (held keys). Sent to the server as numbered commands, 60 per second.
 const inputState = {
     left: false,
     right: false,
@@ -70,29 +70,35 @@ const inputState = {
     push: false,
     pull: false,
     interact: false,
-    inhale: false
+    inhale: false,
+    power: false
 };
 
-// Check if any keys have changed to minimize socket flood
-let lastInputState = { ...inputState };
+function clearInputs() {
+    for (const k in inputState) inputState[k] = false;
+}
 
-function sendInputs() {
-    // Only send inputs if game is playing
-    if (UI.screens.game.classList.contains('active') && gameState) {
-        // We only send when inputs change OR periodically
-        const hasChanged = 
-            inputState.left !== lastInputState.left ||
-            inputState.right !== lastInputState.right ||
-            inputState.jump !== lastInputState.jump ||
-            inputState.push !== lastInputState.push ||
-            inputState.pull !== lastInputState.pull ||
-            inputState.interact !== lastInputState.interact ||
-            inputState.inhale !== lastInputState.inhale;
+// --- CLIENT-SIDE PREDICTION ---
+// Our own character is moved right here, the instant a key is pressed, using the same physics
+// code as the server (shared/movement.js). The server confirms or corrects every snapshot,
+// so controls feel instant even with a slow connection. Other players are shown a moment late.
+const predictor = new Predictor.Predictor();
+let outbox = [];
+let lastSentBits = 0;
+let lastFlushAt = 0;
 
-        if (hasChanged) {
-            socket.emit('input', inputState);
-            lastInputState = { ...inputState };
-        }
+function pumpCommands(now, elapsedMs) {
+    const cmds = predictor.advance(elapsedMs, inputState);
+    if (cmds.length) outbox.push(...cmds);
+    if (!outbox.length || !socket.connected) { if (!socket.connected) outbox = []; return; }
+
+    // Send right away when a key changed, otherwise batch a couple of steps per message
+    const changed = outbox[outbox.length - 1].k !== lastSentBits;
+    if (changed || outbox.length >= 3 || now - lastFlushAt >= 33) {
+        socket.emit('cmds', outbox);
+        lastSentBits = outbox[outbox.length - 1].k;
+        outbox = [];
+        lastFlushAt = now;
     }
 }
 
@@ -118,7 +124,8 @@ const keyMap = {
     'KeyE': 'interact',
     // Inhale (hold) / spit (press again)
     'KeyC': 'inhale',
-    'KeyV': 'inhale'
+    // Use the power you got from a star
+    'KeyV': 'power'
 };
 
 const EMOTES = ['😂', '😡', '👋', '💀'];
@@ -136,6 +143,12 @@ muteBtn.addEventListener('click', () => { Sfx.toggleMute(); refreshMuteButton();
 window.addEventListener('keydown', (e) => {
     // Don't hijack typing in the menu inputs
     if (e.target && e.target.tagName === 'INPUT') return;
+
+    if (e.code === 'KeyH' && !e.repeat) {
+        toggleHelp();
+        return;
+    }
+    if (e.code === 'Escape') { setHelp(false); return; }
 
     if (e.code === 'KeyM' && !e.repeat) {
         Sfx.toggleMute();
@@ -159,16 +172,18 @@ window.addEventListener('keydown', (e) => {
     const action = keyMap[e.code];
     if (action) {
         inputState[action] = true;
-        sendInputs();
     }
 });
+
+// Losing focus (alt-tab, clicking elsewhere) would leave keys "stuck" held down
+window.addEventListener('blur', clearInputs);
+document.addEventListener('visibilitychange', () => { if (document.hidden) clearInputs(); });
 
 window.addEventListener('keyup', (e) => {
     if (e.target && e.target.tagName === 'INPUT') return;
     const action = keyMap[e.code];
     if (action) {
         inputState[action] = false;
-        sendInputs();
     }
 });
 
@@ -224,6 +239,20 @@ document.getElementById('btn-start').addEventListener('click', () => {
 // Next Round (Host only)
 document.getElementById('btn-next-round').addEventListener('click', () => {
     socket.emit('next_round');
+});
+
+// Play again with the same people (host only)
+document.getElementById('btn-rematch').addEventListener('click', () => {
+    socket.emit('rematch');
+});
+
+socket.on('room_reset', ({ players }) => {
+    predictor.active = false;
+    document.getElementById('lobby-count').textContent = players.length;
+    updatePlayerLobbyList(players);
+    updateHostStatus(players);
+    document.getElementById('btn-start').disabled = players.length < 2;
+    UI.showScreen('lobby');
 });
 
 // Back to Menu
@@ -351,6 +380,11 @@ socket.on('round_load', (data) => {
     renderer.setTheme(data.theme);
     gameState = null;
     snapshots.length = 0;
+    predictor.active = false;
+    predictor.reset();
+    outbox = [];
+    powerUsed = false;
+    document.getElementById('power-card').style.display = 'none';
     spectateId = null;
     prevPlayerFlags = {};
     spectateBanner.style.display = 'none';
@@ -385,6 +419,7 @@ socket.on('countdown', ({ timer }) => {
 socket.on('round_start', () => {
     document.getElementById('countdown-overlay').style.display = 'none';
     Sfx.startMusic();
+    predictor.active = true;
 });
 
 // --- SPECTATING (after you die or finish) ---
@@ -434,7 +469,15 @@ const snapshots = []; // { t: arrival time (ms), state }
 
 function lerp(a, b, f) { return a + (b - a) * f; }
 
+// Our own character is drawn from the prediction instead of the (older) server state
 function interpolatedState(renderTime) {
+    const state = interpolatedStateRaw(renderTime);
+    const view = predictor.view();
+    if (!state || !view) return state;
+    return { ...state, players: state.players.map(p => p.id === localPlayerId ? { ...p, ...view } : p) };
+}
+
+function interpolatedStateRaw(renderTime) {
     if (snapshots.length === 0) return null;
     const first = snapshots[0];
     const last = snapshots[snapshots.length - 1];
@@ -474,12 +517,51 @@ function interpolatedState(renderTime) {
 }
 
 const POWER_INFO = {
-    fire:  { icon: '🔥', key: 'F', name: 'ไฟ' },
-    ice:   { icon: '❄️', key: 'F', name: 'น้ำแข็ง' },
-    spin:  { icon: '🌀', key: 'F', name: 'ปั่น' },
-    wings: { icon: '🪽', key: 'ลอย', name: 'ปีก' }
+    fire:  { icon: '🔥', name: 'ไฟ',      key: 'V',     how: 'พ่นลูกไฟใส่คนข้างหน้า' },
+    ice:   { icon: '❄️', name: 'น้ำแข็ง', key: 'V',     how: 'แช่แข็งคนที่อยู่ข้างหน้า' },
+    spin:  { icon: '🌀', name: 'ปั่น',    key: 'V',     how: 'หมุนติ้วชนทุกคนรอบตัวให้กระเด็น' },
+    wings: { icon: '🪽', name: 'ปีก',     key: 'Space', how: 'กดกระโดดซ้ำกลางอากาศเพื่อกระพือ • กดค้างเพื่อร่อน' }
 };
 const POWER_MS = { fire: 15000, ice: 15000, spin: 15000, wings: 10000 };
+
+// Whether we've used the current power yet (the card pulses until we do)
+let powerUsed = false;
+
+// Bottom-centre card that always tells you what you hold and how to use it
+function updatePowerCard(localP) {
+    const card = document.getElementById('power-card');
+    if (!localP.power || localP.isDead || localP.isFinished) {
+        card.style.display = 'none';
+        return;
+    }
+    const info = POWER_INFO[localP.power];
+    card.style.display = 'flex';
+    document.getElementById('power-icon').textContent = info.icon;
+    document.getElementById('power-name').textContent = `พลัง${info.name}`;
+    document.getElementById('power-how').textContent = info.how;
+    document.getElementById('power-key').textContent = info.key;
+    document.getElementById('power-bar').style.transform =
+        `scaleX(${Math.max(0, Math.min(1, localP.powerMs / POWER_MS[localP.power]))})`;
+    card.classList.toggle('nudge', !powerUsed);
+    card.classList.toggle('cooling', localP.powerCd > 0);
+}
+
+let toastTimer = null;
+function showPowerToast(info) {
+    const el = document.getElementById('power-toast');
+    el.innerHTML = '';
+    const big = document.createElement('div');
+    big.className = 'toast-title';
+    big.textContent = `${info.icon} ได้พลัง${info.name}!`;
+    const how = document.createElement('div');
+    how.className = 'toast-how';
+    how.textContent = info.key === 'V' ? `กดปุ่ม V เพื่อ${info.how}` : info.how;
+    el.appendChild(big);
+    el.appendChild(how);
+    el.style.display = 'block';
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.style.display = 'none'; }, 4200);
+}
 
 // Last-seen per-player flags, to detect jumps / landings / breaking free between states
 let prevPlayerFlags = {};
@@ -513,6 +595,9 @@ socket.on('game_state', (state) => {
 
     detectMotionEffects(state);
 
+    const mine = state.players.find(p => p.id === localPlayerId);
+    if (mine) predictor.reconcile(mine, state.platforms);
+
     // Update HUD Cooldown progress bars (max differs when the catch-up boost is active)
     const localP = state.players.find(p => p.id === localPlayerId);
     if (localP) {
@@ -528,18 +613,7 @@ socket.on('game_state', (state) => {
         // Inhale slot lights up while sucking or when something is in your mouth
         document.getElementById('ability-inhale').classList.toggle('active', localP.inhaling || !!localP.mouth);
 
-        // Power slot: icon + how much time is left
-        const powerSlot = document.getElementById('ability-power');
-        if (localP.power && !localP.isDead && !localP.isFinished) {
-            const info = POWER_INFO[localP.power];
-            powerSlot.style.display = 'flex';
-            document.getElementById('power-icon').textContent = info.icon;
-            document.getElementById('power-label').textContent = info.key;
-            const total = POWER_MS[localP.power];
-            document.getElementById('power-bar').style.transform = `scaleX(${Math.max(0, Math.min(1, localP.powerMs / total))})`;
-        } else {
-            powerSlot.style.display = 'none';
-        }
+        updatePowerCard(localP);
     }
 
     // Round timer (+ a tick each second in the last 10)
@@ -553,10 +627,12 @@ socket.on('game_state', (state) => {
 // Render loop: runs every display frame, independent of network rate
 let lastFrame = performance.now();
 function renderFrame(now) {
-    const dt = Math.min(0.1, (now - lastFrame) / 1000);
+    const elapsed = now - lastFrame;
+    const dt = Math.min(0.1, elapsed / 1000);
     lastFrame = now;
 
     if (levelData && UI.screens.game.classList.contains('active')) {
+        pumpCommands(now, elapsed);
         const state = interpolatedState(now - INTERP_DELAY_MS);
         if (state) renderer.draw(state, localPlayerId, levelData, dt, updateSpectate(state));
     }
@@ -645,16 +721,18 @@ socket.on('game_effect', (effect) => {
         const info = POWER_INFO[effect.power];
         showHudAlert(`⭐ ${effect.name} ได้พลัง ${info.icon} ${info.name}!`, 2400);
         Sfx.play('power');
+        if (effect.id === localPlayerId) { powerUsed = false; showPowerToast(info); }
         const p = gameState.players.find(pl => pl.id === effect.id);
         if (p) renderer.addParticles(p.x + p.width / 2, p.y + 10, '#FFD94A', 16, { spread: 300, up: 140, size: 4 });
     }
 
     if (effect.type === 'power_use') {
+        if (effect.id === localPlayerId) powerUsed = true;
         Sfx.play({ fire: 'fire', ice: 'ice', spin: 'whirl' }[effect.power] || 'push');
     }
 
     if (effect.type === 'flap') {
-        if (effect.id === localPlayerId) Sfx.play('flap');
+        if (effect.id === localPlayerId) { Sfx.play('flap'); powerUsed = true; }
     }
 
     if (effect.type === 'emote') {
@@ -666,6 +744,7 @@ socket.on('game_effect', (effect) => {
 // Round ended screen
 socket.on('round_end', ({ round, levelIndex, scoreboard, finishOrder }) => {
     Sfx.stopMusic();
+    predictor.active = false;
     // Hide overlay
     document.getElementById('countdown-overlay').style.display = 'none';
 
@@ -758,9 +837,13 @@ socket.on('match_end', ({ scoreboard, winner }) => {
         tbody.appendChild(tr);
     });
 
-    clearSession(); // match is over: nothing left to rejoin
     Sfx.stopMusic();
+    predictor.active = false;
     Sfx.play('win');
+
+    // Host can send everyone back to the waiting room for another match
+    document.getElementById('btn-rematch').style.display = isHost ? 'inline-block' : 'none';
+    document.getElementById('rematch-tip').style.display = isHost ? 'none' : 'block';
     UI.showScreen('matchEnd');
 });
 
@@ -774,3 +857,23 @@ function mascotLoop(now) {
     requestAnimationFrame(mascotLoop);
 }
 requestAnimationFrame(mascotLoop);
+
+// --- HELP SCREEN (H, or the "วิธีเล่น" buttons) ---
+const helpOverlay = document.getElementById('help-overlay');
+function setHelp(open) { helpOverlay.classList.toggle('active', open); }
+function toggleHelp() { setHelp(!helpOverlay.classList.contains('active')); }
+document.querySelectorAll('.btn-help').forEach(b => b.addEventListener('click', () => setHelp(true)));
+document.getElementById('btn-help-close').addEventListener('click', () => setHelp(false));
+helpOverlay.addEventListener('click', (e) => { if (e.target === helpOverlay) setHelp(false); });
+
+// --- PING (round trip to the server) ---
+const pingEl = document.getElementById('hud-ping');
+setInterval(() => {
+    if (!socket.connected) { pingEl.textContent = '--'; return; }
+    const t0 = performance.now();
+    socket.emit('ping_check', 0, () => {
+        const ms = Math.round(performance.now() - t0);
+        pingEl.textContent = ms;
+        pingEl.parentElement.className = 'hud-ping ' + (ms < 80 ? 'good' : ms < 160 ? 'ok' : 'bad');
+    });
+}, 2000);
