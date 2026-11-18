@@ -210,7 +210,7 @@ document.getElementById('btn-create').addEventListener('click', () => {
         return;
     }
     UI.saveName(nameInput);
-    socket.emit('create_room', { playerName: nameInput });
+    socket.emit('create_room', { playerName: nameInput, skin: SkinUI.current() });
 });
 
 // Join Room
@@ -228,7 +228,7 @@ document.getElementById('btn-join').addEventListener('click', () => {
     }
 
     UI.saveName(nameInput);
-    socket.emit('join_room', { roomCode: codeInput, playerName: nameInput });
+    socket.emit('join_room', { roomCode: codeInput, playerName: nameInput, skin: SkinUI.current() });
 });
 
 // Start Game (Host only)
@@ -251,6 +251,7 @@ socket.on('room_reset', ({ players }) => {
     document.getElementById('lobby-count').textContent = players.length;
     updatePlayerLobbyList(players);
     updateHostStatus(players);
+    syncMySkin(players);
     document.getElementById('btn-start').disabled = players.length < 2;
     UI.showScreen('lobby');
 });
@@ -284,6 +285,7 @@ socket.on('room_created', ({ roomCode, playerId, token, players }) => {
     
     updatePlayerLobbyList(players);
     updateHostStatus(players);
+    syncMySkin(players);
     
     // Enable start game only if >= 2 players
     document.getElementById('btn-start').disabled = players.length < 2;
@@ -301,6 +303,7 @@ socket.on('room_joined', ({ roomCode, playerId, token, players }) => {
 
     updatePlayerLobbyList(players);
     updateHostStatus(players);
+    syncMySkin(players);
     
     UI.showScreen('lobby');
 });
@@ -315,6 +318,7 @@ socket.on('rejoined', ({ roomCode, playerId, players, status }) => {
     document.getElementById('lobby-count').textContent = players.length;
     updatePlayerLobbyList(players);
     updateHostStatus(players);
+    syncMySkin(players);
     document.getElementById('btn-start').disabled = players.length < 2;
 
     if (status === 'lobby') UI.showScreen('lobby');
@@ -324,6 +328,7 @@ socket.on('room_update', ({ players }) => {
     document.getElementById('lobby-count').textContent = players.length;
     updatePlayerLobbyList(players);
     updateHostStatus(players);
+    syncMySkin(players);
 
     // Enable start game only if >= 2 players
     document.getElementById('btn-start').disabled = players.length < 2;
@@ -349,6 +354,24 @@ function nameCell(p) {
     return td;
 }
 
+// Keep the dress-up screen in step with what the server decided for us (it can change a taken colour)
+function syncMySkin(players) {
+    const mine = players.find(p => p.id === localPlayerId);
+    if (!mine) return;
+    SkinUI.setFromServer(
+        { color: mine.color, face: mine.face, hat: mine.hat, acc: mine.acc },
+        players.filter(p => p.id !== localPlayerId).map(p => p.color)
+    );
+}
+
+// Changing your look in the waiting room tells everyone (debounced while you click around)
+let skinTimer = null;
+SkinUI.onChange((skin) => {
+    if (!currentRoomCode || !UI.screens.lobby.classList.contains('active')) return;
+    clearTimeout(skinTimer);
+    skinTimer = setTimeout(() => socket.emit('set_skin', skin), 250);
+});
+
 // Render the Lobby User list
 function updatePlayerLobbyList(players) {
     const list = document.getElementById('lobby-player-list');
@@ -358,9 +381,10 @@ function updatePlayerLobbyList(players) {
         const item = document.createElement('div');
         item.className = 'player-item';
 
-        const dot = document.createElement('div');
-        dot.className = 'player-dot';
-        dot.style.backgroundColor = p.color;
+        const dot = document.createElement('canvas');
+        dot.className = 'player-portrait';
+        dot.width = 88; dot.height = 88;
+        new Renderer(dot).drawPortrait({ face: p.face, hat: p.hat, acc: p.acc }, p.color, 0);
 
         const name = document.createElement('span');
         name.className = 'player-name';

@@ -30,7 +30,7 @@ app.get('/healthz', (req, res) => {
 
 // Serve static frontend files from 'public'
 app.use(express.static(path.join(__dirname, 'public')));
-// Physics code shared with the browser (client-side prediction)
+// Physics + cosmetics code shared with the browser
 app.use('/shared', express.static(path.join(__dirname, 'shared')));
 
 // Global state for rooms: code -> GameRoom
@@ -60,7 +60,9 @@ function asObject(x) {
 }
 
 function publicPlayers(room) {
-    return Object.values(room.players).map(p => ({ id: p.id, name: p.name, color: p.color }));
+    return Object.values(room.players).map(p => ({
+        id: p.id, name: p.name, color: p.color, face: p.skin.face, hat: p.skin.hat, acc: p.skin.acc
+    }));
 }
 
 function removeFromRoom(roomCode, playerId) {
@@ -91,6 +93,8 @@ io.on('connection', (socket) => {
     const allowInput = createRateLimiter(90, 1000);
     // Room actions (create/join/rejoin/start/next) are far rarer
     const allowAction = createRateLimiter(10, 5000);
+    // Dress-up changes can come in quickly while someone clicks around
+    const allowSkin = createRateLimiter(20, 5000);
 
     console.log(`Socket connected: ${socket.id}`);
 
@@ -104,7 +108,7 @@ io.on('connection', (socket) => {
 
     // Create a new room
     socket.on('create_room', (payload) => {
-        const { playerName } = asObject(payload);
+        const { playerName, skin } = asObject(payload);
         if (!allowAction() || playerId) return;
 
         const roomCode = generateRoomCode();
@@ -112,7 +116,7 @@ io.on('connection', (socket) => {
         rooms[roomCode] = room;
 
         const id = generatePlayerId();
-        const player = room.addPlayer(id, sanitizeName(playerName, 'Player 1'));
+        const player = room.addPlayer(id, sanitizeName(playerName, 'Player 1'), skin);
         player.token = crypto.randomBytes(16).toString('hex');
         seat(room, player);
 
@@ -128,7 +132,7 @@ io.on('connection', (socket) => {
 
     // Join an existing room
     socket.on('join_room', (payload) => {
-        const { roomCode, playerName } = asObject(payload);
+        const { roomCode, playerName, skin } = asObject(payload);
         if (!allowAction() || playerId) return;
 
         const code = sanitizeRoomCode(roomCode);
@@ -150,7 +154,7 @@ io.on('connection', (socket) => {
 
         const id = generatePlayerId();
         const name = sanitizeName(playerName, `Player ${Object.keys(room.players).length + 1}`);
-        const player = room.addPlayer(id, name);
+        const player = room.addPlayer(id, name, skin);
         player.token = crypto.randomBytes(16).toString('hex');
         seat(room, player);
 
@@ -257,6 +261,15 @@ io.on('connection', (socket) => {
         if (!currentRoomCode || !allowInput()) return;
         const room = rooms[currentRoomCode];
         if (room) room.handleCmds(playerId, cmds);
+    });
+
+    // Change look in the waiting room (everyone sees the update)
+    socket.on('set_skin', (skin) => {
+        if (!currentRoomCode || !allowSkin()) return;
+        const room = rooms[currentRoomCode];
+        if (room && room.setSkin(playerId, skin)) {
+            io.to(currentRoomCode).emit('room_update', { players: publicPlayers(room) });
+        }
     });
 
     // Latency probe for the on-screen ping display

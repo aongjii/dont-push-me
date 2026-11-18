@@ -272,3 +272,41 @@ test('a player who leaves mid-round is removed and the round carries on for the 
 
     host.disconnect(); guest.disconnect();
 });
+
+test('skins: sent on create/join, colour clash resolved, changes shared in the lobby, bad input ignored', async () => {
+    const host = await connect();
+    host.emit('create_room', { playerName: 'Host', skin: { color: '#B28DFF', face: 'abe', hat: 'crown', acc: 'overalls' } });
+    const created = await once(host, 'room_created');
+    assert.deepEqual(
+        [created.players[0].color, created.players[0].face, created.players[0].hat, created.players[0].acc],
+        ['#B28DFF', 'abe', 'crown', 'overalls']);
+
+    const guest = await connect();
+    guest.emit('join_room', { roomCode: created.roomCode, playerName: 'Guest', skin: { color: '#B28DFF', face: 'cat' } });
+    const joined = await once(guest, 'room_joined');
+    const me = joined.players.find(p => p.id === joined.playerId);
+    assert.notEqual(me.color.toUpperCase(), '#B28DFF', 'clashing colour should have been swapped');
+    assert.equal(me.face, 'cat');
+
+    // a change by the guest reaches the host
+    const seen = until(host, 'room_update', d => d.players.some(p => p.id === joined.playerId && p.hat === 'cat' + 'ears'));
+    guest.emit('set_skin', { color: me.color, face: 'happy', hat: 'catears', acc: 'glasses' });
+    const upd = await seen;
+    const g = upd.players.find(p => p.id === joined.playerId);
+    assert.deepEqual([g.face, g.hat, g.acc], ['happy', 'catears', 'glasses']);
+
+    // junk is ignored without crashing
+    guest.emit('set_skin', 'lol');
+    guest.emit('set_skin', { face: { $gt: '' }, hat: ['x'], color: 5 });
+    await new Promise(r => setTimeout(r, 150));
+
+    // not allowed once the game started
+    host.emit('start_game');
+    await once(guest, 'round_start', 6000);
+    guest.emit('set_skin', { color: me.color, face: 'abe', hat: 'none', acc: 'none' });
+    const stateAfter = await new Promise(resolve => guest.once('game_state', resolve));
+    const gg = stateAfter.players.find(p => p.id === joined.playerId);
+    assert.notEqual(gg.face, 'abe');
+
+    host.disconnect(); guest.disconnect();
+});

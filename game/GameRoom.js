@@ -4,6 +4,7 @@ const GameLoop = require('./GameLoop');
 const { sanitizeInput, sanitizeEmote } = require('./validation');
 const Movement = require('../shared/movement');
 const { ABILITY } = require('./abilities');
+const Skins = require('../shared/skins');
 
 const KO_POINTS = 3; // bonus for sending a rival to their doom
 const MAX_CMDS_PER_MESSAGE = 30;
@@ -25,7 +26,6 @@ class GameRoom {
         this.level = null;
         this.gameLoop = new GameLoop(this);
 
-        this.colors = ['#FF7EA8', '#5BB8FF', '#FFC93C', '#6FD98C']; // Pink, Blue, Yellow, Green
         this.finishOrder = []; // array of player ids who finished this round
 
         this.roundTimeLimit = 90 * 1000; // ms (each level can override); unfinished players score 0 when it runs out
@@ -38,16 +38,33 @@ class GameRoom {
         this.lastMatchEnd = null;
     }
 
-    addPlayer(id, name) {
+    // `rawSkin` is whatever the client asked for; it is validated here. Body colours are unique
+    // within a room (so you can tell players apart), so a taken colour is swapped for a free one.
+    addPlayer(id, name, rawSkin) {
         if (Object.keys(this.players).length >= 4) return null;
-        
-        // Pick an unused color
-        const usedColors = Object.values(this.players).map(p => p.color);
-        const availableColor = this.colors.find(c => !usedColors.includes(c)) || '#FFFFFF';
 
-        const player = new Player(id, name, availableColor);
+        const skin = Skins.sanitizeSkin(rawSkin);
+        const used = Object.values(this.players).map(p => p.color);
+        if (used.some(c => c.toUpperCase() === skin.color.toUpperCase())) skin.color = Skins.freeColor(used);
+
+        const player = new Player(id, name, skin.color);
+        player.skin = { face: skin.face, hat: skin.hat, acc: skin.acc };
         this.players[id] = player;
         return player;
+    }
+
+    // Change look while waiting in the lobby. Returns the skin actually applied.
+    setSkin(id, rawSkin) {
+        const player = this.players[id];
+        if (!player || this.status !== 'lobby') return null;
+
+        const skin = Skins.sanitizeSkin(rawSkin);
+        const others = Object.values(this.players).filter(p => p.id !== id).map(p => p.color.toUpperCase());
+        if (others.includes(skin.color.toUpperCase())) skin.color = player.color; // taken: keep ours
+
+        player.color = skin.color;
+        player.skin = { face: skin.face, hat: skin.hat, acc: skin.acc };
+        return { color: player.color, ...player.skin };
     }
 
     removePlayer(id) {
@@ -399,6 +416,9 @@ class GameRoom {
             id: p.id,
             name: p.name,
             color: p.color,
+            face: p.skin.face,
+            hat: p.skin.hat,
+            acc: p.skin.acc,
             x: p.x,
             y: p.y,
             vx: p.vx,

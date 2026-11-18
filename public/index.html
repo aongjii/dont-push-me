@@ -50,7 +50,10 @@
             </div>
         </div>
 
-        <button class="btn btn-secondary btn-help btn-help-menu">📖 วิธีเล่น (ปุ่มควบคุม และพลังจากดาว)</button>
+        <div class="menu-buttons">
+            <button class="btn btn-secondary btn-skin">👕 แต่งตัว</button>
+            <button class="btn btn-secondary btn-help">📖 วิธีเล่น</button>
+        </div>
     </div>
 
     <!-- LOBBY SCREEN -->
@@ -69,7 +72,10 @@
 
             <div class="lobby-actions">
                 <button id="btn-start" class="btn btn-success" disabled>เริ่มเกมเลย!</button>
-                <button class="btn btn-secondary btn-help">📖 วิธีเล่น</button>
+                <div class="lobby-buttons">
+                    <button class="btn btn-secondary btn-skin">👕 แต่งตัว</button>
+                    <button class="btn btn-secondary btn-help">📖 วิธีเล่น</button>
+                </div>
                 <button class="btn btn-leave" data-leave>ออกจากห้อง</button>
                 <p id="host-tip" class="host-tip">รอหัวหน้าห้องกดเริ่มเกม (ต้องการอย่างน้อย 2 คน)...</p>
             </div>
@@ -211,6 +217,26 @@
         </div>
     </div>
 
+    <!-- DRESS-UP -->
+    <div id="skin-overlay" class="help-overlay">
+        <div class="card skin-card">
+            <h2>แต่งตัว 👕</h2>
+            <div class="skin-layout">
+                <div class="skin-preview-wrap">
+                    <canvas id="skin-preview" width="240" height="240"></canvas>
+                    <div id="skin-summary" class="skin-summary"></div>
+                    <button id="btn-skin-random" class="btn btn-secondary">🎲 สุ่มลุค</button>
+                </div>
+                <div class="skin-options">
+                    <div id="skin-tabs" class="skin-tabs"></div>
+                    <div id="skin-grid" class="skin-grid"></div>
+                    <p id="skin-note" class="skin-note"></p>
+                </div>
+            </div>
+            <button id="btn-skin-done" class="btn btn-primary">เสร็จแล้ว</button>
+        </div>
+    </div>
+
     <!-- HELP -->
     <div id="help-overlay" class="help-overlay">
         <div class="card help-card">
@@ -262,11 +288,13 @@
     </div>
 
     <!-- Client scripts -->
+    <script src="shared/skins.js"></script>
     <script src="shared/movement.js"></script>
     <script src="shared/predictor.js"></script>
     <script src="js/audio.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/renderer.js"></script>
+    <script src="js/skin-ui.js"></script>
     <script src="js/client.js"></script>
 </body>
 </html>

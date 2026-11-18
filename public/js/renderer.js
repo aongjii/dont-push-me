@@ -34,7 +34,7 @@ function shade(hex, amt) {
 
 class Renderer {
     constructor(canvasId) {
-        this.canvas = document.getElementById(canvasId);
+        this.canvas = typeof canvasId === 'string' ? document.getElementById(canvasId) : canvasId;
         this.ctx = this.canvas.getContext('2d');
 
         // Virtual resolution
@@ -637,6 +637,7 @@ class Renderer {
             pushing: player.pushDuration > 0,
             power: player.power,
             powerMs: player.powerMs,
+            skin: { face: player.face, hat: player.hat, acc: player.acc },
             frozen,
             rot: rolling ? t * 20 * (player.facing || 1) : (tumbling ? t * 9 * Math.sign(player.vx) : 0),
             flapping: player.power === 'wings' && !player.isGrounded
@@ -779,7 +780,10 @@ class Renderer {
         ctx.rotate(tilt);
         ctx.scale(sx, sy);
 
-        // wings sit behind the body
+        const skin = o.skin || {};
+
+        // things that sit behind the body
+        if (skin.acc === 'cape') this.drawCape(o, R, f);
         if (o.power === 'wings') this.drawWings(o, R);
 
         // arms
@@ -823,6 +827,8 @@ class Renderer {
         ctx.ellipse(-7, -9, 6, 3.5, -0.6, 0, Math.PI * 2);
         ctx.fill();
 
+        if (skin.acc === 'overalls') this.drawOveralls(R);
+
         // something in the cheeks
         if (o.mouthColor) {
             ctx.fillStyle = o.mouthColor;
@@ -840,6 +846,7 @@ class Renderer {
         }
 
         this.drawFace(o, f);
+        this.drawAccessory(o, R, f);
 
         // ice coating
         if (o.frozen === 'ice') {
@@ -853,8 +860,9 @@ class Renderer {
             ctx.fill();
         }
 
-        // power hat
-        this.drawPowerHat(o, R);
+        // a power's hat (fire/ice/spin) replaces the cosmetic one while it lasts
+        if (o.power && o.power !== 'wings') this.drawPowerHat(o, R);
+        else this.drawHat(o, R, f);
 
         ctx.restore();
 
@@ -884,8 +892,10 @@ class Renderer {
         }
     }
 
+    // ------------------------------------------------------------- faces
     drawFace(o, f) {
         const ctx = this.ctx;
+        const face = (o.skin && o.skin.face) || 'classic';
         const ex = [-6.5, 6.5];
         const ey = -3;
         const fx = f * 3; // face looks toward travel direction
@@ -928,26 +938,18 @@ class Renderer {
                 ctx.stroke();
             });
         } else {
-            // tall oval eyes with a shine, like a certain pink puffball
-            ex.forEach(x => {
-                ctx.fillStyle = INK;
+            this.drawEyes(face, fx, ey, ex, f, o);
+        }
+
+        // blush (the stubbly face doesn't blush)
+        if (face !== 'abe') {
+            ctx.fillStyle = 'rgba(255, 92, 138, 0.5)';
+            [-1, 1].forEach(side => {
                 ctx.beginPath();
-                ctx.ellipse(fx + x, ey, 3.3, 5.4, 0, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = '#FFFFFF';
-                ctx.beginPath();
-                ctx.arc(fx + x - 0.6, ey - 2.4, 1.5, 0, Math.PI * 2);
+                ctx.ellipse(fx + side * 12.5, 4.5, 4, 2.4, 0, 0, Math.PI * 2);
                 ctx.fill();
             });
         }
-
-        // blush
-        ctx.fillStyle = 'rgba(255, 92, 138, 0.5)';
-        [-1, 1].forEach(side => {
-            ctx.beginPath();
-            ctx.ellipse(fx + side * 12.5, 4.5, 4, 2.4, 0, 0, Math.PI * 2);
-            ctx.fill();
-        });
 
         // mouth
         if (o.inhaling) {
@@ -965,13 +967,443 @@ class Renderer {
             ctx.arc(fx, 5.5, 4, 0, Math.PI);
             ctx.fill();
         } else if (!o.mouthColor) {
-            ctx.strokeStyle = '#7A2E48';
-            ctx.lineWidth = 1.9;
-            ctx.lineCap = 'round';
-            ctx.beginPath();
-            ctx.arc(fx, 4.5, 3, 0.15 * Math.PI, 0.85 * Math.PI);
-            ctx.stroke();
+            this.drawMouth(face, fx);
         }
+
+        this.drawFaceExtras(face, fx, ey);
+    }
+
+    drawEyes(face, fx, ey, ex, f, o) {
+        const ctx = this.ctx;
+        const oval = (x, rx, ry) => {
+            ctx.fillStyle = INK;
+            ctx.beginPath();
+            ctx.ellipse(fx + x, ey, rx, ry, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath();
+            ctx.arc(fx + x - 0.6, ey - ry * 0.45, Math.min(1.5, rx * 0.5), 0, Math.PI * 2);
+            ctx.fill();
+        };
+        ctx.lineCap = 'round';
+
+        switch (face) {
+            case 'happy':
+                ctx.strokeStyle = INK;
+                ctx.lineWidth = 2.4;
+                ex.forEach(x => { ctx.beginPath(); ctx.arc(fx + x, ey + 2, 3.8, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke(); });
+                break;
+            case 'sleepy':
+                ex.forEach(x => {
+                    ctx.fillStyle = INK;
+                    ctx.beginPath();
+                    ctx.arc(fx + x, ey + 1, 3.3, 0, Math.PI);
+                    ctx.fill();
+                    ctx.strokeStyle = INK;
+                    ctx.lineWidth = 1.6;
+                    ctx.beginPath();
+                    ctx.moveTo(fx + x - 3.8, ey + 1);
+                    ctx.lineTo(fx + x + 3.8, ey + 1);
+                    ctx.stroke();
+                });
+                break;
+            case 'cat':
+                ex.forEach(x => oval(x, 2.4, 3.4));
+                break;
+            case 'derp': {
+                // one big eye, one small, looking different ways
+                ctx.fillStyle = '#FFFFFF';
+                ctx.strokeStyle = INK;
+                ctx.lineWidth = 1.6;
+                [[ex[0], 4.8], [ex[1], 3.3]].forEach(([x, r]) => {
+                    ctx.beginPath(); ctx.arc(fx + x, ey, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                });
+                ctx.fillStyle = INK;
+                ctx.beginPath(); ctx.arc(fx + ex[0] + 1.6, ey - 1.6, 1.9, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(fx + ex[1] - 1, ey + 1.2, 1.4, 0, Math.PI * 2); ctx.fill();
+                break;
+            }
+            case 'wow':
+                ex.forEach(x => {
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.strokeStyle = INK;
+                    ctx.lineWidth = 1.8;
+                    ctx.beginPath(); ctx.arc(fx + x, ey, 4.6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                    ctx.fillStyle = INK;
+                    ctx.beginPath(); ctx.arc(fx + x, ey, 1.8, 0, Math.PI * 2); ctx.fill();
+                });
+                break;
+            case 'abe':
+                // narrowed, confident eyes
+                ex.forEach(x => {
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.beginPath(); ctx.ellipse(fx + x, ey + 0.5, 4.3, 2.9, 0, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = INK;
+                    ctx.beginPath(); ctx.arc(fx + x + f * 1.4, ey + 0.8, 2.1, 0, Math.PI * 2); ctx.fill();
+                    // heavy upper lid
+                    ctx.strokeStyle = INK;
+                    ctx.lineWidth = 2.2;
+                    ctx.beginPath();
+                    ctx.moveTo(fx + x - 4.6, ey - 0.6);
+                    ctx.quadraticCurveTo(fx + x, ey - 3.8, fx + x + 4.6, ey - 0.6);
+                    ctx.stroke();
+                });
+                break;
+            case 'smirk':
+                ex.forEach(x => oval(x, 3.1, 4.6));
+                break;
+            case 'angry':
+                ex.forEach(x => oval(x, 3.2, 4.2));
+                break;
+            default: // classic: tall oval eyes with a shine, like a certain pink puffball
+                ex.forEach(x => oval(x, 3.3, 5.4));
+        }
+    }
+
+    drawMouth(face, fx) {
+        const ctx = this.ctx;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#7A2E48';
+        ctx.lineWidth = 1.9;
+
+        switch (face) {
+            case 'happy':
+                ctx.fillStyle = '#7A2E48';
+                ctx.beginPath(); ctx.arc(fx, 4.8, 4.2, 0, Math.PI); ctx.fill();
+                ctx.fillStyle = '#FF8FA8';
+                ctx.beginPath(); ctx.ellipse(fx, 7.8, 2.2, 1.3, 0, 0, Math.PI * 2); ctx.fill();
+                break;
+            case 'sleepy':
+                ctx.fillStyle = '#7A2E48';
+                ctx.beginPath(); ctx.ellipse(fx, 6.5, 1.7, 2.2, 0, 0, Math.PI * 2); ctx.fill();
+                break;
+            case 'smirk':
+                ctx.beginPath();
+                ctx.moveTo(fx - 3.5, 5.5);
+                ctx.quadraticCurveTo(fx + 1, 7.5, fx + 6, 3.2);
+                ctx.stroke();
+                break;
+            case 'angry':
+                ctx.beginPath(); ctx.arc(fx, 9, 3.4, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+                break;
+            case 'cat':
+                ctx.beginPath();
+                ctx.arc(fx - 2.3, 4.6, 2.3, 0.05 * Math.PI, 0.95 * Math.PI);
+                ctx.arc(fx + 2.3, 4.6, 2.3, 0.05 * Math.PI, 0.95 * Math.PI);
+                ctx.stroke();
+                break;
+            case 'derp':
+                ctx.beginPath(); ctx.arc(fx, 4.5, 3, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+                ctx.fillStyle = '#FF8FA8';
+                ctx.beginPath(); ctx.ellipse(fx + 1.8, 8.8, 2.2, 3.2, 0, 0, Math.PI * 2); ctx.fill();
+                ctx.stroke();
+                break;
+            case 'wow':
+                ctx.fillStyle = '#7A2E48';
+                ctx.beginPath(); ctx.ellipse(fx, 7.2, 2.8, 3.8, 0, 0, Math.PI * 2); ctx.fill();
+                break;
+            case 'abe': {
+                // a wide, confident grin with teeth
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath();
+                ctx.moveTo(fx - 8, 3.2);
+                ctx.quadraticCurveTo(fx, 14.5, fx + 8, 3.2);
+                ctx.quadraticCurveTo(fx, 6, fx - 8, 3.2);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                ctx.lineWidth = 1;
+                [-3.5, 0, 3.5].forEach(x => {
+                    ctx.beginPath(); ctx.moveTo(fx + x, 5.2); ctx.lineTo(fx + x, 8.6 - Math.abs(x) * 0.3); ctx.stroke();
+                });
+                break;
+            }
+            default:
+                ctx.beginPath(); ctx.arc(fx, 4.5, 3, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+        }
+    }
+
+    // eyebrows, whiskers, stubble: things drawn over the base face
+    drawFaceExtras(face, fx, ey) {
+        const ctx = this.ctx;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = INK;
+
+        if (face === 'angry') {
+            ctx.lineWidth = 2.6;
+            [-1, 1].forEach(side => {
+                ctx.beginPath();
+                ctx.moveTo(fx + side * 10.5, ey - 8.5);
+                ctx.lineTo(fx + side * 3, ey - 4.8);
+                ctx.stroke();
+            });
+        } else if (face === 'smirk') {
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(fx - 9.5, ey - 6.8); ctx.lineTo(fx - 3.5, ey - 7.2); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(fx + 3.5, ey - 8); ctx.quadraticCurveTo(fx + 7, ey - 11.5, fx + 10, ey - 8.5); ctx.stroke();
+        } else if (face === 'cat') {
+            ctx.lineWidth = 1;
+            ctx.globalAlpha = 0.55;
+            [-1, 1].forEach(side => {
+                [-1.6, 0, 1.6].forEach(dy => {
+                    ctx.beginPath();
+                    ctx.moveTo(fx + side * 11, 4 + dy);
+                    ctx.lineTo(fx + side * 17.5, 3 + dy * 2.2);
+                    ctx.stroke();
+                });
+            });
+            ctx.globalAlpha = 1;
+        } else if (face === 'abe') {
+            // thick brows, one raised
+            ctx.lineWidth = 3.8;
+            ctx.beginPath(); ctx.moveTo(fx - 11.5, ey - 6.3); ctx.lineTo(fx - 2.2, ey - 5.2); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(fx + 2.5, ey - 6.5); ctx.quadraticCurveTo(fx + 7, ey - 12.5, fx + 11.5, ey - 7.5); ctx.stroke();
+            // stubble
+            ctx.fillStyle = 'rgba(43, 33, 64, 0.5)';
+            [[-9, 6.5], [-6.5, 10], [-3, 12.3], [0, 13], [3, 12.3], [6.5, 10], [9, 6.5],
+             [-11, 2.5], [11, 2.5], [-4.5, 9.5], [4.5, 9.5], [-1.5, 10.5], [1.5, 10.5], [-8, 3.2], [8, 3.2]].forEach(([x, y]) => {
+                ctx.beginPath(); ctx.arc(fx + x, y, 0.85, 0, Math.PI * 2); ctx.fill();
+            });
+        }
+    }
+
+    // ------------------------------------------------------------- hats
+    drawHat(o, R, f) {
+        const hat = o.skin && o.skin.hat;
+        if (!hat || hat === 'none') return;
+        const ctx = this.ctx;
+        const line = shade(o.color, -0.28);
+        ctx.save();
+        ctx.translate(0, -R + 3); // origin = top of the head
+        ctx.lineWidth = 1.8;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+
+        switch (hat) {
+            case 'crown':
+                ctx.fillStyle = '#FFD94A'; ctx.strokeStyle = '#E8A317';
+                ctx.beginPath();
+                ctx.moveTo(-10, 3); ctx.lineTo(-11, -8); ctx.lineTo(-5, -3); ctx.lineTo(0, -12);
+                ctx.lineTo(5, -3); ctx.lineTo(11, -8); ctx.lineTo(10, 3);
+                ctx.closePath(); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#FF6B6B';
+                ctx.beginPath(); ctx.arc(0, -1, 2, 0, Math.PI * 2); ctx.fill();
+                break;
+            case 'cap':
+                ctx.fillStyle = '#FF6B6B'; ctx.strokeStyle = '#C94B4B';
+                ctx.beginPath(); ctx.arc(0, 3, 11.5, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#E04F4F';
+                ctx.beginPath(); ctx.ellipse(f * 9, 3, 8.5, 2.6, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath(); ctx.arc(0, -8.2, 1.6, 0, Math.PI * 2); ctx.fill();
+                break;
+            case 'beanie':
+                ctx.fillStyle = '#5B8DEF'; ctx.strokeStyle = '#3F6FD1';
+                ctx.beginPath(); ctx.arc(0, 4, 12.5, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#3F6FD1';
+                ctx.beginPath(); ctx.roundRect(-12.5, 2, 25, 5, 2); ctx.fill();
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath(); ctx.arc(0, -10, 4, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = '#C8D4EA'; ctx.stroke();
+                break;
+            case 'party':
+                ctx.fillStyle = '#FF7EA8'; ctx.strokeStyle = '#E25C8A';
+                ctx.beginPath(); ctx.moveTo(-9, 3); ctx.lineTo(0, -20); ctx.lineTo(9, 3); ctx.closePath(); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#FFD94A';
+                [[-3, -2], [3, -6], [-1, -10]].forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, 1.6, 0, Math.PI * 2); ctx.fill(); });
+                ctx.beginPath(); ctx.arc(0, -20, 2.8, 0, Math.PI * 2); ctx.fill();
+                break;
+            case 'catears':
+                [-1, 1].forEach(side => {
+                    ctx.fillStyle = o.color; ctx.strokeStyle = line;
+                    ctx.beginPath(); ctx.moveTo(side * 13, 4); ctx.lineTo(side * 11, -10); ctx.lineTo(side * 3, 1); ctx.closePath(); ctx.fill(); ctx.stroke();
+                    ctx.fillStyle = '#FF9BB8';
+                    ctx.beginPath(); ctx.moveTo(side * 10.5, 0); ctx.lineTo(side * 10, -6); ctx.lineTo(side * 6, 0); ctx.closePath(); ctx.fill();
+                });
+                break;
+            case 'bunny':
+                [-1, 1].forEach(side => {
+                    ctx.save();
+                    ctx.translate(side * 6, -9);
+                    ctx.rotate(side * 0.18);
+                    ctx.fillStyle = o.color; ctx.strokeStyle = line;
+                    ctx.beginPath(); ctx.ellipse(0, 0, 3.8, 11, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                    ctx.fillStyle = '#FF9BB8';
+                    ctx.beginPath(); ctx.ellipse(0, 1, 1.8, 7.5, 0, 0, Math.PI * 2); ctx.fill();
+                    ctx.restore();
+                });
+                break;
+            case 'chef':
+                ctx.fillStyle = '#FFFFFF'; ctx.strokeStyle = '#C8D4EA';
+                [[-6.5, -5, 6], [0, -10, 7], [6.5, -5, 6]].forEach(([x, y, r]) => {
+                    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                });
+                ctx.beginPath(); ctx.roundRect(-10, -3, 20, 8, 2); ctx.fill(); ctx.stroke();
+                break;
+            case 'halo': {
+                const y = -12 + Math.sin(o.t * 3) * 1.6;
+                ctx.strokeStyle = '#FFD94A'; ctx.lineWidth = 3.2;
+                ctx.beginPath(); ctx.ellipse(0, y, 10, 3.2, 0, 0, Math.PI * 2); ctx.stroke();
+                break;
+            }
+            case 'flower': {
+                ctx.save();
+                ctx.translate(9, -1);
+                ctx.fillStyle = '#FF9BB8';
+                for (let i = 0; i < 5; i++) {
+                    const a = i * Math.PI * 2 / 5;
+                    ctx.beginPath(); ctx.arc(Math.cos(a) * 4.2, Math.sin(a) * 4.2, 3.2, 0, Math.PI * 2); ctx.fill();
+                }
+                ctx.fillStyle = '#FFD94A';
+                ctx.beginPath(); ctx.arc(0, 0, 2.6, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+                break;
+            }
+            case 'tophat':
+                ctx.fillStyle = '#2B2140'; ctx.strokeStyle = '#2B2140';
+                ctx.beginPath(); ctx.ellipse(0, 3, 13.5, 3.4, 0, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.roundRect(-8.5, -15, 17, 18, 2); ctx.fill();
+                ctx.fillStyle = '#FF6B6B';
+                ctx.fillRect(-8.5, -3.5, 17, 3.6);
+                break;
+            case 'headband':
+                ctx.strokeStyle = '#FF6B6B'; ctx.lineWidth = 4.2;
+                ctx.beginPath(); ctx.moveTo(-16.5, 9); ctx.quadraticCurveTo(0, 2.5, 16.5, 9); ctx.stroke();
+                ctx.fillStyle = '#FF6B6B';
+                ctx.beginPath(); ctx.moveTo(15, 8); ctx.lineTo(21, 4); ctx.lineTo(20, 12); ctx.closePath(); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(15, 8); ctx.lineTo(22, 10); ctx.lineTo(17, 15); ctx.closePath(); ctx.fill();
+                break;
+            case 'horns':
+                [-1, 1].forEach(side => {
+                    ctx.fillStyle = '#FF5E7E'; ctx.strokeStyle = '#C94468';
+                    ctx.beginPath(); ctx.moveTo(side * 11, 4); ctx.quadraticCurveTo(side * 14, -4, side * 9, -10); ctx.quadraticCurveTo(side * 5, -3, side * 4, 3); ctx.closePath(); ctx.fill(); ctx.stroke();
+                });
+                break;
+        }
+        ctx.restore();
+    }
+
+    // ------------------------------------------------------- accessories
+    drawAccessory(o, R, f) {
+        const acc = o.skin && o.skin.acc;
+        if (!acc || acc === 'none' || acc === 'cape' || acc === 'overalls') return;
+        const ctx = this.ctx;
+        const fx = f * 3;
+        const ey = -3;
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        switch (acc) {
+            case 'glasses':
+                ctx.strokeStyle = INK; ctx.lineWidth = 1.8;
+                ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                [-6.5, 6.5].forEach(x => { ctx.beginPath(); ctx.arc(fx + x, ey, 5.6, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); });
+                ctx.beginPath(); ctx.moveTo(fx - 0.9, ey); ctx.lineTo(fx + 0.9, ey); ctx.stroke();
+                break;
+            case 'sunglasses':
+                ctx.fillStyle = INK;
+                [-6.5, 6.5].forEach(x => { ctx.beginPath(); ctx.roundRect(fx + x - 6, ey - 4.3, 12, 8.6, 3.4); ctx.fill(); });
+                ctx.fillRect(fx - 1.5, ey - 2.5, 3, 1.8);
+                ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.3;
+                [-6.5, 6.5].forEach(x => { ctx.beginPath(); ctx.moveTo(fx + x - 3.5, ey - 2); ctx.lineTo(fx + x - 1.5, ey - 3); ctx.stroke(); });
+                break;
+            case 'mustache':
+                ctx.fillStyle = '#4A3B33';
+                [-1, 1].forEach(side => {
+                    ctx.beginPath();
+                    ctx.moveTo(fx, 2.6);
+                    ctx.quadraticCurveTo(fx + side * 5, 0.8, fx + side * 9.5, 4.2);
+                    ctx.quadraticCurveTo(fx + side * 5, 4.4, fx, 4.6);
+                    ctx.closePath();
+                    ctx.fill();
+                });
+                break;
+            case 'bowtie':
+                ctx.save();
+                ctx.translate(fx * 0.4, R - 3);
+                ctx.fillStyle = '#FF6B6B';
+                [-1, 1].forEach(side => {
+                    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(side * 8, -4.5); ctx.lineTo(side * 8, 4.5); ctx.closePath(); ctx.fill();
+                });
+                ctx.fillStyle = '#C94B4B';
+                ctx.beginPath(); ctx.arc(0, 0, 2.2, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+                break;
+            case 'scarf':
+                ctx.strokeStyle = '#FF9D5C'; ctx.lineWidth = 5.5;
+                ctx.beginPath(); ctx.arc(0, -1, R - 2.5, 0.16 * Math.PI, 0.84 * Math.PI); ctx.stroke();
+                ctx.strokeStyle = '#E8823A'; ctx.lineWidth = 1.4;
+                [0.3, 0.5, 0.7].forEach(a => {
+                    ctx.beginPath();
+                    ctx.moveTo(Math.cos(a * Math.PI) * (R - 5.5), -1 + Math.sin(a * Math.PI) * (R - 5.5));
+                    ctx.lineTo(Math.cos(a * Math.PI) * (R - 0.5), -1 + Math.sin(a * Math.PI) * (R - 0.5));
+                    ctx.stroke();
+                });
+                ctx.fillStyle = '#FF9D5C';
+                ctx.beginPath(); ctx.roundRect(-f * 12 - 3, R - 7, 6, 12, 2); ctx.fill();
+                break;
+            case 'eyepatch':
+                ctx.strokeStyle = INK; ctx.lineWidth = 1.4;
+                ctx.beginPath(); ctx.moveTo(fx + 1.5, ey - 3.5); ctx.lineTo(-R + 1.5, ey - 9); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(fx + 11.5, ey - 3.5); ctx.lineTo(R - 1.5, ey - 9); ctx.stroke();
+                ctx.fillStyle = INK;
+                ctx.beginPath(); ctx.ellipse(fx + 6.5, ey, 5.8, 5, -0.2, 0, Math.PI * 2); ctx.fill();
+                break;
+        }
+        ctx.restore();
+    }
+
+    // Blue work overalls: drawn over the lower body, clipped to the round shape
+    drawOveralls(R) {
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.beginPath();
+        ctx.ellipse(0, 0, R, R - 1, 0, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.fillStyle = '#3E7BD6';
+        ctx.fillRect(-R - 2, 7, R * 2 + 4, R);
+        ctx.fillStyle = '#2F63B5';
+        ctx.fillRect(-R - 2, 7, R * 2 + 4, 2);
+        // straps over the shoulders (kept out of the face)
+        ctx.fillStyle = '#3E7BD6';
+        [-1, 1].forEach(side => ctx.fillRect(side * 12.5 - 2, -6, 4, 14));
+        // buttons and pocket
+        ctx.fillStyle = '#FFD94A';
+        [-1, 1].forEach(side => { ctx.beginPath(); ctx.arc(side * 12.5, 8, 1.6, 0, Math.PI * 2); ctx.fill(); });
+        ctx.strokeStyle = '#2F63B5';
+        ctx.lineWidth = 1.4;
+        ctx.strokeRect(-5, 12, 10, 5);
+        ctx.restore();
+    }
+
+    drawCape(o, R, f) {
+        const ctx = this.ctx;
+        const b = -f; // trails behind
+        const flutter = Math.sin(o.t * 9) * 2.5 + (o.grounded ? 0 : -3);
+        ctx.fillStyle = '#E64A6E';
+        ctx.strokeStyle = '#B93454';
+        ctx.lineWidth = 1.8;
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(b * 6, -9);
+        ctx.quadraticCurveTo(b * 20, -6 + flutter, b * 31, 4 + flutter);
+        ctx.lineTo(b * 27, 19 + flutter);
+        ctx.quadraticCurveTo(b * 14, 17, b * 7, 12);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+    }
+
+    // Draw a character's bust into this renderer's own canvas (dress-up preview, lobby list)
+    drawPortrait(skin, color, t = 0, mood = 'normal') {
+        const ctx = this.ctx;
+        const W = this.canvas.width, H = this.canvas.height;
+        ctx.clearRect(0, 0, W, H);
+        const s = H / 74;
+        this.drawCharacter({
+            x: W / 2 - (skin && skin.acc === 'cape' ? 5 * s : 0), y: H - 5 * s, color, facing: 1, vx: 0, vy: 0,
+            grounded: true, t, mood, scale: s, skin
+        });
     }
 
     drawWings(o, R) {
