@@ -8,6 +8,7 @@ const SkinUI = (() => {
         { id: 'face', label: 'หน้า' },
         { id: 'hat', label: 'หมวก' },
         { id: 'acc', label: 'ของตกแต่ง' },
+        { id: 'acc2', label: 'ของตกแต่ง 2' },
         { id: 'pat', label: 'ลาย' }
     ];
 
@@ -69,26 +70,29 @@ const SkinUI = (() => {
             return;
         }
 
-        const list = { face: Skins.FACES, hat: Skins.HATS, acc: Skins.ACCS, pat: Skins.PATTERNS }[tab];
+        let list = { face: Skins.FACES, hat: Skins.HATS, acc: Skins.ACCS, acc2: Skins.ACCS, pat: Skins.PATTERNS }[tab];
+        // the second accessory can't use the same slot as the first (eyes / neck / body / mouth)
+        if (tab === 'acc2') list = list.filter(a => a.id === 'none' || Skins.slotOf(a.id) !== Skins.slotOf(skin.acc));
         const counters = PlayerStats.counters();
         list.forEach(item => {
             const b = document.createElement('button');
-            const locked = !Skins.isUnlocked(tab, item.id, counters);
+            const unlockPart = tab === 'acc2' ? 'acc' : tab;
+            const locked = !Skins.isUnlocked(unlockPart, item.id, counters);
             b.className = 'skin-option' + (skin[tab] === item.id ? ' selected' : '') + (locked ? ' locked' : '');
             const cv = document.createElement('canvas');
             cv.width = 68; cv.height = 68;
             const variant = { ...skin, [tab]: item.id };
             new Renderer(cv).drawPortrait(variant, skin.color, 1.2);
             const label = document.createElement('span');
-            label.textContent = locked ? Skins.unlockOf(tab, item.id).text : item.name;
+            label.textContent = locked ? Skins.unlockOf(unlockPart, item.id).text : item.name;
             b.appendChild(cv);
             b.appendChild(label);
             if (locked) {
                 const badge = Icons.svg('lock', 18);
                 badge.classList.add('lock-badge');
                 b.appendChild(badge);
-                b.title = `ปลดล็อกโดย: ${Skins.unlockOf(tab, item.id).text}`;
-                b.addEventListener('click', () => { noteEl.textContent = `ยังล็อกอยู่ ปลดล็อกโดย: ${Skins.unlockOf(tab, item.id).text}`; });
+                b.title = `ปลดล็อกโดย: ${Skins.unlockOf(unlockPart, item.id).text}`;
+                b.addEventListener('click', () => { noteEl.textContent = `ยังล็อกอยู่ ปลดล็อกโดย: ${Skins.unlockOf(unlockPart, item.id).text}`; });
             } else {
                 b.addEventListener('click', () => choose(tab, item.id));
             }
@@ -102,6 +106,7 @@ const SkinUI = (() => {
             nameOf(Skins.FACES, skin.face),
             skin.hat !== 'none' ? nameOf(Skins.HATS, skin.hat) : '',
             skin.acc !== 'none' ? nameOf(Skins.ACCS, skin.acc) : '',
+            skin.acc2 && skin.acc2 !== 'none' ? nameOf(Skins.ACCS, skin.acc2) : '',
             skin.pat !== 'none' ? nameOf(Skins.PATTERNS, skin.pat) : ''
         ].filter(Boolean).join(' • ');
     }
@@ -109,6 +114,8 @@ const SkinUI = (() => {
     function choose(part, value) {
         if (skin[part] === value) return;
         skin = { ...skin, [part]: value };
+        // changing the first accessory to the same slot as the second one drops the second
+        if (part === 'acc' && skin.acc2 !== 'none' && Skins.slotOf(skin.acc2) === Skins.slotOf(skin.acc)) skin.acc2 = 'none';
         save();
         noteEl.textContent = '';
         refresh();

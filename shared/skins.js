@@ -140,10 +140,20 @@
     function withoutLocked(skin, counters) {
         const s = { ...skin };
         for (const part of Object.keys(UNLOCKS)) if (!isUnlocked(part, s[part], counters)) s[part] = 'none';
+        if (s.acc2 !== undefined && !isUnlocked('acc', s.acc2, counters)) s.acc2 = 'none';
         return s;
     }
 
-    const DEFAULT_SKIN = { color: COLORS[0].hex, face: 'classic', hat: 'none', acc: 'none', pat: 'none' };
+    // Accessories are worn in "slots"; a second accessory (acc2) must use a different slot so nothing overlaps
+    const ACC_SLOTS = {
+        glasses: 'eyes', sunglasses: 'eyes', eyepatch: 'eyes', monocle: 'eyes',
+        bowtie: 'neck', scarf: 'neck', tie: 'neck', medal: 'neck', pearls: 'neck', lei: 'neck',
+        overalls: 'body', apron: 'body', cape: 'body', backpack: 'body',
+        mustache: 'mouth', bandaid: 'mouth'
+    };
+    const slotOf = (id) => ACC_SLOTS[id] || null;
+
+    const DEFAULT_SKIN = { color: COLORS[0].hex, face: 'classic', hat: 'none', acc: 'none', acc2: 'none', pat: 'none' };
 
     const has = (list, id) => list.some(o => o.id === id);
 
@@ -157,6 +167,7 @@
             face: typeof s.face === 'string' && has(FACES, s.face) ? s.face : DEFAULT_SKIN.face,
             hat: typeof s.hat === 'string' && has(HATS, s.hat) ? s.hat : DEFAULT_SKIN.hat,
             acc: typeof s.acc === 'string' && has(ACCS, s.acc) ? s.acc : DEFAULT_SKIN.acc,
+            acc2: typeof s.acc2 === 'string' && has(ACCS, s.acc2) && s.acc2 !== 'none' && slotOf(s.acc2) !== slotOf(typeof s.acc === 'string' ? s.acc : 'none') ? s.acc2 : DEFAULT_SKIN.acc2,
             pat: typeof s.pat === 'string' && has(PATTERNS, s.pat) ? s.pat : DEFAULT_SKIN.pat
         };
     }
@@ -165,13 +176,20 @@
 
     function randomSkin(rnd) {
         rnd = rnd || Math.random;
-        return {
+        const base = {
             color: pick(COLORS, rnd).hex,
             face: pick(FACES, rnd).id,
             hat: pick(HATS, rnd).id,
             acc: pick(ACCS, rnd).id,
+            acc2: 'none',
             pat: pick(PATTERNS, rnd).id
         };
+        // sometimes a second accessory from a different slot
+        if (rnd() < 0.4) {
+            const options = ACCS.filter(a => a.id !== 'none' && slotOf(a.id) !== slotOf(base.acc));
+            base.acc2 = pick(options, rnd).id;
+        }
+        return base;
     }
 
     // First palette colour that nobody in `taken` is using
@@ -181,5 +199,5 @@
         return c ? c.hex : COLORS[0].hex;
     }
 
-    return { COLORS, FACES, HATS, ACCS, PATTERNS, DEFAULT_SKIN, UNLOCKS, unlockOf, isUnlocked, unlockedList, withoutLocked, sanitizeSkin, randomSkin, freeColor };
+    return { COLORS, FACES, HATS, ACCS, PATTERNS, ACC_SLOTS, slotOf, DEFAULT_SKIN, UNLOCKS, unlockOf, isUnlocked, unlockedList, withoutLocked, sanitizeSkin, randomSkin, freeColor };
 });

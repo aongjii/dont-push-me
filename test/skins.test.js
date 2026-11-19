@@ -23,7 +23,7 @@ test('the catalogue has the basics, including the Abe face', () => {
 
 test('sanitizeSkin accepts valid skins and rejects everything else', () => {
     const ok = Skins.sanitizeSkin({ color: '#5bb8ff', face: 'abe', hat: 'crown', acc: 'overalls' });
-    assert.deepEqual(ok, { color: '#5BB8FF', face: 'abe', hat: 'crown', acc: 'overalls', pat: 'none' });
+    assert.deepEqual(ok, { color: '#5BB8FF', face: 'abe', hat: 'crown', acc: 'overalls', acc2: 'none', pat: 'none' });
     assert.equal(Skins.sanitizeSkin({ pat: 'stars' }).pat, 'stars');
     assert.equal(Skins.sanitizeSkin({ pat: 'nope' }).pat, 'none');
 
@@ -34,7 +34,7 @@ test('sanitizeSkin accepts valid skins and rejects everything else', () => {
         assert.deepEqual(Skins.sanitizeSkin(junk), Skins.DEFAULT_SKIN);
     }
     // only known keys come out
-    assert.deepEqual(Object.keys(Skins.sanitizeSkin({ color: '#FF7EA8', evil: 1 })).sort(), ['acc', 'color', 'face', 'hat', 'pat']);
+    assert.deepEqual(Object.keys(Skins.sanitizeSkin({ color: '#FF7EA8', evil: 1 })).sort(), ['acc', 'acc2', 'color', 'face', 'hat', 'pat']);
 });
 
 test('randomSkin always produces a valid skin', () => {
@@ -49,7 +49,7 @@ test('players get the skin they asked for, but body colours stay unique in a roo
     const a = room.addPlayer('a', 'A', { color: '#5BB8FF', face: 'abe', hat: 'crown', acc: 'overalls' });
     const b = room.addPlayer('b', 'B', { color: '#5BB8FF', face: 'cat', hat: 'none', acc: 'none' });
     assert.equal(a.color, '#5BB8FF');
-    assert.deepEqual(a.skin, { face: 'abe', hat: 'crown', acc: 'overalls', pat: 'none' });
+    assert.deepEqual(a.skin, { face: 'abe', hat: 'crown', acc: 'overalls', acc2: 'none', pat: 'none' });
     assert.notEqual(b.color.toUpperCase(), a.color.toUpperCase(), 'duplicate colour was not swapped');
     assert.equal(b.skin.face, 'cat', 'but their other choices are kept');
 });
@@ -102,4 +102,25 @@ test('dressing up does not affect gameplay (hitbox and physics are the same)', (
     const b = room.addPlayer('b', 'B');
     assert.equal(a.width, b.width);
     assert.equal(a.height, b.height);
+});
+
+test('a second accessory must use a different slot from the first', () => {
+    const ok = Skins.sanitizeSkin({ acc: 'sunglasses', acc2: 'bowtie' });
+    assert.equal(ok.acc, 'sunglasses'); assert.equal(ok.acc2, 'bowtie');
+    assert.equal(Skins.sanitizeSkin({ acc: 'sunglasses', acc2: 'monocle' }).acc2, 'none', 'both on the eyes');
+    assert.equal(Skins.sanitizeSkin({ acc: 'cape', acc2: 'cape' }).acc2, 'none');
+    assert.equal(Skins.sanitizeSkin({ acc: 'none', acc2: 'tie' }).acc2, 'tie');
+    assert.equal(Skins.sanitizeSkin({ acc2: 'nope' }).acc2, 'none');
+    assert.equal(Skins.sanitizeSkin({ acc: 'tie', acc2: 'none' }).acc2, 'none');
+});
+
+test('every accessory has a slot, and random skins never double up a slot', () => {
+    Skins.ACCS.filter(a => a.id !== 'none').forEach(a => assert.ok(Skins.slotOf(a.id), `${a.id} has no slot`));
+    let seed = 3; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    let withTwo = 0;
+    for (let i = 0; i < 300; i++) {
+        const k = Skins.randomSkin(rnd);
+        if (k.acc2 !== 'none') { withTwo++; assert.notEqual(Skins.slotOf(k.acc), Skins.slotOf(k.acc2)); assert.deepEqual(Skins.sanitizeSkin(k), { ...k }); }
+    }
+    assert.ok(withTwo > 50);
 });

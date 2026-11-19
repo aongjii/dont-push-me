@@ -920,7 +920,7 @@ class Renderer {
             pushing: player.pushDuration > 0,
             power: player.power,
             powerMs: player.powerMs,
-            skin: { face: player.face, hat: player.hat, acc: player.acc, pat: player.pat },
+            skin: { face: player.face, hat: player.hat, acc: player.acc, acc2: player.acc2, pat: player.pat },
             frozen,
             rot: rolling ? t * 20 * (player.facing || 1) : (tumbling ? t * 9 * Math.sign(player.vx) : 0),
             flapping: player.power === 'wings' && !player.isGrounded,
@@ -1067,8 +1067,9 @@ class Renderer {
         const skin = o.skin || {};
 
         // things that sit behind the body
-        if (skin.acc === 'cape') this.drawCape(o, R, f);
-        if (skin.acc === 'backpack') this.drawBackpack(R, f);
+        const wears = (id) => skin.acc === id || skin.acc2 === id;
+        if (wears('cape')) this.drawCape(o, R, f);
+        if (wears('backpack')) this.drawBackpack(R, f);
         if (o.power === 'wings') this.drawWings(o, R);
 
         // arms
@@ -1113,8 +1114,8 @@ class Renderer {
         ctx.fill();
 
         this.drawPattern(skin.pat, o.color, R);
-        if (skin.acc === 'overalls') this.drawOveralls(R, o.color);
-        if (skin.acc === 'apron') this.drawApron(R);
+        if (wears('overalls')) this.drawOveralls(R, o.color);
+        if (wears('apron')) this.drawApron(R);
 
         // something in the cheeks
         if (o.mouthColor) {
@@ -1836,7 +1837,12 @@ class Renderer {
 
     // ------------------------------------------------------- accessories
     drawAccessory(o, R, f) {
-        const acc = o.skin && o.skin.acc;
+        if (!o.skin) return;
+        this.drawOneAccessory(o, R, f, o.skin.acc);
+        this.drawOneAccessory(o, R, f, o.skin.acc2);
+    }
+
+    drawOneAccessory(o, R, f, acc) {
         if (!acc || acc === 'none' || acc === 'cape' || acc === 'overalls' || acc === 'backpack' || acc === 'apron') return;
         const ctx = this.ctx;
         const fx = f * 3;
@@ -2099,7 +2105,7 @@ class Renderer {
         ctx.clearRect(0, 0, W, H);
         const s = H / 74;
         this.drawCharacter({
-            x: W / 2 - (skin && skin.acc === 'cape' ? 5 * s : 0), y: H - 5 * s, color, facing: 1, vx: 0, vy: 0,
+            x: W / 2 - (skin && (skin.acc === 'cape' || skin.acc2 === 'cape') ? 5 * s : 0), y: H - 5 * s, color, facing: 1, vx: 0, vy: 0,
             grounded: true, t, mood, scale: s, skin
         });
     }

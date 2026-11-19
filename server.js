@@ -64,7 +64,7 @@ function publicPlayers(room) {
     const all = Object.values(room.players);
     const teams = room.teamPreview();
     return [...all.filter(p => !p.isBot), ...all.filter(p => p.isBot)].map(p => ({
-        id: p.id, name: p.name, color: p.color, face: p.skin.face, hat: p.skin.hat, acc: p.skin.acc, pat: p.skin.pat, bot: !!p.isBot, team: teams[p.id] || null
+        id: p.id, name: p.name, color: p.color, face: p.skin.face, hat: p.skin.hat, acc: p.skin.acc, acc2: p.skin.acc2, pat: p.skin.pat, bot: !!p.isBot, team: teams[p.id] || null
     }));
 }
 

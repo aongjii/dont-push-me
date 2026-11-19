@@ -24,7 +24,7 @@ class Player {
         this.id = id;
         this.name = name;
         this.color = color;
-        this.skin = { face: 'classic', hat: 'none', acc: 'none', pat: 'none' }; // cosmetics (see shared/skins.js)
+        this.skin = { face: 'classic', hat: 'none', acc: 'none', acc2: 'none', pat: 'none' }; // cosmetics (see shared/skins.js)
         this.x = 100;
         this.y = 100;
         this.vx = 0;
