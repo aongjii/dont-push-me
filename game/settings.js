@@ -6,10 +6,11 @@ const OPTIONS = {
     lives: [1, 3],
     items: [true, false],
     shuffle: [true, false],
-    maxPlayers: [4, 6, 8]
+    maxPlayers: [4, 6, 8],
+    teams: [true, false]   // two teams (red / blue): no friendly fire, team score
 };
 
-const DEFAULTS = { mode: 'race', rounds: 3, lives: 3, items: true, shuffle: false, maxPlayers: 8 };
+const DEFAULTS = { mode: 'race', rounds: 3, lives: 3, items: true, shuffle: false, maxPlayers: 8, teams: false };
 
 function sanitizeSettings(raw, current = DEFAULTS) {
     const s = raw && typeof raw === 'object' ? raw : {};

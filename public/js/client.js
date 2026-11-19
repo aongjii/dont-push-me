@@ -405,6 +405,7 @@ function updatePlayerLobbyList(players) {
 
         item.appendChild(dot);
         item.appendChild(name);
+        if (p.team) item.style.borderLeft = `8px solid ${p.team === 'red' ? '#FF7A86' : '#5BA4FF'}`;
 
         if (idx === 0) {
             const host = document.createElement('span');
@@ -1057,10 +1058,20 @@ socket.on('round_end', ({ round, levelIndex, scoreboard, finishOrder }) => {
 });
 
 // Match ended Champion announcement
-socket.on('match_end', ({ scoreboard, winner }) => {
-    if (scoreboard[0] && scoreboard[0].id === localPlayerId && scoreboard.length > 1) PlayerStats.add('matchWins');
-    document.getElementById('match-winner').textContent = winner.name;
-    document.getElementById('match-winner').style.background = winner.color;
+socket.on('match_end', ({ scoreboard, winner, teams, winnerTeam }) => {
+    const myTeam = gameState && (gameState.players.find(p => p.id === localPlayerId) || {}).team;
+    if (teams) {
+        if (winnerTeam && myTeam === winnerTeam) PlayerStats.add('matchWins');
+        const names = { red: 'ทีมแดง', blue: 'ทีมน้ำเงิน' };
+        document.getElementById('match-winner').textContent = winnerTeam ? `${names[winnerTeam]} ชนะ!` : 'เสมอกัน!';
+        document.getElementById('match-winner').style.background = winnerTeam === 'red' ? '#FF9AA2' : (winnerTeam === 'blue' ? '#9CC9FF' : '#E6E0F2');
+        document.querySelector('.match-winner-sub').textContent = `คะแนนทีม แดง ${teams.red} : ${teams.blue} น้ำเงิน`;
+    } else {
+        if (scoreboard[0] && scoreboard[0].id === localPlayerId && scoreboard.length > 1) PlayerStats.add('matchWins');
+        document.getElementById('match-winner').textContent = winner.name;
+        document.getElementById('match-winner').style.background = winner.color;
+        document.querySelector('.match-winner-sub').textContent = 'คือผู้รอดชีวิตที่เหนือกว่าใคร!';
+    }
 
     const tbody = document.getElementById('match-scoreboard-body');
     tbody.innerHTML = '';

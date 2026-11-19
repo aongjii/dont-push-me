@@ -62,8 +62,9 @@ function asObject(x) {
 // People first, then bots, so the first entry is always a human (the host)
 function publicPlayers(room) {
     const all = Object.values(room.players);
+    const teams = room.teamPreview();
     return [...all.filter(p => !p.isBot), ...all.filter(p => p.isBot)].map(p => ({
-        id: p.id, name: p.name, color: p.color, face: p.skin.face, hat: p.skin.hat, acc: p.skin.acc, pat: p.skin.pat, bot: !!p.isBot
+        id: p.id, name: p.name, color: p.color, face: p.skin.face, hat: p.skin.hat, acc: p.skin.acc, pat: p.skin.pat, bot: !!p.isBot, team: teams[p.id] || null
     }));
 }
 

@@ -44,7 +44,8 @@ const ABILITY = {
 };
 
 function isTargetable(p, self) {
-    return p.id !== self.id && !p.isDead && !p.isFinished && !p.swallowedBy;
+    // (teammates are never hit, pulled or swallowed)
+    return p.id !== self.id && !p.isDead && !p.isFinished && !p.swallowedBy && !(p.team && p.team === self.team);
 }
 
 function install(Player) {

@@ -964,7 +964,8 @@ class Renderer {
         ctx.textBaseline = 'middle';
         const w = ctx.measureText(player.name).width + 14;
 
-        ctx.fillStyle = isLocal ? '#FFE066' : 'rgba(255,255,255,0.92)';
+        const teamFill = player.team === 'red' ? '#FF9AA2' : (player.team === 'blue' ? '#9CC9FF' : null);
+        ctx.fillStyle = teamFill || (isLocal ? '#FFE066' : 'rgba(255,255,255,0.92)');
         ctx.beginPath();
         ctx.roundRect(cx - w / 2, y - 9, w, 18, 9);
         ctx.fill();

@@ -189,6 +189,20 @@ class GameRoom {
         return order.slice(0, this.settings.rounds);
     }
 
+    // Team of each player if teams are on: alternate red / blue in join order (humans first)
+    teamPreview() {
+        const out = {};
+        if (!this.settings.teams) return out;
+        const all = Object.values(this.players);
+        [...all.filter(p => !p.isBot), ...all.filter(p => p.isBot)].forEach((p, i) => { out[p.id] = i % 2 === 0 ? 'red' : 'blue'; });
+        return out;
+    }
+
+    assignTeams() {
+        const t = this.teamPreview();
+        Object.values(this.players).forEach(p => { p.team = t[p.id] || null; });
+    }
+
     startGame() {
         if (this.status !== 'lobby') return;
         this.maxRounds = this.settings.rounds;
@@ -197,6 +211,7 @@ class GameRoom {
         this.round = 1;
         // Reset scores
         Object.values(this.players).forEach(p => p.score = 0);
+        this.assignTeams();
         this.startRound();
     }
 
@@ -390,6 +405,7 @@ class GameRoom {
                 const owner = this.players[pr.owner];
                 for (const p of Object.values(this.players)) {
                     if (p.id === pr.owner || p.isDead || p.isFinished || p.swallowedBy) continue;
+                    if (owner && owner.team && owner.team === p.team) continue; // no friendly fire
                     if (!(box.x < p.x + p.width && box.x + size > p.x &&
                           box.y < p.y + p.height && box.y + size > p.y)) continue;
                     const dir = pr.vx >= 0 ? 1 : -1;
@@ -490,6 +506,7 @@ class GameRoom {
         const victim = this.players[victimId];
         if (!victim || victim.isDead) return;
         if (victim.stompGuardMs > 0) return; // bouncing off them is fine, but no stun-locking
+        if (victim.team && victim.team === stomper.team) return; // a teammate's head is a springboard, not a target
         victim.stunMs = STUN_MS;
         victim.stompGuardMs = STUN_MS + STOMP_GUARD_MS;
         victim.markHit(stomper); // if they end up in a pit, the stomper gets the KO
@@ -630,9 +647,18 @@ class GameRoom {
             totalScore: p.score
         })).sort((a, b) => b.totalScore - a.totalScore);
 
+        // Team play: the team totals decide who wins
+        let teams = null, winnerTeam = null;
+        if (this.settings.teams) {
+            teams = { red: 0, blue: 0 };
+            Object.values(this.players).forEach(p => { if (p.team) teams[p.team] += p.score; });
+            winnerTeam = teams.red === teams.blue ? null : (teams.red > teams.blue ? 'red' : 'blue');
+        }
         this.lastMatchEnd = {
             scoreboard: scoreboard,
-            winner: scoreboard[0]
+            winner: scoreboard[0],
+            teams,
+            winnerTeam
         };
         this.io.to(this.code).emit('match_end', this.lastMatchEnd);
     }
@@ -668,6 +694,7 @@ class GameRoom {
             recover: p.recover,
             lives: p.isDead && p.respawnMs <= 0 ? 0 : p.respawnsLeft + 1,
             respawnMs: Math.max(0, Math.round(p.respawnMs)),
+            team: p.team || null,
             invulnMs: Math.max(0, Math.round(p.invulnMs)),
             stunMs: Math.max(0, Math.round(p.stunMs)),
             cp: p.cpIndex,

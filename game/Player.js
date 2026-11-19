@@ -370,6 +370,7 @@ class Player {
         // Detect other players in the push box
         for (let p of Object.values(gameRoom.players)) {
             if (p.id === this.id || p.isDead || p.isFinished || p.swallowedBy) continue;
+            if (p.team && p.team === this.team) continue; // teammates are never pushed
 
             if (p.x < pushBox.x + pushBox.width &&
                 p.x + p.width > pushBox.x &&
@@ -398,6 +399,7 @@ class Player {
         for (let p of Object.values(gameRoom.players)) {
             if (p.id === this.id || p.isDead || p.isFinished) continue;
             if (p.swallowedBy || p.pullImmunity > 0 || p.pullDuration > 0) continue; // can't be chain-pulled
+            if (p.team && p.team === this.team) continue;
             
             // Calculate distance
             const dx = p.x + p.width/2 - (this.x + this.width/2);
