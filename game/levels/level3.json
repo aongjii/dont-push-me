@@ -45,7 +45,8 @@
       "x": 370,
       "y": 2810,
       "width": 190,
-      "height": 30
+      "height": 30,
+      "crumble": true
     },
     {
       "x": 120,
@@ -72,7 +73,8 @@
       "x": 330,
       "y": 2470,
       "width": 190,
-      "height": 30
+      "height": 30,
+      "bounce": true
     },
     {
       "x": 120,
@@ -186,7 +188,8 @@
       "x": 330,
       "y": 940,
       "width": 190,
-      "height": 30
+      "height": 30,
+      "crumble": true
     },
     {
       "x": 540,
@@ -216,7 +219,8 @@
       "x": 540,
       "y": 515,
       "width": 190,
-      "height": 30
+      "height": 30,
+      "ice": true
     },
     {
       "x": 370,
@@ -274,7 +278,8 @@
       "height": 40,
       "type": "moving_spikes",
       "rangeX": 15,
-      "rangeY": 0
+      "rangeY": 0,
+      "freq": 7.5
     },
     {
       "x": 615,
@@ -283,7 +288,8 @@
       "height": 40,
       "type": "moving_spikes",
       "rangeX": 15,
-      "rangeY": 0
+      "rangeY": 0,
+      "freq": 7.5
     },
     {
       "x": 195,
@@ -292,7 +298,8 @@
       "height": 40,
       "type": "moving_spikes",
       "rangeX": 15,
-      "rangeY": 0
+      "rangeY": 0,
+      "freq": 7.5
     },
     {
       "x": 615,
@@ -301,7 +308,8 @@
       "height": 40,
       "type": "moving_spikes",
       "rangeX": 15,
-      "rangeY": 0
+      "rangeY": 0,
+      "freq": 7.5
     },
     {
       "x": 195,
@@ -310,7 +318,8 @@
       "height": 40,
       "type": "moving_spikes",
       "rangeX": 15,
-      "rangeY": 0
+      "rangeY": 0,
+      "freq": 7.5
     }
   ],
   "items": [
@@ -375,6 +384,44 @@
     {
       "x": 215,
       "y": 685
+    }
+  ],
+  "shooters": [
+    {
+      "x": 0,
+      "y": 2191,
+      "vx": 260,
+      "vy": 0,
+      "width": 36,
+      "height": 14,
+      "kind": "arrow",
+      "intervalMs": 2900,
+      "lifeMs": 3661.538461538462,
+      "offsetMs": 1400
+    },
+    {
+      "x": 864,
+      "y": 1426,
+      "vx": -260,
+      "vy": 0,
+      "width": 36,
+      "height": 14,
+      "kind": "arrow",
+      "intervalMs": 2900,
+      "lifeMs": 3661.538461538462,
+      "offsetMs": 1940
+    },
+    {
+      "x": 0,
+      "y": 831,
+      "vx": 260,
+      "vy": 0,
+      "width": 36,
+      "height": 14,
+      "kind": "arrow",
+      "intervalMs": 2900,
+      "lifeMs": 3661.538461538462,
+      "offsetMs": 2360
     }
   ]
 }

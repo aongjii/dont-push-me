@@ -38,7 +38,14 @@
     {
       "x": 1150,
       "y": 500,
-      "width": 200,
+      "width": 90,
+      "height": 220,
+      "bounce": true
+    },
+    {
+      "x": 1240,
+      "y": 500,
+      "width": 110,
       "height": 220
     },
     {
@@ -90,7 +97,8 @@
       "x": 3360,
       "y": 500,
       "width": 350,
-      "height": 220
+      "height": 220,
+      "ice": true
     },
     {
       "x": 3710,
@@ -141,7 +149,8 @@
       "x": 5450,
       "y": 500,
       "width": 300,
-      "height": 220
+      "height": 220,
+      "conveyor": -110
     },
     {
       "x": 5750,
@@ -221,7 +230,8 @@
       "height": 40,
       "type": "moving_spikes",
       "rangeX": 14,
-      "rangeY": 0
+      "rangeY": 0,
+      "freq": 8
     },
     {
       "x": 3710,
@@ -301,16 +311,6 @@
       "type": "star",
       "x": 4370,
       "y": 470
-    },
-    {
-      "type": "orb",
-      "x": 5630,
-      "y": 470
-    },
-    {
-      "type": "star",
-      "x": 5690,
-      "y": 470
     }
   ],
   "checkpoints": [
@@ -329,10 +329,32 @@
     {
       "x": 4300,
       "y": 500
+    }
+  ],
+  "shooters": [
+    {
+      "x": 2455,
+      "y": 120,
+      "vx": 0,
+      "vy": 300,
+      "width": 30,
+      "height": 30,
+      "kind": "rock",
+      "intervalMs": 3400,
+      "lifeMs": 2000,
+      "offsetMs": 1500
     },
     {
-      "x": 5530,
-      "y": 500
+      "x": 5510,
+      "y": 476,
+      "vx": -300,
+      "vy": 0,
+      "width": 36,
+      "height": 14,
+      "kind": "arrow",
+      "intervalMs": 2800,
+      "lifeMs": 3766.666666666667,
+      "offsetMs": 1200
     }
   ]
 }

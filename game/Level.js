@@ -3,6 +3,8 @@ const path = require('path');
 
 // A switched platform that has been flipped away from its normal state returns by itself after
 // this long, so nobody can be locked out of the rest of a (very long) level for good.
+const CRUMBLE_DELAY_MS = 650;      // from stepping on it to it dropping away
+const CRUMBLE_RESTORE_MS = 4000;    // ...and until it is back
 const SWITCH_RESTORE_MS = 7000;
 
 class Level {
@@ -54,7 +56,13 @@ class Level {
                 initialActive: plat.active !== undefined ? plat.active : true,
                 returnMs: 0, // > 0 while flipped away from its normal state: time until it comes back
                 triggerIndex: plat.triggerIndex !== undefined ? plat.triggerIndex : null,
-                color: plat.color || '#4A5568'
+                color: plat.color || '#4A5568',
+                // surface kinds (shared/movement.js reads bounce / ice / conveyor)
+                bounce: !!plat.bounce,
+                ice: !!plat.ice,
+                conveyor: plat.conveyor || 0,    // px/s the belt carries you (negative = left)
+                crumble: !!plat.crumble,         // drops away shortly after somebody stands on it
+                crumbleMs: -1                    // countdown once stepped on
             }));
 
             // Load switches
@@ -80,8 +88,22 @@ class Level {
                 rangeY: haz.rangeY || 0,
                 startX: haz.x,
                 startY: haz.y,
+                freq: haz.freq || 2,    // patrol speed = range x freq (px/s)
                 time: 0
             }));
+
+            // Arrow / rock launchers. Each fires a harmful shot every intervalMs.
+            this.shooters = (data.shooters || []).map((s, i) => ({
+                x: s.x, y: s.y,
+                vx: s.vx || 0, vy: s.vy || 0,
+                width: s.width || 30, height: s.height || 14,
+                kind: s.kind || (s.vy ? 'rock' : 'arrow'),
+                intervalMs: s.intervalMs || 2400,
+                lifeMs: s.lifeMs || 3000,
+                timer: s.offsetMs !== undefined ? s.offsetMs : (i * 700) % (s.intervalMs || 2400)
+            }));
+            this.shots = [];
+            this.shotId = 0;
 
             // Collectibles
             this.items = (data.items || []).map((it, i) => ({
@@ -152,13 +174,37 @@ class Level {
                 haz.time += dt / 1000;
                 // Periodic ping-pong motion
                 if (haz.rangeX > 0) {
-                    haz.x = haz.startX + Math.sin(haz.time * 2) * haz.rangeX;
+                    haz.x = haz.startX + Math.sin(haz.time * haz.freq) * haz.rangeX;
                 }
                 if (haz.rangeY > 0) {
-                    haz.y = haz.startY + Math.sin(haz.time * 2) * haz.rangeY;
+                    haz.y = haz.startY + Math.sin(haz.time * haz.freq) * haz.rangeY;
                 }
             }
         });
+
+        // Crumbling platforms fall away shortly after being stepped on, then grow back
+        this.platforms.forEach(p => {
+            if (p.crumble && p.crumbleMs >= 0) {
+                p.crumbleMs -= dt;
+                if (p.crumbleMs < 0) {
+                    p.active = false;
+                    p.returnMs = CRUMBLE_RESTORE_MS;
+                    p.crumbleMs = -1;
+                }
+            }
+        });
+
+        // Launchers
+        const sec = dt / 1000;
+        this.shooters.forEach(sh => {
+            sh.timer -= dt;
+            if (sh.timer <= 0) {
+                sh.timer += sh.intervalMs;
+                this.shots.push({ id: ++this.shotId, kind: sh.kind, x: sh.x, y: sh.y, vx: sh.vx, vy: sh.vy, width: sh.width, height: sh.height, ms: sh.lifeMs });
+            }
+        });
+        this.shots.forEach(sh => { sh.x += sh.vx * sec; sh.y += sh.vy * sec; sh.ms -= dt; });
+        this.shots = this.shots.filter(sh => sh.ms > 0);
 
         // Collectibles: drift home when released, come back after being eaten
         this.items.forEach(it => {
@@ -185,6 +231,17 @@ class Level {
         }
     }
 
+    // Called for every grounded player: stepping on a crumbling platform starts its countdown
+    touchGround(player) {
+        for (const pl of this.platforms) {
+            if (!pl.crumble || !pl.active || pl.crumbleMs >= 0) continue;
+            if (Math.abs(pl.y - (player.y + player.height)) <= 2 &&
+                player.x + player.width > pl.x && player.x < pl.x + pl.width) {
+                pl.crumbleMs = CRUMBLE_DELAY_MS;
+            }
+        }
+    }
+
     getCollidingTiles(player) {
         const colliding = [];
         for (let plat of this.platforms) {
@@ -206,6 +263,13 @@ class Level {
         // Check rising lava
         if (this.hasRisingLava && player.y + player.height > this.lavaY) {
             return true;
+        }
+
+        for (const sh of this.shots) {
+            if (player.x < sh.x + sh.width && player.x + player.width > sh.x &&
+                player.y < sh.y + sh.height && player.y + player.height > sh.y) {
+                return true;
+            }
         }
 
         // Check normal static/moving hazards

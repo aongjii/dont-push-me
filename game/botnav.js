@@ -8,6 +8,9 @@ const DT = Movement.MOVE.step;
 const RUNWAY = 90;           // a run-up jump needs this much platform behind the take-off point
 const HOLDS = [150, 300, 450, 600, 800, 1200];
 
+// planning treats a bounce pad as ordinary floor
+const plain = pl => (pl.bounce ? { ...pl, bounce: false } : pl);
+
 function makeWorld(platforms, height) {
     return {
         height,
@@ -15,7 +18,7 @@ function makeWorld(platforms, height) {
         getCollidingTiles(p) {
             return platforms.filter(pl =>
                 p.x < pl.x + pl.width && p.x + p.width > pl.x &&
-                p.y < pl.y + pl.height && p.y + p.height > pl.y);
+                p.y < pl.y + pl.height && p.y + p.height > pl.y).map(plain);
         }
     };
 }

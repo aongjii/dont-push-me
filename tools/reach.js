@@ -18,7 +18,7 @@ function makeWorld(level) {
         getCollidingTiles(p) {
             return plats.filter(pl =>
                 p.x < pl.x + pl.width && p.x + p.width > pl.x &&
-                p.y < pl.y + pl.height && p.y + p.height > pl.y);
+                p.y < pl.y + pl.height && p.y + p.height > pl.y).map(pl => (pl.bounce ? { ...pl, bounce: false } : pl));
         }
     };
 }

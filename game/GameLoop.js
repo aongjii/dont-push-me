@@ -86,6 +86,7 @@ class GameLoop {
 
             const wasDead = player.isDead;
             player.update(dt, this.room.level, this.room);
+            if (player.isGrounded && !player.isDead) this.room.level.touchGround(player);
 
             // Hazard collision checks (someone inside a mouth is carried, not exposed)
             if (!player.swallowedBy && player.invulnMs <= 0 && this.room.level.checkHazards(player)) {

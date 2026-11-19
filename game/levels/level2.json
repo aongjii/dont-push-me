@@ -30,13 +30,15 @@
       "x": 650,
       "y": 420,
       "width": 160,
-      "height": 30
+      "height": 30,
+      "ice": true
     },
     {
       "x": 920,
       "y": 490,
       "width": 180,
-      "height": 30
+      "height": 30,
+      "crumble": true
     },
     {
       "x": 1230,
@@ -54,7 +56,8 @@
       "x": 1770,
       "y": 440,
       "width": 160,
-      "height": 30
+      "height": 30,
+      "conveyor": -120
     },
     {
       "x": 2040,
@@ -105,13 +108,15 @@
       "x": 4040,
       "y": 400,
       "width": 160,
-      "height": 30
+      "height": 30,
+      "conveyor": 120
     },
     {
       "x": 4340,
       "y": 460,
       "width": 170,
-      "height": 30
+      "height": 30,
+      "crumble": true
     },
     {
       "x": 4620,
@@ -144,13 +149,15 @@
       "x": 5750,
       "y": 350,
       "width": 180,
-      "height": 30
+      "height": 30,
+      "ice": true
     },
     {
       "x": 6050,
       "y": 300,
       "width": 150,
-      "height": 30
+      "height": 30,
+      "crumble": true
     },
     {
       "x": 6310,
@@ -183,7 +190,8 @@
       "x": 7460,
       "y": 380,
       "width": 160,
-      "height": 30
+      "height": 30,
+      "conveyor": -120
     },
     {
       "x": 7740,
@@ -226,7 +234,8 @@
       "height": 40,
       "type": "moving_spikes",
       "rangeX": 12,
-      "rangeY": 0
+      "rangeY": 0,
+      "freq": 9
     },
     {
       "x": 3250,
@@ -235,7 +244,8 @@
       "height": 40,
       "type": "moving_spikes",
       "rangeX": 12,
-      "rangeY": 0
+      "rangeY": 0,
+      "freq": 9
     },
     {
       "x": 5255,
@@ -244,7 +254,8 @@
       "height": 40,
       "type": "moving_spikes",
       "rangeX": 12,
-      "rangeY": 0
+      "rangeY": 0,
+      "freq": 9
     },
     {
       "x": 6670,
@@ -253,7 +264,8 @@
       "height": 40,
       "type": "moving_spikes",
       "rangeX": 12,
-      "rangeY": 0
+      "rangeY": 0,
+      "freq": 9
     },
     {
       "x": 240,
@@ -324,6 +336,32 @@
     {
       "x": 7540,
       "y": 380
+    }
+  ],
+  "shooters": [
+    {
+      "x": 2115,
+      "y": 160,
+      "vx": 0,
+      "vy": 300,
+      "width": 30,
+      "height": 30,
+      "kind": "rock",
+      "intervalMs": 3200,
+      "lifeMs": 1300,
+      "offsetMs": 1140
+    },
+    {
+      "x": 3550,
+      "y": 80,
+      "vx": 0,
+      "vy": 300,
+      "width": 30,
+      "height": 30,
+      "kind": "rock",
+      "intervalMs": 3200,
+      "lifeMs": 1300,
+      "offsetMs": 1590
     }
   ]
 }

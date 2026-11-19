@@ -190,7 +190,7 @@ class Bot {
         for (const h of level.hazards) {
             if (!(h.rangeX > 0)) continue;
             if (h.y + h.height < plat.y - 6 || h.y > plat.y + 6) continue; // not on that platform
-            const hx = h.startX + Math.sin((h.time + r.airMs / 1000) * 2) * h.rangeX;
+            const hx = h.startX + Math.sin((h.time + r.airMs / 1000) * (h.freq || 2)) * h.rangeX;
             if (Math.abs(hx + h.width / 2 - (r.landX + 15)) < h.width / 2 + 15 + 22) return true;
         }
         return false;

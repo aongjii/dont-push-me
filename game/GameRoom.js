@@ -243,6 +243,7 @@ class GameRoom {
             platforms: this.level.platforms,
             switches: this.level.switches,
             hazards: this.level.hazards,
+            shooters: this.level.shooters,
             finishZone: this.level.finishZone,
             hasRisingLava: this.level.hasRisingLava,
             lavaSpeed: this.level.lavaSpeed,
@@ -648,10 +649,12 @@ class GameRoom {
             height: haz.height,
             type: haz.type
         }));
+        const shotsData = (this.level?.shots || []).map(sh => ({ id: sh.id, kind: sh.kind, x: Math.round(sh.x), y: Math.round(sh.y), width: sh.width, height: sh.height, vx: sh.vx, vy: sh.vy }));
 
         this.io.to(this.code).emit('game_state', {
             players: playersData,
             hazards: hazardsData,
+            shots: shotsData,
             platforms: this.level.platforms, // send current toggle status
             items: this.level.items.map(it => ({ id: it.id, type: it.type, x: Math.round(it.x), y: Math.round(it.y), alive: it.alive })),
             projectiles: this.projectiles.map(pr => ({ id: pr.id, type: pr.type, x: Math.round(pr.x), y: Math.round(pr.y), vx: pr.vx })),

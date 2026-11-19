@@ -24,7 +24,9 @@
         recoverBrake: 0.3,     // ...which also kills most of their forward speed
         spinBoost: 1.25,
         inhaleSlow: 0.5,
-        mouthSlow: 0.8
+        mouthSlow: 0.8,
+        bounceForce: -780,     // bounce pad: launches you ~250px up
+        iceDrag: 1.8,          // on ice you speed up and slow down very slowly
     };
 
     // Key bits sent from client to server in each command
@@ -42,14 +44,16 @@
         return k;
     }
 
-    function resolveHorizontal(p, world) {
+    // `dir` overrides the direction we were moving (a conveyor can push a player who has vx = 0)
+    function resolveHorizontal(p, world, dir) {
+        const v = dir === undefined ? p.vx : dir;
         for (const tile of world.getCollidingTiles(p)) {
-            if (p.vx > 0) {
+            if (v > 0) {
                 p.x = tile.x - p.width;
-                p.vx = 0;
-            } else if (p.vx < 0) {
+                if (p.vx > 0) p.vx = 0;
+            } else if (v < 0) {
                 p.x = tile.x + tile.width;
-                p.vx = 0;
+                if (p.vx < 0) p.vx = 0;
             }
         }
     }
@@ -59,13 +63,26 @@
         for (const tile of world.getCollidingTiles(p)) {
             if (p.vy > 0) {
                 p.y = tile.y - p.height;
-                p.vy = 0;
-                p.isGrounded = true;
+                if (tile.bounce) {
+                    p.vy = MOVE.bounceForce;   // springs back up; never counts as standing
+                } else {
+                    p.vy = 0;
+                    p.isGrounded = true;
+                }
             } else if (p.vy < 0) {
                 p.y = tile.y + tile.height;
                 p.vy = 0;
             }
         }
+    }
+
+    // The platform we are standing on (for ice / conveyors), or null
+    function groundTile(p, world) {
+        p.y += 2;
+        const tiles = world.getCollidingTiles(p);
+        p.y -= 2;
+        for (const t of tiles) if (Math.abs(t.y - (p.y + p.height)) <= 3) return t;
+        return null;
     }
 
     // Advance one player by dt ms.
@@ -87,6 +104,10 @@
         const speedMul = (mods.spin ? MOVE.spinBoost : 1) *
             (sucking ? MOVE.inhaleSlow : (mods.mouth ? MOVE.mouthSlow : 1));
 
+        const under = p.isGrounded ? groundTile(p, world) : null;
+        const drag = under && under.ice ? MOVE.iceDrag : MOVE.drag;
+        const belt = under && under.conveyor ? under.conveyor : 0;
+
         let targetVx = 0;
         if (keys.left) {
             targetVx = -MOVE.speed * speedMul;
@@ -97,7 +118,7 @@
         }
 
         // A spat-out player flies ballistically (no braking)
-        if (!mods.ballistic) p.vx += (targetVx - p.vx) * MOVE.drag * (dt / 1000);
+        if (!mods.ballistic) p.vx += (targetVx - p.vx) * drag * (dt / 1000);
 
         p.vy += MOVE.gravity * (mods.spat ? MOVE.spitGravity : 1) * (dt / 1000);
         p.vy = Math.min(p.vy, MOVE.terminal);
@@ -132,8 +153,8 @@
             }
         }
 
-        p.x += p.vx * (dt / 1000);
-        resolveHorizontal(p, world);
+        p.x += (p.vx + belt) * (dt / 1000);
+        resolveHorizontal(p, world, p.vx + belt);
 
         p.y += p.vy * (dt / 1000);
         resolveVertical(p, world);

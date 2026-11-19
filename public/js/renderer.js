@@ -153,7 +153,14 @@ class Renderer {
 
         // World, back to front
         this.drawFinish(levelData.finishZone);
-        gameState.platforms.forEach(p => this.drawPlatform(p));
+        gameState.platforms.forEach(p => {
+            const shake = p.crumble && p.active && p.crumbleMs >= 0;
+            if (shake) { this.ctx.save(); this.ctx.translate(Math.sin(this.time * 90) * 2.2, Math.cos(this.time * 70) * 1.4); }
+            this.drawPlatform(p);
+            this.drawSurface(p);
+            if (shake) this.ctx.restore();
+        });
+        (levelData.shooters || []).forEach(sh => this.drawShooter(sh));
         (levelData.switches || []).forEach((sw, idx) => {
             this.drawSwitch(sw, this.switchActive(gameState, idx));
             if (localPlayer && !localPlayer.isDead && !localPlayer.isFinished) {
@@ -181,6 +188,7 @@ class Renderer {
         players.sort((a, b) => (a.id === localPlayerId) - (b.id === localPlayerId));
         players.forEach(p => this.drawPlayer(p, p.id === localPlayerId, gameState));
 
+        (gameState.shots || []).forEach(sh => this.drawShot(sh));
         (gameState.projectiles || []).forEach(pr => this.drawProjectile(pr));
 
         // Particles on top of characters
@@ -257,6 +265,103 @@ class Renderer {
     }
 
     // ------------------------------------------------------------- platforms
+    // Special surfaces drawn on top of the plain platform: bounce pad, ice, conveyor belt, crumbling stone
+    drawSurface(plat) {
+        if (!plat.active) return;
+        const ctx = this.ctx;
+        const { x, y, width: w, height: h } = plat;
+        ctx.save();
+        if (plat.ice) {
+            ctx.fillStyle = 'rgba(190,235,255,0.92)';
+            ctx.beginPath(); ctx.roundRect(x, y, w, Math.min(h, 18), [8, 8, 0, 0]); ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = 2;
+            for (let px = x + 14; px < x + w - 10; px += 46) {
+                ctx.beginPath(); ctx.moveTo(px, y + 12); ctx.lineTo(px + 14, y + 4); ctx.stroke();
+            }
+        } else if (plat.conveyor) {
+            const dir = Math.sign(plat.conveyor);
+            const bh = Math.min(h, 16);
+            ctx.fillStyle = '#3d3a4f';
+            ctx.beginPath(); ctx.roundRect(x, y, w, bh, [6, 6, 0, 0]); ctx.fill();
+            ctx.beginPath(); ctx.rect(x, y, w, bh); ctx.clip();
+            ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            const off = ((this.time * Math.abs(plat.conveyor) * 0.5) % 28 + 28) % 28 * dir;
+            for (let px = x - 28; px < x + w + 28; px += 28) {
+                const cx = px + off;
+                ctx.beginPath();
+                ctx.moveTo(cx - 4 * dir, y + 3); ctx.lineTo(cx + 3 * dir, y + bh / 2); ctx.lineTo(cx - 4 * dir, y + bh - 3);
+                ctx.stroke();
+            }
+        } else if (plat.bounce) {
+            ctx.fillStyle = '#ff6fa8';
+            ctx.beginPath(); ctx.roundRect(x, y, w, h, 8); ctx.fill();
+            ctx.fillStyle = '#ffd3e4';
+            ctx.beginPath(); ctx.roundRect(x + 6, y + 3, w - 12, 5, 3); ctx.fill();
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            const bob = Math.sin(this.time * 6) * 2;
+            for (let px = x + 22; px < x + w - 12; px += 34) {
+                ctx.beginPath(); ctx.moveTo(px - 6, y - 4 + bob + 8); ctx.lineTo(px, y - 4 + bob); ctx.lineTo(px + 6, y - 4 + bob + 8); ctx.stroke();
+            }
+        } else if (plat.crumble) {
+            ctx.fillStyle = '#b79b78';
+            ctx.beginPath(); ctx.roundRect(x, y, w, h, 6); ctx.fill();
+            ctx.strokeStyle = '#6b5640'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+            const hurry = plat.crumbleMs >= 0;
+            for (let px = x + 20; px < x + w - 10; px += 48) {
+                ctx.beginPath();
+                ctx.moveTo(px, y + 1); ctx.lineTo(px + 6, y + h * 0.45); ctx.lineTo(px - 3, y + h * 0.7); ctx.lineTo(px + 4, y + h - 1);
+                ctx.stroke();
+            }
+            if (hurry) { ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.roundRect(x, y, w, h, 6); ctx.fill(); }
+        }
+        ctx.restore();
+    }
+
+    // An arrow / rock launcher (a little cannon box where the shots appear)
+    drawShooter(sh) {
+        const ctx = this.ctx;
+        ctx.save();
+        const rock = sh.kind === 'rock';
+        const w = 34, h = 26;
+        const cx = sh.x + (sh.width || 30) / 2, cy = sh.y + (sh.height || 14) / 2;
+        ctx.fillStyle = '#4b4560';
+        ctx.beginPath(); ctx.roundRect(cx - w / 2, cy - h / 2, w, h, 6); ctx.fill();
+        ctx.fillStyle = '#2b2140';
+        ctx.beginPath();
+        if (rock) ctx.arc(cx, cy + h / 2 - 3, 7, 0, Math.PI * 2);
+        else ctx.arc(cx + Math.sign(sh.vx || 1) * (w / 2 - 3), cy, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffd24a';
+        ctx.beginPath(); ctx.arc(cx - Math.sign(sh.vx || 1) * (rock ? 0 : 6), cy - (rock ? 4 : 0), 3, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+    }
+
+    drawShot(sh) {
+        const ctx = this.ctx;
+        ctx.save();
+        if (sh.kind === 'rock') {
+            const cx = sh.x + sh.width / 2, cy = sh.y + sh.height / 2, r = Math.max(sh.width, sh.height) / 2;
+            ctx.fillStyle = '#6d6379';
+            ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#8f859c';
+            ctx.beginPath(); ctx.arc(cx - r * 0.3, cy - r * 0.3, r * 0.4, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#2b2140'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+        } else {
+            const d = Math.sign(sh.vx || 1);
+            const midY = sh.y + sh.height / 2;
+            const tip = d > 0 ? sh.x + sh.width : sh.x, tail = d > 0 ? sh.x : sh.x + sh.width;
+            ctx.strokeStyle = '#2b2140'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+            ctx.beginPath(); ctx.moveTo(tail, midY); ctx.lineTo(tip - d * 8, midY); ctx.stroke();
+            ctx.fillStyle = '#ff5d6c';
+            ctx.beginPath(); ctx.moveTo(tip, midY); ctx.lineTo(tip - d * 12, midY - 7); ctx.lineTo(tip - d * 12, midY + 7); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = '#ffd24a';
+            ctx.beginPath(); ctx.moveTo(tail, midY); ctx.lineTo(tail + d * 8, midY - 6); ctx.lineTo(tail + d * 8, midY); ctx.closePath(); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(tail, midY); ctx.lineTo(tail + d * 8, midY + 6); ctx.lineTo(tail + d * 8, midY); ctx.closePath(); ctx.fill();
+        }
+        ctx.restore();
+    }
+
     drawPlatform(plat) {
         const ctx = this.ctx;
         const th = this.theme;
@@ -266,7 +371,7 @@ class Renderer {
 
         if (!plat.active) {
             // A removed plank: a dashed outline where it was, filling in as it gets close to coming back
-            const total = 7000; // keep in step with SWITCH_RESTORE_MS on the server
+            const total = plat.crumble ? 4000 : 7000; // keep in step with the server's restore times
             const progress = plat.returnMs > 0 ? 1 - plat.returnMs / total : 0;
             const soon = plat.returnMs > 0 && plat.returnMs < 1500;
             if (progress > 0) {
