@@ -3,7 +3,7 @@ const path = require('path');
 
 // A switched platform that has been flipped away from its normal state returns by itself after
 // this long, so nobody can be locked out of the rest of a (very long) level for good.
-const CRUMBLE_DELAY_MS = 650;      // from stepping on it to it dropping away
+const CRUMBLE_AFTER_MS = 1800;     // how long you can stand on it before it gives way
 const CRUMBLE_RESTORE_MS = 4000;    // ...and until it is back
 const SWITCH_RESTORE_MS = 7000;
 
@@ -62,7 +62,8 @@ class Level {
                 ice: !!plat.ice,
                 conveyor: plat.conveyor || 0,    // px/s the belt carries you (negative = left)
                 crumble: !!plat.crumble,         // drops away shortly after somebody stands on it
-                crumbleMs: -1                    // countdown once stepped on
+                weightMs: 0,                     // how long somebody has stood on it (builds up, eases off when empty)
+                stoodOn: false
             }));
 
             // Load switches
@@ -182,15 +183,16 @@ class Level {
             }
         });
 
-        // Crumbling platforms fall away shortly after being stepped on, then grow back
+        // Crumbling platforms: standing on one builds up weight; they only give way after a good while
         this.platforms.forEach(p => {
-            if (p.crumble && p.crumbleMs >= 0) {
-                p.crumbleMs -= dt;
-                if (p.crumbleMs < 0) {
-                    p.active = false;
-                    p.returnMs = CRUMBLE_RESTORE_MS;
-                    p.crumbleMs = -1;
-                }
+            if (!p.crumble || !p.active) return;
+            if (p.stoodOn) p.weightMs += dt;
+            else p.weightMs = Math.max(0, p.weightMs - dt * 0.7);
+            p.stoodOn = false;
+            if (p.weightMs >= CRUMBLE_AFTER_MS) {
+                p.active = false;
+                p.returnMs = CRUMBLE_RESTORE_MS;
+                p.weightMs = 0;
             }
         });
 
@@ -231,13 +233,13 @@ class Level {
         }
     }
 
-    // Called for every grounded player: stepping on a crumbling platform starts its countdown
+    // Called for every grounded player: standing on a crumbling platform builds up its weight
     touchGround(player) {
         for (const pl of this.platforms) {
-            if (!pl.crumble || !pl.active || pl.crumbleMs >= 0) continue;
+            if (!pl.crumble || !pl.active) continue;
             if (Math.abs(pl.y - (player.y + player.height)) <= 2 &&
                 player.x + player.width > pl.x && player.x < pl.x + pl.width) {
-                pl.crumbleMs = CRUMBLE_DELAY_MS;
+                pl.stoodOn = true;
             }
         }
     }

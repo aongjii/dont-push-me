@@ -48,18 +48,22 @@ test('a conveyor cannot push a player through a wall', () => {
     assert.ok(p.x + p.width <= 300 + 0.01, `player is inside the wall at ${p.x}`);
 });
 
-test('crumbling platform drops after being stood on, then comes back', () => {
+test('crumbling platform survives a quick touch, drops after standing on it for a while, then comes back', () => {
     const lv = new Level(2);
     const pl = lv.platforms.find(x => x.crumble);
     assert.ok(pl, 'level 2 has a crumbling platform');
     const p = stand(pl, pl.x + 10);
-    lv.touchGround(p);
-    assert.ok(pl.crumbleMs > 0);
-    for (let t = 0; t < 700; t += 16) lv.update(16);
+    // a quick hop over it (0.4s) does nothing
+    for (let t = 0; t < 400; t += 16) { lv.touchGround(p); lv.update(16); }
+    assert.equal(pl.active, true);
+    // ...and the weight eases off once you leave
+    for (let t = 0; t < 1500; t += 16) lv.update(16);
+    assert.equal(pl.weightMs, 0);
+    // standing around for 2.2s brings it down
+    for (let t = 0; t < 2200; t += 16) { lv.touchGround(p); lv.update(16); }
     assert.equal(pl.active, false, 'dropped away');
     for (let t = 0; t < 4200; t += 16) lv.update(16);
     assert.equal(pl.active, true, 'grew back');
-    assert.equal(pl.crumbleMs, -1);
 });
 
 test('shooters fire shots that hurt and then expire', () => {

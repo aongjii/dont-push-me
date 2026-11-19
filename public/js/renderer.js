@@ -154,7 +154,7 @@ class Renderer {
         // World, back to front
         this.drawFinish(levelData.finishZone);
         gameState.platforms.forEach(p => {
-            const shake = p.crumble && p.active && p.crumbleMs >= 0;
+            const shake = p.crumble && p.active && p.weightMs > 700;
             if (shake) { this.ctx.save(); this.ctx.translate(Math.sin(this.time * 90) * 2.2, Math.cos(this.time * 70) * 1.4); }
             this.drawPlatform(p);
             this.drawSurface(p);
@@ -306,7 +306,7 @@ class Renderer {
             ctx.fillStyle = '#b79b78';
             ctx.beginPath(); ctx.roundRect(x, y, w, h, 6); ctx.fill();
             ctx.strokeStyle = '#6b5640'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
-            const hurry = plat.crumbleMs >= 0;
+            const hurry = plat.weightMs > 700;
             for (let px = x + 20; px < x + w - 10; px += 48) {
                 ctx.beginPath();
                 ctx.moveTo(px, y + 1); ctx.lineTo(px + 6, y + h * 0.45); ctx.lineTo(px - 3, y + h * 0.7); ctx.lineTo(px + 4, y + h - 1);
