@@ -19,7 +19,11 @@
         { id: 'white',  hex: '#F4F1FA', name: 'ขาว' },
         { id: 'grey',   hex: '#9A93B5', name: 'เทา' },
         { id: 'brown',  hex: '#C49A6C', name: 'น้ำตาล' },
-        { id: 'lime',   hex: '#B7E05A', name: 'เลมอน' }
+        { id: 'lime',   hex: '#B7E05A', name: 'เลมอน' },
+        { id: 'teal',   hex: '#3CB8C9', name: 'ฟ้าทะเล' },
+        { id: 'coral',  hex: '#FF8E7A', name: 'ปะการัง' },
+        { id: 'gold',   hex: '#E8C26A', name: 'ทอง' },
+        { id: 'indigo', hex: '#7B8CDE', name: 'คราม' }
     ];
 
     const FACES = [
@@ -31,7 +35,11 @@
         { id: 'cat',     name: 'แมวเหมียว' },
         { id: 'derp',    name: 'ตาเหล่' },
         { id: 'wow',     name: 'ตกใจ' },
-        { id: 'abe',     name: 'อาเบะ ยาราไนกะ' }
+        { id: 'abe',     name: 'อาเบะ ยาราไนกะ' },
+        { id: 'wink',    name: 'ขยิบตา' },
+        { id: 'uwu',     name: 'ตาวิบวับ' },
+        { id: 'bored',   name: 'เบื่อโลก' },
+        { id: 'cry',     name: 'ร้องไห้' }
     ];
 
     const HATS = [
@@ -47,7 +55,16 @@
         { id: 'flower',     name: 'ดอกไม้' },
         { id: 'tophat',     name: 'หมวกทรงสูง' },
         { id: 'headband',   name: 'ผ้าคาดหัว' },
-        { id: 'horns',      name: 'เขาปีศาจ' }
+        { id: 'horns',      name: 'เขาปีศาจ' },
+        { id: 'pirate',     name: 'หมวกโจรสลัด' },
+        { id: 'wizard',     name: 'หมวกพ่อมด' },
+        { id: 'cowboy',     name: 'หมวกคาวบอย' },
+        { id: 'sprout',     name: 'ต้นอ่อน' },
+        { id: 'helmet',     name: 'หมวกนิรภัย' },
+        { id: 'headphones', name: 'หูฟัง' },
+        { id: 'santa',      name: 'หมวกซานต้า' },
+        { id: 'bow',        name: 'โบว์' },
+        { id: 'mushroom',   name: 'หมวกเห็ด' }
     ];
 
     const ACCS = [
@@ -59,10 +76,29 @@
         { id: 'scarf',      name: 'ผ้าพันคอ' },
         { id: 'overalls',   name: 'ชุดช่างสีน้ำเงิน' },
         { id: 'eyepatch',   name: 'ผ้าปิดตา' },
-        { id: 'cape',       name: 'ผ้าคลุม' }
+        { id: 'cape',       name: 'ผ้าคลุม' },
+        { id: 'backpack',   name: 'กระเป๋าเป้' },
+        { id: 'tie',        name: 'เนคไท' },
+        { id: 'medal',      name: 'เหรียญรางวัล' },
+        { id: 'pearls',     name: 'สร้อยไข่มุก' },
+        { id: 'bandaid',    name: 'พลาสเตอร์' },
+        { id: 'monocle',    name: 'แว่นข้างเดียว' },
+        { id: 'apron',      name: 'ผ้ากันเปื้อน' },
+        { id: 'lei',        name: 'พวงมาลัยดอกไม้' }
     ];
 
-    const DEFAULT_SKIN = { color: COLORS[0].hex, face: 'classic', hat: 'none', acc: 'none' };
+    // patterns printed on the body
+    const PATTERNS = [
+        { id: 'none',     name: 'เรียบ' },
+        { id: 'spots',    name: 'ลายจุด' },
+        { id: 'stripes',  name: 'ลายขวาง' },
+        { id: 'hearts',   name: 'ลายหัวใจ' },
+        { id: 'stars',    name: 'ลายดาว' },
+        { id: 'checks',   name: 'ลายหมากรุก' },
+        { id: 'freckles', name: 'กระ' }
+    ];
+
+    const DEFAULT_SKIN = { color: COLORS[0].hex, face: 'classic', hat: 'none', acc: 'none', pat: 'none' };
 
     const has = (list, id) => list.some(o => o.id === id);
 
@@ -75,7 +111,8 @@
             color: color ? color.hex : DEFAULT_SKIN.color,
             face: typeof s.face === 'string' && has(FACES, s.face) ? s.face : DEFAULT_SKIN.face,
             hat: typeof s.hat === 'string' && has(HATS, s.hat) ? s.hat : DEFAULT_SKIN.hat,
-            acc: typeof s.acc === 'string' && has(ACCS, s.acc) ? s.acc : DEFAULT_SKIN.acc
+            acc: typeof s.acc === 'string' && has(ACCS, s.acc) ? s.acc : DEFAULT_SKIN.acc,
+            pat: typeof s.pat === 'string' && has(PATTERNS, s.pat) ? s.pat : DEFAULT_SKIN.pat
         };
     }
 
@@ -87,7 +124,8 @@
             color: pick(COLORS, rnd).hex,
             face: pick(FACES, rnd).id,
             hat: pick(HATS, rnd).id,
-            acc: pick(ACCS, rnd).id
+            acc: pick(ACCS, rnd).id,
+            pat: pick(PATTERNS, rnd).id
         };
     }
 
@@ -98,5 +136,5 @@
         return c ? c.hex : COLORS[0].hex;
     }
 
-    return { COLORS, FACES, HATS, ACCS, DEFAULT_SKIN, sanitizeSkin, randomSkin, freeColor };
+    return { COLORS, FACES, HATS, ACCS, PATTERNS, DEFAULT_SKIN, sanitizeSkin, randomSkin, freeColor };
 });

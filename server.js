@@ -63,7 +63,7 @@ function asObject(x) {
 function publicPlayers(room) {
     const all = Object.values(room.players);
     return [...all.filter(p => !p.isBot), ...all.filter(p => p.isBot)].map(p => ({
-        id: p.id, name: p.name, color: p.color, face: p.skin.face, hat: p.skin.hat, acc: p.skin.acc, bot: !!p.isBot
+        id: p.id, name: p.name, color: p.color, face: p.skin.face, hat: p.skin.hat, acc: p.skin.acc, pat: p.skin.pat, bot: !!p.isBot
     }));
 }
 

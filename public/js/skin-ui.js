@@ -7,7 +7,8 @@ const SkinUI = (() => {
         { id: 'color', label: 'สี' },
         { id: 'face', label: 'หน้า' },
         { id: 'hat', label: 'หมวก' },
-        { id: 'acc', label: 'ของตกแต่ง' }
+        { id: 'acc', label: 'ของตกแต่ง' },
+        { id: 'pat', label: 'ลาย' }
     ];
 
     let skin = load();
@@ -68,7 +69,7 @@ const SkinUI = (() => {
             return;
         }
 
-        const list = tab === 'face' ? Skins.FACES : tab === 'hat' ? Skins.HATS : Skins.ACCS;
+        const list = { face: Skins.FACES, hat: Skins.HATS, acc: Skins.ACCS, pat: Skins.PATTERNS }[tab];
         list.forEach(item => {
             const b = document.createElement('button');
             b.className = 'skin-option' + (skin[tab] === item.id ? ' selected' : '');
@@ -90,7 +91,8 @@ const SkinUI = (() => {
             nameOf(Skins.COLORS.map(c => ({ id: c.hex, name: c.name })), skin.color),
             nameOf(Skins.FACES, skin.face),
             skin.hat !== 'none' ? nameOf(Skins.HATS, skin.hat) : '',
-            skin.acc !== 'none' ? nameOf(Skins.ACCS, skin.acc) : ''
+            skin.acc !== 'none' ? nameOf(Skins.ACCS, skin.acc) : '',
+            skin.pat !== 'none' ? nameOf(Skins.PATTERNS, skin.pat) : ''
         ].filter(Boolean).join(' • ');
     }
 

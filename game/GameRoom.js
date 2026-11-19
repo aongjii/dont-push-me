@@ -76,7 +76,7 @@ class GameRoom {
         if (used.some(c => c.toUpperCase() === skin.color.toUpperCase())) skin.color = Skins.freeColor(used);
 
         const player = new Player(id, name, skin.color);
-        player.skin = { face: skin.face, hat: skin.hat, acc: skin.acc };
+        player.skin = { face: skin.face, hat: skin.hat, acc: skin.acc, pat: skin.pat };
         this.players[id] = player;
         return player;
     }
@@ -91,7 +91,7 @@ class GameRoom {
         if (others.includes(skin.color.toUpperCase())) skin.color = player.color; // taken: keep ours
 
         player.color = skin.color;
-        player.skin = { face: skin.face, hat: skin.hat, acc: skin.acc };
+        player.skin = { face: skin.face, hat: skin.hat, acc: skin.acc, pat: skin.pat };
         return { color: player.color, ...player.skin };
     }
 
@@ -588,6 +588,7 @@ class GameRoom {
             face: p.skin.face,
             hat: p.skin.hat,
             acc: p.skin.acc,
+            pat: p.skin.pat,
             x: p.x,
             y: p.y,
             vx: p.vx,

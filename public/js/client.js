@@ -362,7 +362,7 @@ function syncMySkin(players) {
     const mine = players.find(p => p.id === localPlayerId);
     if (!mine) return;
     SkinUI.setFromServer(
-        { color: mine.color, face: mine.face, hat: mine.hat, acc: mine.acc },
+        { color: mine.color, face: mine.face, hat: mine.hat, acc: mine.acc, pat: mine.pat },
         players.filter(p => p.id !== localPlayerId).map(p => p.color)
     );
 }
@@ -387,7 +387,7 @@ function updatePlayerLobbyList(players) {
         const dot = document.createElement('canvas');
         dot.className = 'player-portrait';
         dot.width = 88; dot.height = 88;
-        new Renderer(dot).drawPortrait({ face: p.face, hat: p.hat, acc: p.acc }, p.color, 0);
+        new Renderer(dot).drawPortrait({ face: p.face, hat: p.hat, acc: p.acc, pat: p.pat }, p.color, 0);
 
         const name = document.createElement('span');
         name.className = 'player-name';

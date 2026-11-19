@@ -6,14 +6,15 @@ const Skins = require('../shared/skins');
 const io = { to: () => ({ emit() {} }) };
 
 test('the catalogue has the basics, including the Abe face', () => {
-    assert.ok(Skins.COLORS.length >= 10);
-    assert.ok(Skins.FACES.length >= 8);
-    assert.ok(Skins.HATS.length >= 10);
-    assert.ok(Skins.ACCS.length >= 8);
+    assert.ok(Skins.COLORS.length >= 16);
+    assert.ok(Skins.FACES.length >= 13);
+    assert.ok(Skins.HATS.length >= 22);
+    assert.ok(Skins.ACCS.length >= 17);
+    assert.ok(Skins.PATTERNS.length >= 7);
     assert.ok(Skins.FACES.some(f => f.id === 'abe'));
     assert.ok(Skins.ACCS.some(a => a.id === 'overalls'));
     // ids are unique within each list
-    for (const list of [Skins.COLORS, Skins.FACES, Skins.HATS, Skins.ACCS]) {
+    for (const list of [Skins.COLORS, Skins.FACES, Skins.HATS, Skins.ACCS, Skins.PATTERNS]) {
         const keys = list.map(o => o.id);
         assert.equal(new Set(keys).size, keys.length);
     }
@@ -22,7 +23,9 @@ test('the catalogue has the basics, including the Abe face', () => {
 
 test('sanitizeSkin accepts valid skins and rejects everything else', () => {
     const ok = Skins.sanitizeSkin({ color: '#5bb8ff', face: 'abe', hat: 'crown', acc: 'overalls' });
-    assert.deepEqual(ok, { color: '#5BB8FF', face: 'abe', hat: 'crown', acc: 'overalls' });
+    assert.deepEqual(ok, { color: '#5BB8FF', face: 'abe', hat: 'crown', acc: 'overalls', pat: 'none' });
+    assert.equal(Skins.sanitizeSkin({ pat: 'stars' }).pat, 'stars');
+    assert.equal(Skins.sanitizeSkin({ pat: 'nope' }).pat, 'none');
 
     const bad = Skins.sanitizeSkin({ color: 'red', face: '<script>', hat: { x: 1 }, acc: 42, extra: 'nope' });
     assert.deepEqual(bad, Skins.DEFAULT_SKIN);
@@ -31,7 +34,7 @@ test('sanitizeSkin accepts valid skins and rejects everything else', () => {
         assert.deepEqual(Skins.sanitizeSkin(junk), Skins.DEFAULT_SKIN);
     }
     // only known keys come out
-    assert.deepEqual(Object.keys(Skins.sanitizeSkin({ color: '#FF7EA8', evil: 1 })).sort(), ['acc', 'color', 'face', 'hat']);
+    assert.deepEqual(Object.keys(Skins.sanitizeSkin({ color: '#FF7EA8', evil: 1 })).sort(), ['acc', 'color', 'face', 'hat', 'pat']);
 });
 
 test('randomSkin always produces a valid skin', () => {
@@ -46,7 +49,7 @@ test('players get the skin they asked for, but body colours stay unique in a roo
     const a = room.addPlayer('a', 'A', { color: '#5BB8FF', face: 'abe', hat: 'crown', acc: 'overalls' });
     const b = room.addPlayer('b', 'B', { color: '#5BB8FF', face: 'cat', hat: 'none', acc: 'none' });
     assert.equal(a.color, '#5BB8FF');
-    assert.deepEqual(a.skin, { face: 'abe', hat: 'crown', acc: 'overalls' });
+    assert.deepEqual(a.skin, { face: 'abe', hat: 'crown', acc: 'overalls', pat: 'none' });
     assert.notEqual(b.color.toUpperCase(), a.color.toUpperCase(), 'duplicate colour was not swapped');
     assert.equal(b.skin.face, 'cat', 'but their other choices are kept');
 });
@@ -88,7 +91,7 @@ test('the skin is broadcast to every client in each game state', () => {
     room.broadcastState();
     const state = events.find(e => e.t === 'game_state').d;
     const a = state.players.find(p => p.id === 'a');
-    assert.deepEqual([a.color, a.face, a.hat, a.acc], ['#6FD98C', 'abe', 'tophat', 'mustache']);
+    assert.deepEqual([a.color, a.face, a.hat, a.acc, a.pat], ['#6FD98C', 'abe', 'tophat', 'mustache', 'none']);
     const b = state.players.find(p => p.id === 'b');
     assert.equal(b.face, 'classic');
 });
