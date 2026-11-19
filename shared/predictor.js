@@ -17,7 +17,7 @@
     const { MOVE, FIELDS } = Movement;
     // Matches ABILITY.spitBodyMs - ABILITY.spitBallisticMs on the server: while the spat-out timer is
     // above this, the player is still in the straight-line part of the flight
-    const ME_SPIT_BALLISTIC_FLOOR = 300;
+    const ME_SPIT_BALLISTIC_FLOOR = 330;
     const MAX_PENDING = 120;       // 2 seconds of commands
     const SNAP_DISTANCE = 80;      // bigger corrections than this are applied instantly
     const SMOOTH_SECONDS = 0.1;

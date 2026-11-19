@@ -652,6 +652,11 @@ function updateCoach(p) {
         coach.style.display = 'block';
         setCoachText('wind', 'ถูกพ่น! กด Space เพื่อกระโดดเบรก!');
         bar.style.display = 'none';
+    } else if (p.mouth && !p.isDead) {
+        coach.style.display = 'block';
+        setCoachText('inhale', 'อมไว้นานแค่ไหนก็ได้ ยิ่งนานยิ่งพ่นแรง — กด C เพื่อพ่น');
+        bar.style.display = 'block';
+        document.getElementById('coach-fill').style.width = `${Math.round(p.charge * 100)}%`;
     } else if (p.isDead && p.respawnMs > 0) {
         coach.style.display = 'block';
         setCoachText('heart', `ฟื้นอีก ${Math.ceil(p.respawnMs / 1000)} วินาที (เหลือ ${p.lives} ชีวิต)`);

@@ -707,6 +707,7 @@ class Renderer {
             t: t + (player.id.charCodeAt(1) || 0),
             mood: player.isDead ? 'dead' : (player.isFinished ? 'happy' : (frozen ? 'dizzy' : 'normal')),
             inhaling: player.inhaling,
+            charge: player.charge || 0,
             mouthColor,
             pushing: player.pushDuration > 0,
             power: player.power,
@@ -827,7 +828,7 @@ class Renderer {
             sy = 1 + Math.sin(o.t * 3) * 0.03;
             sx = 1 - Math.sin(o.t * 3) * 0.02;
         }
-        if (o.mouthColor) { sx *= 1.14; sy *= 1.06; }
+        if (o.mouthColor) { sx *= 1.14 + 0.12 * (o.charge || 0); sy *= 1.06 + 0.08 * (o.charge || 0); }
         if (o.mood === 'dead') { sy *= 0.78; sx *= 1.1; }
 
         const hop = moving ? -Math.abs(Math.sin(o.t * 11)) * 3.5 : 0;

@@ -15,12 +15,13 @@ const ABILITY = {
     escapeTaps: 6,         // key presses a swallowed player needs to wriggle free
     swallowImmunity: 1500, // after being freed, can't be swallowed again for a bit
 
-    spitSpeed: 720,
-    spitBodySpeed: 520,
+    spitSpeed: 800,
+    spitBodySpeed: 640,
     spitBodyMs: 550,       // a spat-out player is a living bowling ball this long...
-    spitBallisticMs: 250,  // ...but can only steer/hop after the first quarter second
+    spitBallisticMs: 220,  // ...but can only steer/hop after the first quarter second
     spitCooldown: 900,     // the spitter can't inhale again straight away (no chain-swallowing)
-    spitKnock: 560,
+    spitKnock: 700,
+    spitChargeBoost: 0.9,  // holding the full 3s makes the spit up to 90% stronger (speed and knock-back)
 
     powerMs: { fire: 15000, ice: 15000, spin: 15000, wings: 10000 },
     powerCooldown: { fire: 500, ice: 1600, spin: 1800 },
@@ -142,18 +143,27 @@ function install(Player) {
             this.mouth = null;
         },
 
+        // 0..1: how long this mouthful has been held (the longer, the harder the spit)
+        mouthCharge() {
+            if (!this.mouth) return 0;
+            return Math.max(0, Math.min(1, (ABILITY.mouthMax - this.mouthMs) / ABILITY.mouthMax));
+        },
+
         spit(room) {
             const m = this.mouthPoint();
             const mouth = this.mouth;
+            const charge = this.mouthCharge();
+            const boost = 1 + ABILITY.spitChargeBoost * charge;
             this.mouth = null;
             if (!mouth) return;
 
             if (mouth.kind === 'orb') {
-                room.spawnProjectile({ type: 'star', owner: this.id, x: m.x, y: m.y, vx: this.facing * ABILITY.spitSpeed, life: 1100 });
+                room.spawnProjectile({ type: 'star', owner: this.id, x: m.x, y: m.y, vx: this.facing * ABILITY.spitSpeed * boost, power: boost, life: 1100 });
             } else {
                 const victim = room.players[mouth.id];
                 if (!victim || victim.swallowedBy !== this.id) return;
-                victim.release(m.x - victim.width / 2, this.y, this.facing * ABILITY.spitBodySpeed, -90);
+                victim.release(m.x - victim.width / 2, this.y, this.facing * ABILITY.spitBodySpeed * boost, -90);
+                victim.spitKnockSpeed = ABILITY.spitKnock * boost; // what they hit others with
                 victim.spitBodyMs = ABILITY.spitBodyMs;
                 victim.spitBy = this.id;
                 victim.spitHit = new Set();
@@ -161,7 +171,7 @@ function install(Player) {
                 victim.markHit(this); // if they end up in a pit, the spitter gets the KO
             }
             this.inhaleCd = ABILITY.spitCooldown;
-            room.broadcastEffect('spit', { by: this.id, kind: mouth.kind });
+            room.broadcastEffect('spit', { by: this.id, kind: mouth.kind, charge });
         },
 
         // Swallowed player mashing keys to get out
@@ -248,7 +258,7 @@ function install(Player) {
                 if (!(this.x < p.x + p.width && this.x + this.width > p.x &&
                       this.y < p.y + p.height && this.y + this.height > p.y)) continue;
                 const dir = this.vx >= 0 ? 1 : -1;
-                p.vx = dir * ABILITY.spitKnock;
+                p.vx = dir * (this.spitKnockSpeed || ABILITY.spitKnock);
                 p.vy = -260;
                 if (spitter) p.markHit(spitter);
                 p.breakFree();

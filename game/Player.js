@@ -98,6 +98,7 @@ class Player {
         this.spitBodyMs = 0;
         this.spitBy = null;
         this.spitHit = new Set();
+        this.spitKnockSpeed = 0;   // how hard we hit others while flying (set by a charged spit)
         this.freezeKind = 'pull';  // what froze us: 'pull' | 'ice'
 
         // Input

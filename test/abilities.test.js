@@ -333,3 +333,83 @@ test('getting a new wings power refills the flaps; other powers have none', () =
     a.gainPower('fire', room);
     assert.equal(a.flaps, 0);
 });
+
+// ---------- Charged spit: the longer you hold, the harder it goes ----------
+test('spitting later launches the swallowed player harder (and they hit harder)', () => {
+    const launch = (holdMs) => {
+        const { room, ps: [a, b] } = setup(2);
+        a.x = 262; b.x = 262; a.facing = 1;
+        a.swallow(b, room);
+        run(room, holdMs);
+        if (a.mouth) a.spit(room);
+        return { vx: b.vx, knock: b.spitKnockSpeed };
+    };
+    const quick = launch(0);
+    const held = launch(2500);
+    assert.ok(held.vx > quick.vx * 1.5, `held ${held.vx} vs quick ${quick.vx}`);
+    assert.ok(held.knock > quick.knock * 1.5);
+    assert.ok(quick.vx > 400, 'even a quick spit is strong');
+});
+
+test('the charge grows with time and is capped at 1; it is part of the state sent to players', () => {
+    const { room, io, ps: [a, b] } = setup(2);
+    const events = io.events;
+    a.swallow(b, room);
+    assert.equal(a.mouthCharge(), 0);
+    run(room, 1500);
+    const mid = a.mouthCharge();
+    assert.ok(mid > 0.4 && mid < 0.6, `charge after 1.5s: ${mid}`);
+    const n = events.length;
+    room.broadcastState();
+    const state = events.slice(n).find(e => e.type === 'game_state').data;
+    assert.ok(Math.abs(state.players.find(p => p.id === 'p0').charge - mid) < 0.05);
+    run(room, 5000); // auto-spits at 3s
+    assert.equal(a.mouth, null);
+    assert.equal(a.mouthCharge(), 0);
+});
+
+test('a held orb is also spat harder: faster star that knocks further', () => {
+    const shoot = (holdMs) => {
+        const { room, ps: [a, b] } = setup(2);
+        b.x = 400;
+        a.mouth = { kind: 'orb' }; a.mouthMs = 3000;
+        run(room, holdMs);
+        a.spit(room);
+        return room.projectiles[0];
+    };
+    const quick = shoot(0), held = shoot(2500);
+    assert.ok(Math.abs(held.vx) > Math.abs(quick.vx) * 1.5);
+    assert.ok(held.power > quick.power);
+});
+
+test('the spit effect tells clients how charged it was', () => {
+    const { room, io, ps: [a, b] } = setup(2);
+    a.swallow(b, room);
+    run(room, 2000);
+    a.spit(room);
+    const ev = io.events.filter(e => e.data && e.data.type === 'spit').pop().data;
+    assert.ok(ev.charge > 0.5);
+});
+
+test('even a fully charged spit over a pit leaves a (short) window to survive', () => {
+    const attempt = (holdMs, hopAt) => {
+        const { room, ps: [a, v] } = setup(2);
+        room.level.hazards = [{ x: 320, y: 660, width: 380, height: 60, type: 'spikes' }];
+        room.level.platforms.forEach(p => { if (p.triggerIndex === 0) p.active = false; });
+        room.level.platforms.push({ x: 700, y: 500, width: 400, height: 220, active: true, triggerIndex: null });
+        a.x = 262; a.y = 460; a.facing = 1; v.x = 262; v.y = 460;
+        a.swallow(v, room);
+        run(room, holdMs);
+        a.x = 262; a.y = 460; a.vx = 0; a.vy = 0;
+        a.spit(room);
+        for (let t = 0; t < 3500 && !v.isDead && !(v.isGrounded && t > 150); t += 16.67) {
+            v.input.jump = t >= hopAt && t < hopAt + 50;
+            v.input.left = t >= hopAt;
+            room.gameLoop.update(16.67);
+        }
+        return !v.isDead;
+    };
+    assert.equal(attempt(2900, 100), true, 'quick reaction after a fully charged spit saves you');
+    assert.equal(attempt(2900, 1500), false, 'doing it far too late does not');
+    assert.equal(attempt(1500, 300), true);
+});

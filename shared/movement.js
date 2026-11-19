@@ -19,9 +19,9 @@
         flapCooldown: 280,
         flapsPerPower: 8,      // wings are limited: this many flaps, then only gliding
         glideFall: 110,
-        spitGravity: 0.45,     // a spat-out player floats down slowly for a moment (time to react)
+        spitGravity: 0.2,       // a spat-out player floats down slowly for a moment (time to react)
         recoverForce: -480,    // the one "wriggle hop" a spat-out player gets
-        recoverBrake: 0.4,     // ...which also kills most of their forward speed
+        recoverBrake: 0.3,     // ...which also kills most of their forward speed
         spinBoost: 1.25,
         inhaleSlow: 0.5,
         mouthSlow: 0.8

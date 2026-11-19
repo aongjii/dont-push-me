@@ -374,7 +374,7 @@ class GameRoom {
                     if (!(box.x < p.x + p.width && box.x + size > p.x &&
                           box.y < p.y + p.height && box.y + size > p.y)) continue;
                     const dir = pr.vx >= 0 ? 1 : -1;
-                    p.vx = dir * (pr.type === 'fire' ? 450 : 650);
+                    p.vx = dir * (pr.type === 'fire' ? 450 : 650 * (pr.power || 1));
                     p.vy = -250;
                     if (owner) p.markHit(owner);
                     p.breakFree();
@@ -615,6 +615,7 @@ class GameRoom {
             powerCd: Math.max(0, Math.round(p.powerCd)),
             inhaling: p.inhaling,
             mouth: p.mouth ? p.mouth.kind : null,
+            charge: p.mouthCharge(),
             mouthId: p.mouth && p.mouth.kind === 'player' ? p.mouth.id : null,
             swallowed: !!p.swallowedBy,
             power: p.power,
