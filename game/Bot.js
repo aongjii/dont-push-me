@@ -104,8 +104,16 @@ class Bot {
         const r = nav.next[cur];
         if (!r) { this.maybeShove(room); return; } // nowhere to go
 
-        // The way on is switched off (someone cut a bridge): wait for it to come back
-        if (!level.platforms[r.to].active) { this.state = { phase: 'idle' }; return; }
+        // The way on is switched off (someone cut a bridge): wait for it to come back.
+        // A platform that blinks is judged by its clock instead: it must be there when we land (and stay
+        // a moment), unless the floor under us is about to go, in which case we have to move anyway.
+        const tgt = level.platforms[r.to];
+        const air = r.airMs || 700;
+        const ready = tgt.blink
+            ? (tgt.active ? tgt.phaseMs > air + 400 : tgt.phaseMs < air - 100)
+            : tgt.active;
+        const floorGoing = level.platforms[cur].blink && level.platforms[cur].phaseMs < 1100;
+        if (!ready && !(tgt.blink && floorGoing)) { this.state = { phase: 'idle' }; return; }
 
         if (r.kind === 'walkoff') {
             this.state = { phase: 'air', t: 0, holdMs: 1500, dir: r.dir, airborneSeen: false };

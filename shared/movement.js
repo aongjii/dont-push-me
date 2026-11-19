@@ -107,7 +107,7 @@
             this.solids.length = 0;
             if (mods && mods.ghost) return;
             for (const q of this.getOthers()) {
-                if (q === p || (q.id !== undefined && q.id === p.id) || !isSolid(q) || overlaps(p, q)) continue;
+                if (q === p || (q.id !== undefined && q.id === p.id) || !isSolid(q) || (p.isBot && q.isBot) || overlaps(p, q)) continue; // computer players pass through each other (they would jam up at the start)
                 this.solids.push({ x: q.x, y: q.y, width: q.width, height: q.height, isPlayer: true, id: q.id });
             }
         }
