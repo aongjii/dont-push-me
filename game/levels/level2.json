@@ -31,7 +31,7 @@
       "y": 420,
       "width": 160,
       "height": 30,
-      "ice": true
+      "conveyor": 120
     },
     {
       "x": 920,
@@ -150,7 +150,7 @@
       "y": 350,
       "width": 180,
       "height": 30,
-      "ice": true
+      "conveyor": -120
     },
     {
       "x": 6050,

@@ -347,6 +347,13 @@ class Renderer {
             ctx.beginPath(); ctx.arc(cx - r * 0.3, cy - r * 0.3, r * 0.4, 0, Math.PI * 2); ctx.fill();
             ctx.strokeStyle = '#2b2140'; ctx.lineWidth = 2;
             ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+        } else if (sh.kind === 'fireball') {
+            const d = Math.sign(sh.vx || 1);
+            const cx = sh.x + sh.width / 2, cy = sh.y + sh.height / 2;
+            ctx.fillStyle = 'rgba(255,120,40,0.45)';
+            ctx.beginPath(); ctx.moveTo(cx, cy - 9); ctx.lineTo(cx - d * 38, cy); ctx.lineTo(cx, cy + 9); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = '#ff7a2e'; ctx.beginPath(); ctx.arc(cx, cy, 11, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#ffd24a'; ctx.beginPath(); ctx.arc(cx + d * 2, cy, 6, 0, Math.PI * 2); ctx.fill();
         } else {
             const d = Math.sign(sh.vx || 1);
             const midY = sh.y + sh.height / 2;

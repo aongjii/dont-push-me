@@ -54,11 +54,11 @@ function level1() {
     // patrolling spikes ride on top of the highest stone: land, then time your jump
     // (kept to the right half: you can't hop over them from the lower stone, so the left side must stay free to land on)
     hazards.push({ x: stairStart + 100 + 2 * 240 + 72, y: 250, width: 40, height: 40, type: 'moving_spikes', rangeX: 14, rangeY: 0, freq: 8 });
-    // a boulder drops onto the second stone every few seconds: don't loiter
-    shooters.push({ x: stairStart + 100 + 240 + 55, y: 120, vx: 0, vy: 300, width: 30, height: 30, kind: 'rock', intervalMs: 3400, lifeMs: 2000, offsetMs: 1500 });
     item('star', stairStart + 100 + 1 * 240 + 70, 320);
     x = sx; // landing starts right after the last gap
-    ground(350, { ice: true }); item('orb', x - 150, 470); checkpoint(x - 250);
+    ground(350); item('orb', x - 150, 470); checkpoint(x - 250);
+    // an arrow cannon covers the long bridge: time your run
+    shooters.push({ x: x + 520 + 70, y: GROUND_Y - 24, vx: -300, vy: 0, width: 36, height: 14, kind: 'arrow', intervalMs: 3000, lifeMs: (590 / 300) * 1000 + 200, offsetMs: 900 });
     bridge(520);
     ground(240); item('star', x - 100, 470); checkpoint(x - 170);
 
@@ -69,9 +69,11 @@ function level1() {
     // an arrow cannon at the far end sweeps the pillars: jump over the arrows
     const arrowSpeed = 300;
     shooters.push({ x: x + 60, y: GROUND_Y - 24, vx: -arrowSpeed, vy: 0, width: 36, height: 14, kind: 'arrow', intervalMs: 2800, lifeMs: ((x + 60 - hopStart) / arrowSpeed) * 1000 + 300, offsetMs: 1200 });
-    ground(300, { conveyor: -110 });  // a belt that carries you back towards the pillars item('orb', x - 120, 470); item('star', x - 60, 470); checkpoint(x - 220);
+    ground(300); item('orb', x - 120, 470); item('star', x - 60, 470); checkpoint(x - 220);
     bridge(300);
-    ground(450);
+    ground(120);
+    ground(90, { bounce: true });   // a last spring before the finish
+    ground(240);
 
     const width = x;
     write(1, {
@@ -89,7 +91,7 @@ function level2() {
     const platforms = [], switches = [], hazards = [], items = [], checkpoints = [], shooters = [];
     const CHECKPOINT_AT = [3, 7, 12, 16, 20, 25];
     // surface / obstacle kind per floating platform (index in seq)
-    const KIND = { 1: 'ice', 2: 'crumble', 5: 'belt-', 6: 'rock', 11: 'rock', 13: 'belt+', 14: 'crumble', 19: 'ice', 20: 'crumble', 25: 'belt-' }; // which floating platforms get a respawn flag
+    const KIND = { 1: 'belt+', 2: 'crumble', 5: 'belt-', 6: 'rock', 11: 'rock', 13: 'belt+', 14: 'crumble', 19: 'belt-', 20: 'crumble', 25: 'belt-' }; // which floating platforms get a respawn flag
     platforms.push({ x: 0, y: 500, width: 240, height: 220 });
     items.push({ type: 'orb', x: 150, y: 470 }, { type: 'star', x: 200, y: 470 });
 
@@ -110,7 +112,6 @@ function level2() {
         y = Math.max(220, Math.min(520, y + dy));
         const plat = { x, y, width: w, height: 30 };
         const kind = KIND[i];
-        if (kind === 'ice') plat.ice = true;
         if (kind === 'crumble') plat.crumble = true;
         if (kind === 'belt-') plat.conveyor = -120;
         if (kind === 'belt+') plat.conveyor = 120;
@@ -155,7 +156,7 @@ function level2() {
 function level3() {
     const platforms = [], switches = [], hazards = [], items = [], checkpoints = [], shooters = [];
     const CHECKPOINT_AT = [4, 11, 17, 22, 28];
-    const ARROWS_AT = { 10: 'L', 19: 'R', 26: 'L' }; // wall cannons firing across the shaft at these platforms // climbing-platform numbers that get a respawn flag
+    const ARROWS_AT = { 6: 'L', 10: 'R', 14: 'L', 19: 'R', 23: 'L', 26: 'R' }; // wall vents spitting fireballs across the shaft at these platforms // climbing-platform numbers that get a respawn flag
     const FLOOR = 3150;
     platforms.push({ x: 0, y: FLOOR, width: 900, height: 100 });
     items.push({ type: 'orb', x: 200, y: FLOOR - 30 }, { type: 'star', x: 300, y: FLOOR - 30 });
@@ -173,13 +174,11 @@ function level3() {
         // special surfaces (never on a switch plank, a checkpoint or a spiked platform)
         const plain = n % 9 === 5 || n % 9 === 6 || CHECKPOINT_AT.includes(n) || (n % 6 === 2 && n > 4) || ARROWS_AT[n];
         if (!plain) {
-            if (n % 13 === 7) plat.bounce = true;          // springs you up a few floors
-            else if (n % 11 === 3) plat.crumble = true;    // drops away; the lava is rising, so don't dawdle
-            else if (n % 8 === 6) plat.ice = true;
+            if (n % 3 === 1) plat.ice = true;              // frozen ledges: slippery
         }
         if (ARROWS_AT[n]) {
             const fromLeft = ARROWS_AT[n] === 'L', sp = 260;
-            shooters.push({ x: fromLeft ? 0 : 864, y: y - 24, vx: fromLeft ? sp : -sp, vy: 0, width: 36, height: 14, kind: 'arrow', intervalMs: 2900, lifeMs: (900 / sp) * 1000 + 200, offsetMs: 800 + n * 60 });
+            shooters.push({ x: fromLeft ? 0 : 864, y: y - 24, vx: fromLeft ? sp : -sp, vy: 0, width: 36, height: 14, kind: 'fireball', intervalMs: 2900, lifeMs: (900 / sp) * 1000 + 200, offsetMs: 800 + n * 60 });
         }
         platforms.push(plat);
         if (CHECKPOINT_AT.includes(n)) checkpoints.push({ x: x + w / 2, y });

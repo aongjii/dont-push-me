@@ -85,12 +85,18 @@ test('patrolling spikes keep a brisk pace (range x freq >= 90 px/s)', () => {
     }
 });
 
-test('every level has at least two kinds of new obstacle', () => {
-    for (const i of [1, 2, 3]) {
-        const lv = new Level(i);
-        const kinds = new Set();
-        lv.platforms.forEach(p => { if (p.bounce) kinds.add('bounce'); if (p.ice) kinds.add('ice'); if (p.conveyor) kinds.add('belt'); if (p.crumble) kinds.add('crumble'); });
-        lv.shooters.forEach(s => kinds.add(s.kind));
-        assert.ok(kinds.size >= 2, `level ${i} has only ${[...kinds]}`);
+const kindsOf = (lv) => {
+    const kinds = new Set();
+    lv.platforms.forEach(p => { if (p.bounce) kinds.add('bounce'); if (p.ice) kinds.add('ice'); if (p.conveyor) kinds.add('belt'); if (p.crumble) kinds.add('crumble'); });
+    lv.shooters.forEach(s => kinds.add(s.kind));
+    return kinds;
+};
+
+test('each level has its own set of obstacles, with nothing shared between levels', () => {
+    const sets = [1, 2, 3].map(i => kindsOf(new Level(i)));
+    sets.forEach((k, i) => assert.ok(k.size >= 2, `level ${i + 1} has only ${[...k]}`));
+    for (let a = 0; a < 3; a++) for (let b = a + 1; b < 3; b++) {
+        const shared = [...sets[a]].filter(k => sets[b].has(k));
+        assert.deepEqual(shared, [], `levels ${a + 1} and ${b + 1} share ${shared}`);
     }
 });
