@@ -63,11 +63,12 @@ test('in every level, whatever anyone does with the switches, every path is open
     const dir = path.join(__dirname, '..', 'game', 'levels');
     for (const f of fs.readdirSync(dir).filter(n => /^level\d+\.json$/.test(n))) {
         const lv = new Level(parseInt(/\d+/.exec(f)[0], 10));
-        const normal = lv.platforms.map(p => p.active);
+        const steady = (p) => !p.blink; // blinking platforms follow their own clock
+        const normal = lv.platforms.filter(steady).map(p => p.active);
         lv.switches.forEach((_, i) => lv.toggleSwitch(i)); // a griefer cuts everything at once
-        assert.ok(lv.platforms.some(p => p.triggerIndex !== null && !p.active), `${f}: nothing was cut`);
+        if (lv.switches.length) assert.ok(lv.platforms.some(p => p.triggerIndex !== null && !p.active), `${f}: nothing was cut`);
         lv.update(RESTORE + 50);
-        assert.deepEqual(lv.platforms.map(p => p.active), normal, `${f}: not back to normal`);
+        assert.deepEqual(lv.platforms.filter(steady).map(p => p.active), normal, `${f}: not back to normal`);
         assert.ok(lv.switches.every(s => s.active === s.initialActive));
     }
 });

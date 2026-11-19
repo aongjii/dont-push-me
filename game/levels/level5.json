@@ -1,0 +1,339 @@
+{
+  "theme": "night",
+  "timeLimit": 150,
+  "width": 5240,
+  "height": 720,
+  "spawn": {
+    "x": 80,
+    "y": 440
+  },
+  "finish": {
+    "x": 5060,
+    "y": 380,
+    "width": 80,
+    "height": 120
+  },
+  "platforms": [
+    {
+      "x": 0,
+      "y": 500,
+      "width": 400,
+      "height": 220
+    },
+    {
+      "x": 500,
+      "y": 500,
+      "width": 120,
+      "height": 30
+    },
+    {
+      "x": 720,
+      "y": 460,
+      "width": 120,
+      "height": 30
+    },
+    {
+      "x": 940,
+      "y": 500,
+      "width": 120,
+      "height": 30
+    },
+    {
+      "x": 1160,
+      "y": 500,
+      "width": 360,
+      "height": 220
+    },
+    {
+      "x": 1850,
+      "y": 500,
+      "width": 300,
+      "height": 220
+    },
+    {
+      "x": 2150,
+      "y": 500,
+      "width": 110,
+      "height": 220
+    },
+    {
+      "x": 2370,
+      "y": 500,
+      "width": 110,
+      "height": 220
+    },
+    {
+      "x": 2590,
+      "y": 500,
+      "width": 110,
+      "height": 220
+    },
+    {
+      "x": 2810,
+      "y": 500,
+      "width": 110,
+      "height": 220
+    },
+    {
+      "x": 2920,
+      "y": 500,
+      "width": 340,
+      "height": 220
+    },
+    {
+      "x": 3370,
+      "y": 470,
+      "width": 120,
+      "height": 30
+    },
+    {
+      "x": 3600,
+      "y": 410,
+      "width": 120,
+      "height": 30
+    },
+    {
+      "x": 3830,
+      "y": 360,
+      "width": 120,
+      "height": 30
+    },
+    {
+      "x": 4060,
+      "y": 410,
+      "width": 120,
+      "height": 30
+    },
+    {
+      "x": 4290,
+      "y": 470,
+      "width": 120,
+      "height": 30
+    },
+    {
+      "x": 4520,
+      "y": 500,
+      "width": 420,
+      "height": 220
+    },
+    {
+      "x": 4940,
+      "y": 500,
+      "width": 300,
+      "height": 220
+    }
+  ],
+  "switches": [],
+  "hazards": [
+    {
+      "x": 400,
+      "y": 660,
+      "width": 760,
+      "height": 60,
+      "type": "spikes"
+    },
+    {
+      "x": 598,
+      "y": 358,
+      "width": 44,
+      "height": 44,
+      "type": "saw",
+      "startX": 598,
+      "startY": 358,
+      "rangeX": 55,
+      "rangeY": 55,
+      "freq": 2.2
+    },
+    {
+      "x": 818,
+      "y": 358,
+      "width": 44,
+      "height": 44,
+      "type": "saw",
+      "startX": 818,
+      "startY": 358,
+      "rangeX": 55,
+      "rangeY": 55,
+      "freq": 2.53
+    },
+    {
+      "x": 1520,
+      "y": 660,
+      "width": 330,
+      "height": 60,
+      "type": "spikes"
+    },
+    {
+      "x": 1663,
+      "y": 338,
+      "width": 44,
+      "height": 44,
+      "type": "saw",
+      "startX": 1663,
+      "startY": 338,
+      "rangeX": 70,
+      "rangeY": 70,
+      "freq": 1.8
+    },
+    {
+      "x": 2260,
+      "y": 660,
+      "width": 110,
+      "height": 60,
+      "type": "spikes"
+    },
+    {
+      "x": 2293,
+      "y": 388,
+      "width": 44,
+      "height": 44,
+      "type": "saw",
+      "startX": 2293,
+      "startY": 388,
+      "rangeX": 80,
+      "rangeY": 80,
+      "freq": 2
+    },
+    {
+      "x": 2480,
+      "y": 660,
+      "width": 110,
+      "height": 60,
+      "type": "spikes"
+    },
+    {
+      "x": 2513,
+      "y": 388,
+      "width": 44,
+      "height": 44,
+      "type": "saw",
+      "startX": 2513,
+      "startY": 388,
+      "rangeX": 80,
+      "rangeY": 80,
+      "freq": 2.25
+    },
+    {
+      "x": 2700,
+      "y": 660,
+      "width": 110,
+      "height": 60,
+      "type": "spikes"
+    },
+    {
+      "x": 2733,
+      "y": 388,
+      "width": 44,
+      "height": 44,
+      "type": "saw",
+      "startX": 2733,
+      "startY": 388,
+      "rangeX": 80,
+      "rangeY": 80,
+      "freq": 2.5
+    },
+    {
+      "x": 2920,
+      "y": 660,
+      "width": 110,
+      "height": 60,
+      "type": "spikes"
+    },
+    {
+      "x": 3260,
+      "y": 660,
+      "width": 1260,
+      "height": 60,
+      "type": "spikes"
+    },
+    {
+      "x": 3523,
+      "y": 308,
+      "width": 44,
+      "height": 44,
+      "type": "saw",
+      "startX": 3523,
+      "startY": 308,
+      "rangeX": 60,
+      "rangeY": 60,
+      "freq": 2.4
+    },
+    {
+      "x": 3983,
+      "y": 308,
+      "width": 44,
+      "height": 44,
+      "type": "saw",
+      "startX": 3983,
+      "startY": 308,
+      "rangeX": 60,
+      "rangeY": 60,
+      "freq": 2.7
+    }
+  ],
+  "items": [
+    {
+      "type": "orb",
+      "x": 200,
+      "y": 470
+    },
+    {
+      "type": "star",
+      "x": 300,
+      "y": 470
+    },
+    {
+      "type": "star",
+      "x": 1400,
+      "y": 470
+    },
+    {
+      "type": "orb",
+      "x": 2050,
+      "y": 470
+    },
+    {
+      "type": "star",
+      "x": 3160,
+      "y": 470
+    },
+    {
+      "type": "orb",
+      "x": 4740,
+      "y": 470
+    }
+  ],
+  "checkpoints": [
+    {
+      "x": 1320,
+      "y": 500
+    },
+    {
+      "x": 2000,
+      "y": 500
+    },
+    {
+      "x": 3090,
+      "y": 500
+    }
+  ],
+  "shooters": [],
+  "zones": [
+    {
+      "kind": "moon",
+      "x": 1440,
+      "y": 80,
+      "width": 570,
+      "height": 560,
+      "g": 0.45
+    },
+    {
+      "kind": "moon",
+      "x": 3260,
+      "y": 160,
+      "width": 1260,
+      "height": 520,
+      "g": 0.45
+    }
+  ]
+}

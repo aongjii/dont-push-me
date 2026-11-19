@@ -14,7 +14,7 @@ function getNav(level) {
     if (navCache.has(key)) return navCache.get(key);
 
     const platforms = level.platforms.map(p => ({ ...p, active: true }));
-    const { recipes } = botnav.jumpGraph(platforms, level.height, { bot: true, hazards: level.hazards });
+    const { recipes } = botnav.jumpGraph(platforms, level.height, { bot: true, hazards: level.hazards, zones: level.zones });
 
     const f = level.finishZone;
     const goals = platforms.map((pl, i) => i).filter(i => {

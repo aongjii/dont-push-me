@@ -12,9 +12,18 @@ const DT = 1000 / 60;
 
 function makeWorld(level) {
     const plats = level.platforms; // all treated as active
+    const zones = level.zones || [];
     return {
         height: level.height,
         switches: [],
+        zoneAt(p) {
+            const cx = p.x + p.width / 2, cy = p.y + p.height / 2;
+            let vx = 0, g = 1, found = false;
+            for (const z of zones) {
+                if (cx >= z.x && cx <= z.x + z.width && cy >= z.y && cy <= z.y + z.height) { vx += z.vx; g = Math.min(g, z.g); found = true; }
+            }
+            return found ? { vx, g } : null;
+        },
         getCollidingTiles(p) {
             return plats.filter(pl =>
                 p.x < pl.x + pl.width && p.x + p.width > pl.x &&
@@ -67,7 +76,7 @@ function jumpGraph(level) {
         for (const x of xs) {
             for (const dir of [-1, 1]) {
                 for (const runUp of [false, true]) {
-                    for (const hold of [150, 300, 450, 600, 800, 1200]) {
+                    for (const hold of [150, 300, 450, 600, 800, 1200, 1700]) {
                         const to = simulateJump(level, world, x, dir, runUp, hold, i);
                         if (to >= 0 && to !== i) edges[i].add(to);
                     }
@@ -93,7 +102,7 @@ function jumpGraph(level) {
 // Returns { solvable, reached: Set<platformIndex>, unreachable: platformIndex[], finishPlatforms }
 function checkLevel(levelIndex) {
     const lv = new Level(levelIndex);
-    const level = { platforms: lv.platforms, height: lv.height };
+    const level = { platforms: lv.platforms, height: lv.height, zones: lv.zones };
     const edges = jumpGraph(level);
 
     // spawn platform: the one the spawn point falls onto

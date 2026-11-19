@@ -213,6 +213,114 @@ function level3() {
     });
 }
 
+// ---------------------------------------------------------------- level 4: windy dusk (wind + blinking platforms)
+function level4() {
+    const platforms = [], switches = [], hazards = [], items = [], checkpoints = [], zones = [];
+    let x = 0, blinkN = 0;
+    const ground = (w) => { platforms.push({ x, y: GROUND_Y, width: w, height: 220 }); x += w; };
+    const pit = (w) => { hazards.push({ x, y: 660, width: w, height: 60, type: 'spikes' }); x += w; };
+    const flag = (cx) => checkpoints.push({ x: cx, y: GROUND_Y });
+    const item = (type, ix, iy) => items.push({ type, x: ix, y: iy });
+    // platforms that are solid for 2.4s and gone for 1.4s; neighbours are out of step so there is always a way on
+    const blinkRun = (n, gap, width) => {
+        const start = x;
+        for (let i = 0; i < n; i++) {
+            x += gap;
+            platforms.push({ x, y: GROUND_Y, width, height: 24, blink: { onMs: 2400, offMs: 1400, offsetMs: (blinkN++ * 900) % 3800 } });
+            x += width;
+        }
+        hazards.push({ x: start, y: 660, width: x - start + gap, height: 60, type: 'spikes' });
+        x += gap;
+    };
+    // wind over a stretch: pushes at `vx` px/s anywhere from the ground up to well above it
+    const wind = (x0, w, vx) => zones.push({ kind: 'wind', x: x0, y: GROUND_Y - 330, width: w, height: 420, vx });
+
+    ground(420); item('orb', 200, 470); item('star', 300, 470);
+    blinkRun(5, 100, 130);
+    ground(360); flag(x - 200); item('star', x - 120, 470);
+    // headwind over a gap: jump early and keep pushing
+    const g1 = x; ground(300); const w1 = x; pit(110); ground(320);
+    wind(w1 - 280, 560, -110);
+    flag(x - 160); item('orb', x - 100, 470);
+    // tailwind: it carries you too far, so don't over-jump
+    ground(100); pit(110); ground(300);
+    wind(x - 560, 640, 130);
+    blinkRun(4, 100, 130);
+    ground(340); flag(x - 170); item('star', x - 100, 470);
+    // a gusty finale: headwind over a long blinking run
+    const f0 = x;
+    blinkRun(5, 100, 140);
+    wind(f0, x - f0, -90);
+    ground(420); item('orb', x - 200, 470);
+    ground(300);
+
+    const width = x;
+    write(4, {
+        theme: 'dusk',
+        timeLimit: 150,
+        width, height: 720,
+        spawn: { x: 80, y: 440 },
+        finish: { x: width - 180, y: 380, width: 80, height: 120 },
+        platforms, switches, hazards, items, checkpoints, shooters: [], zones
+    });
+}
+
+// ---------------------------------------------------------------- level 5: night saw mill (saw blades + low gravity)
+function level5() {
+    const platforms = [], switches = [], hazards = [], items = [], checkpoints = [], zones = [];
+    let x = 0;
+    const ground = (w) => { platforms.push({ x, y: GROUND_Y, width: w, height: 220 }); x += w; };
+    const pit = (w) => { hazards.push({ x, y: 660, width: w, height: 60, type: 'spikes' }); x += w; };
+    const flag = (cx) => checkpoints.push({ x: cx, y: GROUND_Y });
+    const item = (type, ix, iy) => items.push({ type, x: ix, y: iy });
+    // a saw circling a point in the air: time your crossing
+    const saw = (cx, cy, r, freq) => hazards.push({ x: cx - 22, y: cy - 22, width: 44, height: 44, type: 'saw', startX: cx - 22, startY: cy - 22, rangeX: r, rangeY: r, freq });
+    const moon = (x0, y0, w, h) => zones.push({ kind: 'moon', x: x0, y: y0, width: w, height: h, g: 0.45 });
+
+    ground(400); item('orb', 200, 470); item('star', 300, 470);
+    // saws over a stepping-stone gap
+    let sx = x;
+    for (let i = 0; i < 3; i++) { x += 100; platforms.push({ x, y: GROUND_Y - (i % 2) * 40, width: 120, height: 30 }); x += 120; }
+    hazards.push({ x: sx, y: 660, width: x - sx + 100, height: 60, type: 'spikes' });
+    saw(sx + 220, 380, 55, 2.2); saw(sx + 440, 380, 55, 2.2 * 1.15);
+    x += 100;
+    ground(360); flag(x - 200); item('star', x - 120, 470);
+    // low gravity: floaty jumps over a wide pit with saws drifting through the middle
+    const m0 = x; sx = x;
+    pit(330); // a wide gap that only floaty jumps can clear (need the moon zone: ~330px)
+    moon(m0 - 80, GROUND_Y - 420, 330 + 240, 560);
+    saw(m0 + 165, 360, 70, 1.8);
+    ground(300); flag(x - 150); item('orb', x - 100, 470);
+    // vertical saws on a pillar run
+    for (let i = 0; i < 4; i++) {
+        platforms.push({ x, y: GROUND_Y, width: 110, height: 220 }); x += 110;
+        pit(110);
+        saw(x - 55, 410, 80, 2.0 + i * 0.25);
+    }
+    x -= 110; hazards.pop();
+    ground(340); flag(x - 170); item('star', x - 100, 470);
+    // finale: moon platforms with saws between them
+    sx = x;
+    const ys = [470, 410, 360, 410, 470];
+    ys.forEach(y => { x += 110; platforms.push({ x, y, width: 120, height: 30 }); x += 120; });
+    hazards.push({ x: sx, y: 660, width: x - sx + 110, height: 60, type: 'spikes' });
+    moon(sx, 160, x - sx + 110, 520);
+    saw(sx + 285, 330, 60, 2.4); saw(sx + 745, 330, 60, 2.7);
+    x += 110;
+    ground(420); item('orb', x - 200, 470);
+    ground(300);
+
+    const width = x;
+    write(5, {
+        theme: 'night',
+        timeLimit: 150,
+        width, height: 720,
+        spawn: { x: 80, y: 440 },
+        finish: { x: width - 180, y: 380, width: 80, height: 120 },
+        platforms, switches, hazards, items, checkpoints, shooters: [], zones
+    });
+}
+
 // ---------------------------------------------------------------- tutorial (practice room, not in the level pool)
 // `hints` show on screen while the player is past that x; {jump} etc. become the player's own keys.
 function tutorial() {
@@ -267,4 +375,4 @@ function tutorial() {
     });
 }
 
-level1(); level2(); level3(); tutorial();
+level1(); level2(); level3(); level4(); level5(); tutorial();

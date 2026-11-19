@@ -6,15 +6,23 @@ const Movement = require('../shared/movement');
 
 const DT = Movement.MOVE.step;
 const RUNWAY = 90;           // a run-up jump needs this much platform behind the take-off point
-const HOLDS = [150, 300, 450, 600, 800, 1200];
+const HOLDS = [150, 300, 450, 600, 800, 1200, 1700];
 
 // planning treats a bounce pad as ordinary floor
 const plain = pl => (pl.bounce ? { ...pl, bounce: false } : pl);
 
-function makeWorld(platforms, height) {
+function makeWorld(platforms, height, zones = []) {
     return {
         height,
         switches: [],
+        zoneAt(p) {
+            const cx = p.x + p.width / 2, cy = p.y + p.height / 2;
+            let vx = 0, g = 1, found = false;
+            for (const z of zones) {
+                if (cx >= z.x && cx <= z.x + z.width && cy >= z.y && cy <= z.y + z.height) { vx += z.vx; g = Math.min(g, z.g); found = true; }
+            }
+            return found ? { vx, g } : null;
+        },
         getCollidingTiles(p) {
             return platforms.filter(pl =>
                 p.x < pl.x + pl.width && p.x + p.width > pl.x &&
@@ -81,8 +89,8 @@ function simulateWalkOff(platforms, world, height, startPlat, side) {
 // Builds the jump graph. `bot: true` keeps only recipes a bot can actually perform (there must
 // be room to run up, and the jump must still work if it starts a few pixels off).
 // Returns { edges: Array<Set<number>>, recipes: Array<Map<number, recipe>> }.
-function jumpGraph(platforms, height, { bot = false, hazards = [] } = {}) {
-    const world = makeWorld(platforms, height);
+function jumpGraph(platforms, height, { bot = false, hazards = [], zones = [] } = {}) {
+    const world = makeWorld(platforms, height, zones);
     const edges = platforms.map(() => new Set());
     const recipes = platforms.map(() => new Map());
 

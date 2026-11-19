@@ -93,13 +93,16 @@ const kindsOf = (lv) => {
     const kinds = new Set();
     lv.platforms.forEach(p => { if (p.bounce) kinds.add('bounce'); if (p.ice) kinds.add('ice'); if (p.conveyor) kinds.add('belt'); if (p.crumble) kinds.add('crumble'); });
     lv.shooters.forEach(s => kinds.add(s.kind));
+    (lv.zones || []).forEach(z => kinds.add(z.kind));
+    lv.hazards.forEach(h => { if (h.type === 'saw') kinds.add('saw'); });
+    lv.platforms.forEach(p => { if (p.blink) kinds.add('blink'); });
     return kinds;
 };
 
 test('each level has its own set of obstacles, with nothing shared between levels', () => {
-    const sets = [1, 2, 3].map(i => kindsOf(new Level(i)));
+    const sets = [1, 2, 3, 4, 5].map(i => kindsOf(new Level(i)));
     sets.forEach((k, i) => assert.ok(k.size >= 2, `level ${i + 1} has only ${[...k]}`));
-    for (let a = 0; a < 3; a++) for (let b = a + 1; b < 3; b++) {
+    for (let a = 0; a < 5; a++) for (let b = a + 1; b < 5; b++) {
         const shared = [...sets[a]].filter(k => sets[b].has(k));
         assert.deepEqual(shared, [], `levels ${a + 1} and ${b + 1} share ${shared}`);
     }
@@ -111,4 +114,42 @@ test('launchers expose a countdown so the client can warn before firing', () => 
     sh.timer = 300;
     lv.update(16);
     assert.ok(sh.timer < 300 && sh.timer > 0);
+});
+
+test('wind pushes a player, low gravity makes jumps float', () => {
+    const floor = { x: 0, y: 500, width: 3000, height: 100 };
+    const mkWorld = (zones) => ({ ...worldOf([floor]), zoneAt: (p) => { const z = zones[0]; return z ? { vx: z.vx || 0, g: z.g === undefined ? 1 : z.g } : null; } });
+    const p = stand(floor, 100);
+    run(p, {}, mkWorld([{ vx: 100 }]), 1000);
+    assert.ok(p.x > 100 + 80, `wind moved the player to ${p.x}`);
+    const hang = (g) => {
+        const q = stand(floor, 100);
+        const w = mkWorld(g === 1 ? [] : [{ g }]);
+        let t = 0;
+        Movement.stepMovement(q, { jump: true }, DT, w, {});
+        while (!q.isGrounded && t < 4000) { Movement.stepMovement(q, {}, DT, w, {}); t += DT; }
+        return t;
+    };
+    assert.ok(hang(0.45) > hang(1) * 1.5);
+});
+
+test('blinking platforms switch on a fixed clock and report the time to the next switch', () => {
+    const lv = new Level(4);
+    const b = lv.platforms.find(p => p.blink);
+    assert.ok(b);
+    const seen = new Set();
+    for (let t = 0; t < 8000; t += 16) { lv.update(16); seen.add(b.active); assert.ok(b.phaseMs >= 0 && b.phaseMs <= Math.max(b.blink.onMs, b.blink.offMs)); }
+    assert.equal(seen.size, 2, 'the platform was both solid and gone');
+});
+
+test('saw blades orbit and hurt', () => {
+    const lv = new Level(5);
+    const saw = lv.hazards.find(h => h.type === 'saw');
+    assert.ok(saw);
+    const ys = [];
+    for (let t = 0; t < 3000; t += 16) { lv.update(16); ys.push(Math.round(saw.y)); }
+    assert.ok(Math.max(...ys) - Math.min(...ys) > 60, 'it moves in a circle');
+    const p = new Player('s', 's', '#fff');
+    p.reset(saw.x, saw.y);
+    assert.equal(lv.checkHazards(p), true);
 });

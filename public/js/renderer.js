@@ -28,6 +28,18 @@ const THEMES = {
         stone: '#D2C0FF', stoneTop: '#F0E6FF', wood: '#FFB86B', woodDark: '#E89647',
         spike: '#FF5E7E', spikeBase: '#7A4B7A', lava: '#FF8A4C', lava2: '#FFB57A'
     },
+    dusk: {
+        sky: '#FFC7A8', cloud: '#FFE9DC', hillFar: '#C9A0C9', hillNear: '#A67FB8',
+        ground: '#6A5A86', groundDark: '#574873', top: '#9B7FC9', topDark: '#876BB6',
+        stone: '#B7A6D9', stoneTop: '#DCD0F2', wood: '#E3A867', woodDark: '#BE8348',
+        spike: '#FF6B6B', spikeBase: '#4B3A63', lava: '#FF8A4C', lava2: '#FFB57A'
+    },
+    night: {
+        sky: '#3B3F7A', cloud: '#6A6FB5', hillFar: '#4C5190', hillNear: '#3F4380',
+        ground: '#3C3A5E', groundDark: '#312F4F', top: '#6F6FB0', topDark: '#5E5EA0',
+        stone: '#8D93CF', stoneTop: '#B9BEF0', wood: '#C98B4B', woodDark: '#9E6A31',
+        spike: '#FF7A7A', spikeBase: '#26244A', lava: '#FF8A4C', lava2: '#FFB57A'
+    },
     volcano: {
         sky: '#FFC9A3', cloud: '#FFE7D2', hillFar: '#EBA57D', hillNear: '#D6805F',
         ground: '#74504F', groundDark: '#5E3F3F', top: '#9A6E6A', topDark: '#85605C',
@@ -171,6 +183,7 @@ class Renderer {
             this.drawSurface(p);
             if (shake) this.ctx.restore();
         });
+        (levelData.zones || []).forEach(z => this.drawZone(z));
         (levelData.shooters || []).forEach((sh, i) => this.drawShooter(sh, (gameState.shooterTimers || [])[i]));
         (levelData.switches || []).forEach((sw, idx) => {
             this.drawSwitch(sw, this.switchActive(gameState, idx));
@@ -282,7 +295,14 @@ class Renderer {
         const ctx = this.ctx;
         const { x, y, width: w, height: h } = plat;
         ctx.save();
-        if (plat.ice) {
+        if (plat.blink) {
+            // glowing look; flickers when about to vanish
+            const fade = plat.phaseMs < 700 && Math.floor(this.time * 10) % 2 === 0;
+            ctx.fillStyle = fade ? 'rgba(255,255,255,0.55)' : 'rgba(120,230,255,0.85)';
+            ctx.beginPath(); ctx.roundRect(x, y, w, h, 6); ctx.fill();
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.roundRect(x + 1, y + 1, w - 2, h - 2, 6); ctx.stroke();
+        } else if (plat.ice) {
             ctx.fillStyle = 'rgba(190,235,255,0.92)';
             ctx.beginPath(); ctx.roundRect(x, y, w, Math.min(h, 18), [8, 8, 0, 0]); ctx.fill();
             ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = 2;
@@ -324,6 +344,38 @@ class Renderer {
                 ctx.stroke();
             }
             if (hurry) { ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.roundRect(x, y, w, h, 6); ctx.fill(); }
+        }
+        ctx.restore();
+    }
+
+    // Wind (streaks + arrows) and low-gravity (rising bubbles) areas
+    drawZone(z) {
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.beginPath(); ctx.rect(z.x, z.y, z.width, z.height); ctx.clip();
+        if (z.kind === 'moon') {
+            ctx.fillStyle = 'rgba(178,141,255,0.16)';
+            ctx.fillRect(z.x, z.y, z.width, z.height);
+            ctx.fillStyle = 'rgba(255,255,255,0.55)';
+            for (let i = 0; i < Math.floor(z.width / 70); i++) {
+                const bx = z.x + ((i * 97) % z.width);
+                const by = z.y + z.height - (((this.time * 26 + i * 53) % z.height));
+                ctx.beginPath(); ctx.arc(bx, by, 2 + (i % 3), 0, Math.PI * 2); ctx.fill();
+            }
+        } else {
+            const d = Math.sign(z.vx || 1);
+            ctx.fillStyle = 'rgba(255,255,255,0.14)';
+            ctx.fillRect(z.x, z.y, z.width, z.height);
+            ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+            const speed = Math.abs(z.vx) * 1.4;
+            for (let i = 0; i < Math.floor(z.width / 90) + 1; i++) {
+                for (let r = 0; r < 3; r++) {
+                    const y = z.y + (z.height * (r + 0.5)) / 3 + ((i * 37) % 30) - 15;
+                    const x = z.x + ((((i * 90 + r * 31 + this.time * speed * d) % (z.width + 120)) + z.width + 120) % (z.width + 120)) - 60;
+                    ctx.beginPath(); ctx.moveTo(x - 22 * d, y); ctx.lineTo(x + 22 * d, y); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(x + 14 * d, y - 6); ctx.lineTo(x + 22 * d, y); ctx.lineTo(x + 14 * d, y + 6); ctx.stroke();
+                }
+            }
         }
         ctx.restore();
     }
@@ -395,6 +447,16 @@ class Renderer {
         const removable = plat.triggerIndex !== null && plat.triggerIndex !== undefined;
         ctx.save();
 
+        if (plat.blink && !plat.active) {
+            // a phased-out platform: ghost outline that fills in just before it is back
+            const soon = plat.phaseMs < 700;
+            ctx.strokeStyle = soon ? 'rgba(255,255,255,0.95)' : 'rgba(43,33,64,0.3)';
+            ctx.setLineDash([5, 6]); ctx.lineWidth = 2;
+            ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+            if (soon) { ctx.globalAlpha = 0.25; ctx.fillStyle = '#fff'; ctx.fillRect(x, y, w, h); }
+            ctx.restore();
+            return;
+        }
         if (!plat.active) {
             // A removed plank: a dashed outline where it was, filling in as it gets close to coming back
             const total = plat.crumble ? 4000 : 7000; // keep in step with the server's restore times
@@ -525,7 +587,21 @@ class Renderer {
         const th = this.theme;
         ctx.save();
 
-        if (haz.type === 'spikes' || haz.type === 'moving_spikes') {
+        if (haz.type === 'saw') {
+            const cx = haz.x + haz.width / 2, cy = haz.y + haz.height / 2, r = haz.width / 2;
+            ctx.translate(cx, cy);
+            ctx.rotate(this.time * 7);
+            ctx.fillStyle = '#C9CEDB'; ctx.strokeStyle = '#2b2140'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+            ctx.beginPath();
+            for (let i = 0; i < 16; i++) {
+                const a = (i / 16) * Math.PI * 2, a2 = a + Math.PI / 16;
+                ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+                ctx.lineTo(Math.cos(a2) * (r - 6), Math.sin(a2) * (r - 6));
+            }
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#8D93A8'; ctx.beginPath(); ctx.arc(0, 0, r * 0.45, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#2b2140'; ctx.beginPath(); ctx.arc(0, 0, 3.5, 0, Math.PI * 2); ctx.fill();
+        } else if (haz.type === 'spikes' || haz.type === 'moving_spikes') {
             const moving = haz.type === 'moving_spikes';
             const spikeW = moving ? 20 : 24;
             const base = moving ? 6 : 10;
