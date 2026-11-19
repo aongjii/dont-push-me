@@ -197,6 +197,7 @@ class GameRoom {
         this.status = 'countdown';
         this.countdownTimer = 3;
         this.finishOrder = [];
+        this.elimOrder = [];
         
         // Load Level data
         this.level = new Level(this.levelIndex);
@@ -404,6 +405,16 @@ class GameRoom {
     // start if lava has risen past it. null = nowhere safe, so they're out for this round.
     pickRespawn(player) {
         const level = this.level;
+        if (level.mode === 'survival') {
+            // back onto whichever platform will stand the longest
+            let best = null, bestLife = 3000;
+            for (const pl of level.platforms) {
+                if (!pl.active || pl.height < 10) continue;
+                const life = pl.crumbleAt === null ? 1e9 : pl.crumbleAt - level.elapsed;
+                if (life > bestLife) { best = pl; bestLife = life; }
+            }
+            return best ? { x: best.x + best.width / 2 - 15, y: best.y - 40 } : null;
+        }
         const safe = (pt) => !level.hasRisingLava || pt.y + 40 < level.lavaY - LAVA_SAFETY_MARGIN;
         const at = (cp) => ({ x: cp.x - 15, y: cp.y - 40 });
 
@@ -486,8 +497,26 @@ class GameRoom {
         });
     }
 
+    // Survival arenas: last one standing wins; points follow the order people dropped out
+    checkSurvivalEnd() {
+        const players = Object.values(this.players);
+        const out = (p) => p.isDead && p.respawnMs <= 0;
+        this.elimOrder = this.elimOrder || [];
+        players.forEach(p => { if (out(p) && !this.elimOrder.includes(p.id)) this.elimOrder.push(p.id); });
+        const alive = players.filter(p => !out(p));
+        const humansAlive = alive.some(p => !p.isBot);
+        if (alive.length > 1 && humansAlive && this.roundTimeLeft > 0) return;
+        if (players.length < 2 && this.roundTimeLeft > 0) return;
+        // survivors first (most lives left on top), then the rest in reverse order of elimination
+        alive.sort((a, b) => b.respawnsLeft - a.respawnsLeft);
+        alive.forEach(p => { p.isFinished = true; });
+        this.finishOrder = [...alive.map(p => p.id), ...[...this.elimOrder].reverse()];
+        this.endRound();
+    }
+
     checkRoundEnd() {
         if (this.status !== 'playing') return;
+        if (this.level && this.level.mode === 'survival') { this.checkSurvivalEnd(); return; }
 
         // Still in the round: not finished, and not out of lives (a player waiting to respawn counts)
         const playersArr = Object.values(this.players);
@@ -505,6 +534,7 @@ class GameRoom {
 
     // Record players who reached the finish since the last check, in order
     collectFinishers() {
+        if (this.level && this.level.mode === 'survival') return;
         Object.values(this.players).forEach(p => {
             if (p.isFinished && !this.finishOrder.includes(p.id)) {
                 this.finishOrder.push(p.id);

@@ -1,0 +1,102 @@
+{
+  "theme": "meadow",
+  "mode": "survival",
+  "timeLimit": 75,
+  "width": 1280,
+  "height": 720,
+  "spawn": {
+    "x": 560,
+    "y": 440
+  },
+  "finish": {
+    "x": -9999,
+    "y": -9999,
+    "width": 10,
+    "height": 10
+  },
+  "platforms": [
+    {
+      "x": 55,
+      "y": 500,
+      "width": 150,
+      "height": 220,
+      "crumbleAt": 16000
+    },
+    {
+      "x": 225,
+      "y": 500,
+      "width": 150,
+      "height": 220,
+      "crumbleAt": 26000
+    },
+    {
+      "x": 395,
+      "y": 500,
+      "width": 150,
+      "height": 220,
+      "crumbleAt": 36000
+    },
+    {
+      "x": 565,
+      "y": 500,
+      "width": 150,
+      "height": 220,
+      "crumbleAt": 48000
+    },
+    {
+      "x": 735,
+      "y": 500,
+      "width": 150,
+      "height": 220,
+      "crumbleAt": 36000
+    },
+    {
+      "x": 905,
+      "y": 500,
+      "width": 150,
+      "height": 220,
+      "crumbleAt": 26000
+    },
+    {
+      "x": 1075,
+      "y": 500,
+      "width": 150,
+      "height": 220,
+      "crumbleAt": 16000
+    },
+    {
+      "x": 200,
+      "y": 370,
+      "width": 140,
+      "height": 24,
+      "crumbleAt": 14000
+    },
+    {
+      "x": 570,
+      "y": 370,
+      "width": 140,
+      "height": 24,
+      "crumbleAt": 22000
+    },
+    {
+      "x": 940,
+      "y": 370,
+      "width": 140,
+      "height": 24,
+      "crumbleAt": 14000
+    }
+  ],
+  "switches": [],
+  "hazards": [
+    {
+      "x": 0,
+      "y": 660,
+      "width": 1280,
+      "height": 60,
+      "type": "spikes"
+    }
+  ],
+  "items": [],
+  "checkpoints": [],
+  "shooters": []
+}

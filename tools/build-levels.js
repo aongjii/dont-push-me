@@ -321,6 +321,39 @@ function level5() {
     });
 }
 
+// ---------------------------------------------------------------- survival arenas (last one standing)
+// Everything collapses on a schedule, outer parts first; the finish is off the map so nobody "finishes".
+function arena(n, theme, build) {
+    const platforms = [], hazards = [];
+    build({ platforms, hazards });
+    write(`arena${n}`, {
+        theme, mode: 'survival', timeLimit: 75,
+        width: 1280, height: 720,
+        spawn: { x: 560, y: 440 },
+        finish: { x: -9999, y: -9999, width: 10, height: 10 },
+        platforms, switches: [], hazards, items: [], checkpoints: [], shooters: []
+    });
+}
+function arenas() {
+    arena(1, 'meadow', ({ platforms, hazards }) => {
+        // a row of seven stones that fall from the outside in, and three floating ledges that go first
+        const times = [16000, 26000, 36000, 48000, 36000, 26000, 16000];
+        times.forEach((t, i) => platforms.push({ x: 55 + i * 170, y: 500, width: 150, height: 220, crumbleAt: t }));
+        [[200, 14000], [570, 22000], [940, 14000]].forEach(([px, t]) => platforms.push({ x: px, y: 370, width: 140, height: 24, crumbleAt: t }));
+        hazards.push({ x: 0, y: 660, width: 1280, height: 60, type: 'spikes' });
+    });
+    arena(2, 'night', ({ platforms, hazards }) => {
+        platforms.push({ x: 70, y: 500, width: 280, height: 220, crumbleAt: 20000 });
+        platforms.push({ x: 930, y: 500, width: 280, height: 220, crumbleAt: 20000 });
+        platforms.push({ x: 400, y: 500, width: 240, height: 220, crumbleAt: 34000 });
+        platforms.push({ x: 640, y: 500, width: 240, height: 220, crumbleAt: 46000 });
+        platforms.push({ x: 560, y: 360, width: 160, height: 24, crumbleAt: 12000 });
+        // a saw circles over the middle: keep moving
+        hazards.push({ x: 618, y: 238, width: 44, height: 44, type: 'saw', startX: 618, startY: 238, rangeX: 150, rangeY: 110, freq: 1.5 });
+        hazards.push({ x: 0, y: 660, width: 1280, height: 60, type: 'spikes' });
+    });
+}
+
 // ---------------------------------------------------------------- tutorial (practice room, not in the level pool)
 // `hints` show on screen while the player is past that x; {jump} etc. become the player's own keys.
 function tutorial() {
@@ -375,4 +408,4 @@ function tutorial() {
     });
 }
 
-level1(); level2(); level3(); level4(); level5(); tutorial();
+level1(); level2(); level3(); level4(); level5(); arenas(); tutorial();

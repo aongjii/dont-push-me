@@ -1,0 +1,79 @@
+{
+  "theme": "night",
+  "mode": "survival",
+  "timeLimit": 75,
+  "width": 1280,
+  "height": 720,
+  "spawn": {
+    "x": 560,
+    "y": 440
+  },
+  "finish": {
+    "x": -9999,
+    "y": -9999,
+    "width": 10,
+    "height": 10
+  },
+  "platforms": [
+    {
+      "x": 70,
+      "y": 500,
+      "width": 280,
+      "height": 220,
+      "crumbleAt": 20000
+    },
+    {
+      "x": 930,
+      "y": 500,
+      "width": 280,
+      "height": 220,
+      "crumbleAt": 20000
+    },
+    {
+      "x": 400,
+      "y": 500,
+      "width": 240,
+      "height": 220,
+      "crumbleAt": 34000
+    },
+    {
+      "x": 640,
+      "y": 500,
+      "width": 240,
+      "height": 220,
+      "crumbleAt": 46000
+    },
+    {
+      "x": 560,
+      "y": 360,
+      "width": 160,
+      "height": 24,
+      "crumbleAt": 12000
+    }
+  ],
+  "switches": [],
+  "hazards": [
+    {
+      "x": 618,
+      "y": 238,
+      "width": 44,
+      "height": 44,
+      "type": "saw",
+      "startX": 618,
+      "startY": 238,
+      "rangeX": 150,
+      "rangeY": 110,
+      "freq": 1.5
+    },
+    {
+      "x": 0,
+      "y": 660,
+      "width": 1280,
+      "height": 60,
+      "type": "spikes"
+    }
+  ],
+  "items": [],
+  "checkpoints": [],
+  "shooters": []
+}

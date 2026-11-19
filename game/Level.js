@@ -67,6 +67,8 @@ class Level {
                 ice: !!plat.ice,
                 conveyor: plat.conveyor || 0,    // px/s the belt carries you (negative = left)
                 crumble: !!plat.crumble,         // drops away shortly after somebody stands on it
+                crumbleAt: plat.crumbleAt === undefined ? null : plat.crumbleAt, // survival arenas: this platform collapses for good at this time (ms into the round)
+                warn: false,
                 blink: plat.blink ? { onMs: plat.blink.onMs, offMs: plat.blink.offMs, offsetMs: plat.blink.offsetMs || 0 } : null,
                 phaseMs: 0,                      // blinking platforms: ms until the next switch
                 weightMs: 0,                     // how long somebody has stood on it (builds up, eases off when empty)
@@ -196,6 +198,14 @@ class Level {
                     haz.y = haz.startY + Math.sin(haz.time * haz.freq) * haz.rangeY;
                 }
             }
+        });
+
+        // Survival arenas collapse on a schedule (with a shaking warning first)
+        this.elapsed = (this.elapsed || 0) + dt;
+        this.platforms.forEach(p => {
+            if (p.crumbleAt === null || !p.active) return;
+            if (this.elapsed >= p.crumbleAt) { p.active = false; p.warn = false; p.returnMs = 0; }
+            else p.warn = this.elapsed >= p.crumbleAt - 1500;
         });
 
         // Blinking platforms are solid for onMs, then gone for offMs, on a fixed clock

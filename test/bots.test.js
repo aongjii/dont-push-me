@@ -109,3 +109,26 @@ test('bots shove people but never each other', () => {
     brain.maybeShove(room);
     assert.equal(a.input.push, false);
 });
+
+test('a bot hops over an arrow flying at it and steps away from a falling boulder', () => {
+    const { Bot } = require('../game/Bot');
+    const Level = require('../game/Level');
+    const Player = require('../game/Player');
+    const level = new Level(1);
+    const p = new Player('b', 'B', '#fff');
+    p.reset(400, 460); p.isGrounded = true;
+    const bot = new Bot(p, {});
+    // an arrow from the right, about 0.3s away
+    level.shots = [{ id: 1, kind: 'arrow', x: 400 + 15 + 90, y: 470, width: 36, height: 14, vx: -300, vy: 0 }];
+    assert.equal(bot.dodgeShots(level), true);
+    assert.equal(p.input.jump, true);
+    // a boulder just above, slightly to the left of centre: step right
+    p.input.jump = false; p.input.left = false; p.input.right = false;
+    level.shots = [{ id: 2, kind: 'rock', x: 400, y: 380, width: 30, height: 30, vx: 0, vy: 300 }];
+    assert.equal(bot.dodgeShots(level), true);
+    assert.equal(p.input.right, true);
+    // far away arrows are ignored
+    p.input.right = false;
+    level.shots = [{ id: 3, kind: 'arrow', x: 1400, y: 470, width: 36, height: 14, vx: -300, vy: 0 }];
+    assert.equal(bot.dodgeShots(level), false);
+});

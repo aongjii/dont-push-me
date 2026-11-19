@@ -177,7 +177,7 @@ class Renderer {
         // World, back to front
         this.drawFinish(levelData.finishZone);
         gameState.platforms.forEach(p => {
-            const shake = p.crumble && p.active && p.weightMs > 700;
+            const shake = p.active && ((p.crumble && p.weightMs > 700) || p.warn);
             if (shake) { this.ctx.save(); this.ctx.translate(Math.sin(this.time * 90) * 2.2, Math.cos(this.time * 70) * 1.4); }
             this.drawPlatform(p);
             this.drawSurface(p);

@@ -65,6 +65,7 @@ class Bot {
             return;
         }
         const level = room.level;
+        if (level && p.isGrounded && this.dodgeShots(level)) return;
         if (!level || level.mode === 'survival') { this.survive(room); return; }
 
         const st = this.state;
@@ -166,6 +167,29 @@ class Bot {
         p.input.jump = true;
         if (dir) p.input[dir > 0 ? 'right' : 'left'] = true;
         this.state = { phase: 'air', t: 0, holdMs: 450, dir: dir || 1, airborneSeen: false };
+    }
+
+    // Arrows / fireballs fly at us: jump over them. A boulder drops on us: step out of the way.
+    dodgeShots(level) {
+        const p = this.p;
+        const cx = p.x + p.width / 2;
+        for (const sh of level.shots || []) {
+            if (sh.vy === 0 && sh.vx !== 0) {
+                const overlapY = sh.y + sh.height > p.y - 4 && sh.y < p.y + p.height;
+                const dx = cx - (sh.x + sh.width / 2);
+                if (!overlapY || Math.sign(dx) !== Math.sign(sh.vx)) continue;
+                const t = Math.abs(dx) / Math.abs(sh.vx);
+                if (t > 0.12 && t < 0.5) { this.hop(0); return true; }
+            } else if (sh.vy > 0) {
+                const dx = cx - (sh.x + sh.width / 2);
+                const t = (p.y - (sh.y + sh.height)) / sh.vy;
+                if (Math.abs(dx) < 46 && t > -0.2 && t < 0.7) {
+                    p.input[dx >= 0 ? 'right' : 'left'] = true;
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     // Distance to the nearest patrolling hazard on this platform that lies in direction `heading`
