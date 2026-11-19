@@ -47,7 +47,7 @@ test('create, join, and reconnect keeps the same seat', async () => {
     const host = await connect();
     host.emit('create_room', { playerName: 'Host' });
     const created = await once(host, 'room_created');
-    assert.match(created.roomCode, /^\d{4}$/);
+    assert.match(created.roomCode, /^\d{6}$/);
     assert.ok(created.token);
 
     const guest = await connect();
@@ -138,7 +138,7 @@ test('malformed payloads do not crash the server', async () => {
     const s2 = await connect(); // server still answers
     s2.emit('create_room', { playerName: { evil: true } });
     const created = await once(s2, 'room_created');
-    assert.match(created.roomCode, /^\d{4}$/);
+    assert.match(created.roomCode, /^\d{6}$/);
     s.disconnect();
     s2.disconnect();
 });
@@ -377,4 +377,24 @@ test('host can remove a player from the waiting room; others cannot; not mid-gam
     assert.equal(state.players.length, 2, 'nobody was removed mid-game');
 
     host.disconnect(); guest.disconnect(); third.disconnect();
+});
+
+test('only the host can change the room settings, and everyone sees the result', async () => {
+    const host = await connect();
+    host.emit('create_room', { playerName: 'Host' });
+    const created = await once(host, 'room_created');
+    assert.equal(created.settings.rounds, 3);
+    const guest = await connect();
+    guest.emit('join_room', { roomCode: created.roomCode, playerName: 'Guest' });
+    await once(guest, 'room_joined');
+
+    guest.emit('set_settings', { rounds: 5 });
+    await new Promise(r => setTimeout(r, 150));
+
+    const seen = until(guest, 'room_update', d => d.settings && d.settings.rounds === 5 && d.settings.items === false);
+    host.emit('set_settings', { rounds: 5, items: false, mode: 'nonsense' });
+    const upd = await seen;
+    assert.equal(upd.settings.mode, 'race', 'invalid values are ignored');
+
+    host.disconnect(); guest.disconnect();
 });

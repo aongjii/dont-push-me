@@ -113,7 +113,7 @@ class Player {
         };
     }
 
-    reset(spawnX, spawnY) {
+    reset(spawnX, spawnY, lives = 3) {
         this.x = spawnX;
         this.y = spawnY;
         this.vx = 0;
@@ -130,7 +130,7 @@ class Player {
         this.pullImmunity = 0;
         this.catchUp = false;
         this.roundKos = 0;
-        this.respawnsLeft = 2;
+        this.respawnsLeft = Math.max(0, lives - 1);
         this.respawnMs = 0;
         this.cpIndex = -1;
         this.invulnMs = 0;

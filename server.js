@@ -43,7 +43,7 @@ const RECONNECT_GRACE_MS = 30 * 1000;
 function generateRoomCode() {
     let code;
     do {
-        code = Math.floor(1000 + Math.random() * 9000).toString(); // 4-digit code
+        code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code (hard to guess)
     } while (rooms[code]);
     return code;
 }
@@ -81,7 +81,7 @@ function removeFromRoom(roomCode, playerId) {
         console.log(`Deleting empty room: ${roomCode}`);
         delete rooms[roomCode];
     } else {
-        io.to(roomCode).emit('room_update', { players: publicPlayers(room) });
+        io.to(roomCode).emit('room_update', { players: publicPlayers(room), settings: room.settings });
     }
 }
 
@@ -112,7 +112,7 @@ io.on('connection', (socket) => {
         if (!allowAction() || playerId) return;
 
         const roomCode = generateRoomCode();
-        const room = new GameRoom(roomCode, io);
+        const room = new GameRoom(roomCode, io, { shuffle: true }); // real rooms mix up the level order
         rooms[roomCode] = room;
 
         const id = generatePlayerId();
@@ -124,7 +124,7 @@ io.on('connection', (socket) => {
             roomCode,
             playerId: id,
             token: player.token,
-            players: publicPlayers(room)
+            players: publicPlayers(room), settings: room.settings
         });
 
         console.log(`Room ${roomCode} created by ${player.name}`);
@@ -163,11 +163,11 @@ io.on('connection', (socket) => {
             roomCode: code,
             playerId: id,
             token: player.token,
-            players: publicPlayers(room)
+            players: publicPlayers(room), settings: room.settings
         });
 
         // Notify others in room
-        io.to(code).emit('room_update', { players: publicPlayers(room) });
+        io.to(code).emit('room_update', { players: publicPlayers(room), settings: room.settings });
 
         console.log(`${name} joined Room ${code}`);
     });
@@ -206,7 +206,7 @@ io.on('connection', (socket) => {
         socket.emit('rejoined', {
             roomCode: code,
             playerId: player.id,
-            players: publicPlayers(room),
+            players: publicPlayers(room), settings: room.settings,
             status: room.status
         });
 
@@ -220,7 +220,7 @@ io.on('connection', (socket) => {
             socket.emit('match_end', room.lastMatchEnd);
         }
 
-        io.to(code).emit('room_update', { players: publicPlayers(room) });
+        io.to(code).emit('room_update', { players: publicPlayers(room), settings: room.settings });
         console.log(`${player.name} rejoined Room ${code}`);
     });
 
@@ -268,7 +268,7 @@ io.on('connection', (socket) => {
         if (!currentRoomCode || !allowSkin()) return;
         const room = rooms[currentRoomCode];
         if (room && room.setSkin(playerId, skin)) {
-            io.to(currentRoomCode).emit('room_update', { players: publicPlayers(room) });
+            io.to(currentRoomCode).emit('room_update', { players: publicPlayers(room), settings: room.settings });
         }
     });
 
@@ -277,12 +277,22 @@ io.on('connection', (socket) => {
         if (typeof ack === 'function' && allowInput()) ack();
     });
 
+    // Host changes the match settings in the waiting room
+    socket.on('set_settings', (payload) => {
+        if (!allowAction() || !currentRoomCode) return;
+        const room = rooms[currentRoomCode];
+        if (!room || !isHost(room)) return;
+        if (room.setSettings(payload)) {
+            io.to(currentRoomCode).emit('room_update', { players: publicPlayers(room), settings: room.settings });
+        }
+    });
+
     // Host sends everyone back to the waiting room after a match
     socket.on('rematch', () => {
         if (!allowAction() || !currentRoomCode) return;
         const room = rooms[currentRoomCode];
         if (!room || !isHost(room)) return;
-        if (room.resetToLobby()) io.to(currentRoomCode).emit('room_reset', { players: publicPlayers(room) });
+        if (room.resetToLobby()) io.to(currentRoomCode).emit('room_reset', { players: publicPlayers(room), settings: room.settings });
     });
 
     // Host removes someone from the waiting room

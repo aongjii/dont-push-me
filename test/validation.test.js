@@ -19,12 +19,12 @@ test('sanitizeName trims, strips control chars and caps length', () => {
     assert.equal(sanitizeName('\u0000\u0007', 'fallback'), 'fallback');
 });
 
-test('sanitizeRoomCode accepts only 4-digit codes', () => {
-    assert.equal(sanitizeRoomCode('1234'), '1234');
-    assert.equal(sanitizeRoomCode(1234), '1234');
-    assert.equal(sanitizeRoomCode('123'), null);
-    assert.equal(sanitizeRoomCode('12345'), null);
-    assert.equal(sanitizeRoomCode('abcd'), null);
+test('sanitizeRoomCode accepts only 6-digit codes', () => {
+    assert.equal(sanitizeRoomCode('123456'), '123456');
+    assert.equal(sanitizeRoomCode(123456), '123456');
+    assert.equal(sanitizeRoomCode('1234'), null, 'old 4-digit codes are no longer valid');
+    assert.equal(sanitizeRoomCode('1234567'), null);
+    assert.equal(sanitizeRoomCode('12345a'), null);
     assert.equal(sanitizeRoomCode(undefined), null);
 });
 

@@ -46,7 +46,7 @@
                 <div class="divider"><span>หรือ</span></div>
 
                 <div class="join-group">
-                    <input type="number" id="input-code" placeholder="รหัสห้อง 4 หลัก" min="1000" max="9999">
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" id="input-code" placeholder="รหัสห้อง 6 หลัก" autocomplete="off">
                     <button id="btn-join" class="btn btn-secondary">เข้าร่วมห้อง</button>
                 </div>
             </div>
@@ -65,6 +65,18 @@
             <div class="room-code-display" id="lobby-code">----</div>
             <p class="lobby-subtitle">แชร์รหัสนี้ให้เพื่อนๆ เข้ามาร่วมวง!</p>
             <button id="btn-copy-link" class="btn btn-secondary btn-small"><i data-icon="link"></i><span>คัดลอกลิงก์เชิญ</span></button>
+
+            <div class="settings-box" id="settings-box">
+                <h3>ตั้งค่าห้อง <span id="settings-note" class="settings-note"></span></h3>
+                <div class="setting-row" data-key="rounds"><span>จำนวนรอบ</span>
+                    <div class="seg"><button data-value="1">1</button><button data-value="3">3</button><button data-value="5">5</button></div></div>
+                <div class="setting-row" data-key="lives"><span>หัวใจต่อรอบ</span>
+                    <div class="seg"><button data-value="1">1</button><button data-value="3">3</button></div></div>
+                <div class="setting-row" data-key="items"><span>ดาว/ผลไม้</span>
+                    <div class="seg"><button data-value="true">เปิด</button><button data-value="false">ปิด</button></div></div>
+                <div class="setting-row" data-key="shuffle"><span>ลำดับด่าน</span>
+                    <div class="seg"><button data-value="true">สุ่ม</button><button data-value="false">เรียง</button></div></div>
+            </div>
 
             <div class="lobby-content">
                 <h3>ผู้เล่นในห้อง (<span id="lobby-count">0</span>/4)</h3>

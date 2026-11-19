@@ -194,6 +194,7 @@ window.addEventListener('keyup', (e) => {
 
 // Helper to check if current user is room host (the first player in the room list)
 function updateHostStatus(players) {
+    setTimeout(() => { if (typeof refreshSettingsUI === 'function') refreshSettingsUI(); }, 0);
     if (players.length > 0 && players[0].id === localPlayerId) {
         isHost = true;
         document.getElementById('btn-start').style.display = 'inline-block';
@@ -227,8 +228,8 @@ document.getElementById('btn-join').addEventListener('click', () => {
         UI.showError('กรุณาใส่ชื่อเล่นของคุณก่อนเริ่มเกม!');
         return;
     }
-    if (!codeInput || codeInput.length !== 4) {
-        UI.showError('กรุณากรอกรหัสห้อง 4 หลักที่ถูกต้อง!');
+    if (!/^\d{6}$/.test(codeInput)) {
+        UI.showError('กรุณากรอกรหัสห้อง 6 หลักที่ถูกต้อง!');
         return;
     }
 
@@ -456,6 +457,7 @@ socket.on('round_load', (data) => {
     // Set HUD room code
     document.getElementById('hud-code').textContent = currentRoomCode;
     document.getElementById('hud-round').textContent = `${data.round}/${data.maxRounds}`;
+    TOTAL_LIVES = data.lives || 3;
 
     // Switch screen to game
     UI.showScreen('game');
@@ -615,7 +617,7 @@ function updatePowerCard(localP) {
 }
 
 // Hearts in the HUD: how many lives you have left this round
-const TOTAL_LIVES = 3;
+let TOTAL_LIVES = 3;
 const RESPAWN_MS = 3000; // keep in step with GameRoom
 let shownLives = null;
 function renderLives(n) {
@@ -1014,7 +1016,7 @@ setInterval(() => {
 // --- INVITE LINK: ?room=1234 fills in the room code; the lobby button copies such a link ---
 (() => {
     const room = new URLSearchParams(location.search).get('room');
-    if (room && /^\d{4}$/.test(room)) {
+    if (room && /^\d{6}$/.test(room)) {
         document.getElementById('input-code').value = room;
         const note = document.getElementById('invite-note');
         note.textContent = `คุณถูกชวนเข้าห้อง ${room} - ใส่ชื่อแล้วกด "เข้าร่วมห้อง"`;
@@ -1043,3 +1045,41 @@ setInterval(() => {
         setTimeout(() => { label.textContent = 'คัดลอกลิงก์เชิญ'; }, 2500);
     });
 })();
+
+// --- ROOM SETTINGS (waiting room) ---
+// The host picks; everyone sees. Any server message that carries `settings` updates the panel.
+let roomSettings = null;
+const settingsBox = document.getElementById('settings-box');
+
+function parseSettingValue(v) {
+    if (v === 'true') return true;
+    if (v === 'false') return false;
+    return /^\d+$/.test(v) ? parseInt(v, 10) : v;
+}
+
+function refreshSettingsUI() {
+    if (!roomSettings) return;
+    settingsBox.querySelectorAll('.setting-row').forEach(row => {
+        const key = row.dataset.key;
+        row.style.display = key === 'shuffle' && roomSettings.mode === 'survival' ? 'none' : '';
+        row.querySelectorAll('button').forEach(btn => {
+            btn.classList.toggle('on', parseSettingValue(btn.dataset.value) === roomSettings[key]);
+            btn.disabled = !isHost;
+        });
+    });
+    document.getElementById('settings-note').textContent = isHost ? '' : '(หัวหน้าห้องเป็นคนเลือก)';
+}
+
+socket.onAny((event, data) => {
+    if (data && typeof data === 'object' && data.settings) {
+        roomSettings = data.settings;
+        refreshSettingsUI();
+    }
+});
+
+settingsBox.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn || !isHost) return;
+    const key = btn.closest('.setting-row').dataset.key;
+    socket.emit('set_settings', { [key]: parseSettingValue(btn.dataset.value) });
+});

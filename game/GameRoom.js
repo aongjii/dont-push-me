@@ -5,25 +5,45 @@ const { sanitizeInput, sanitizeEmote } = require('./validation');
 const Movement = require('../shared/movement');
 const { ABILITY } = require('./abilities');
 const Skins = require('../shared/skins');
+const fs = require('fs');
+const path = require('path');
+const { sanitizeSettings, DEFAULTS } = require('./settings');
+
+// Which level files exist: race levels (level1.json ...) and survival arenas (arena1.json ...)
+const LEVEL_DIR = path.join(__dirname, 'levels');
+const listLevels = (re, num) => fs.readdirSync(LEVEL_DIR).map(f => re.exec(f)).filter(Boolean)
+    .map(m => (num ? parseInt(m[1], 10) : m[0].replace('.json', ''))).sort((a, b) => (num ? a - b : String(a).localeCompare(b)));
+const RACE_LEVELS = listLevels(/^level(\d+)\.json$/, true);
+const ARENA_LEVELS = listLevels(/^arena(\d+)\.json$/, false);
+
+function shuffled(list, rnd = Math.random) {
+    const a = [...list];
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(rnd() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+}
 
 const KO_POINTS = 3; // bonus for sending a rival to their doom
 const MAX_CMDS_PER_MESSAGE = 30;
 const MOVE_BUDGET_CAP = 500;     // ms of banked movement (covers a burst after a lag spike)
 const MOVE_BUDGET_RATE = 1.05;   // a little slack for clock drift between client and server
-const LIVES_PER_ROUND = 3;
 const RESPAWN_MS = 3000;         // how long you wait after dying
 const INVULN_MS = 2000;          // spikes/lava can't hurt right after you come back
 const LAVA_SAFETY_MARGIN = 140;  // don't respawn closer than this to rising lava (px)
 
 class GameRoom {
-    constructor(code, io) {
+    constructor(code, io, initialSettings) {
         this.code = code;
         this.io = io;
         this.players = {}; // id -> Player
         this.status = 'lobby'; // lobby, countdown, playing, round_end, match_end
         this.levelIndex = 1;
         this.round = 1;
-        this.maxRounds = 3;
+        this.settings = sanitizeSettings(initialSettings, DEFAULTS);
+        this.maxRounds = this.settings.rounds;
+        this.levelOrder = [1];
         this.countdownTimer = 0;
         this.countdownInterval = null;
         
@@ -92,9 +112,28 @@ class GameRoom {
         }
     }
 
+    // Host changes in the waiting room. Returns the settings now in force, or null if not allowed.
+    setSettings(raw) {
+        if (this.status !== 'lobby') return null;
+        this.settings = sanitizeSettings(raw, this.settings);
+        return this.settings;
+    }
+
+    // The levels for this match, one per round (shuffled without repeats when asked to)
+    buildLevelOrder() {
+        const pool = this.settings.mode === 'survival' && ARENA_LEVELS.length ? ARENA_LEVELS : RACE_LEVELS;
+        const order = [];
+        while (order.length < this.settings.rounds) {
+            order.push(...(this.settings.shuffle ? shuffled(pool) : pool));
+        }
+        return order.slice(0, this.settings.rounds);
+    }
+
     startGame() {
         if (this.status !== 'lobby') return;
-        this.levelIndex = 1;
+        this.maxRounds = this.settings.rounds;
+        this.levelOrder = this.buildLevelOrder();
+        this.levelIndex = this.levelOrder[0];
         this.round = 1;
         // Reset scores
         Object.values(this.players).forEach(p => p.score = 0);
@@ -112,8 +151,9 @@ class GameRoom {
         // Reset players to spawn coordinates
         // Spread the spawn points so players aren't stacked inside each other
         Object.values(this.players).forEach((p, i) => {
-            p.reset(this.level.spawnX + i * 40, this.level.spawnY);
+            p.reset(this.level.spawnX + i * 40, this.level.spawnY, this.settings.lives);
         });
+        if (!this.settings.items) this.level.items = [];
 
         this.roundTimeLimit = this.level.timeLimit * 1000;
         this.roundTimeLeft = this.roundTimeLimit;
@@ -156,7 +196,8 @@ class GameRoom {
             roundTimeLimit: this.roundTimeLimit,
             theme: this.level.theme,
             checkpoints: this.level.checkpoints,
-            lives: LIVES_PER_ROUND
+            lives: this.settings.lives,
+            mode: this.level.mode
         };
     }
 
@@ -223,6 +264,7 @@ class GameRoom {
         this.finishOrder = [];
         this.lastRoundEnd = null;
         this.lastMatchEnd = null;
+        this.levelOrder = [1];
         this.levelIndex = 1;
         this.round = 1;
         Object.values(this.players).forEach(p => { p.score = 0; });
@@ -464,7 +506,7 @@ class GameRoom {
             this.endMatch();
         } else {
             this.round++;
-            this.levelIndex = (this.levelIndex % 3) + 1; // cycles 1 -> 2 -> 3
+            this.levelIndex = this.levelOrder[this.round - 1];
             this.startRound();
         }
     }

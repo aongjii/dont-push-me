@@ -19,7 +19,7 @@ function sanitizeName(raw, fallback) {
 
 function sanitizeRoomCode(raw) {
     const code = typeof raw === 'number' ? String(raw) : raw;
-    return typeof code === 'string' && /^\d{4}$/.test(code) ? code : null;
+    return typeof code === 'string' && /^\d{6}$/.test(code) ? code : null;
 }
 
 // Simple fixed-window limiter: allow `max` events per `windowMs`.

@@ -6,6 +6,7 @@ const path = require('path');
 const SWITCH_RESTORE_MS = 7000;
 
 class Level {
+    // levelIndex: a number (race levels: level1.json, ...) or a file name such as 'arena1'
     constructor(levelIndex) {
         this.levelIndex = levelIndex;
         this.width = 1600;
@@ -20,6 +21,7 @@ class Level {
         this.checkpoints = []; // respawn flags: { x: centre, y: ground top }, in order of progress
         this.timeLimit = 90; // seconds (levels may override)
         this.theme = 'meadow'; // visual theme: meadow | candy | volcano
+        this.mode = 'race'; // 'race' (reach the finish) or 'survival' (last one standing)
         this.finishZone = { x: 1500, y: 400, width: 60, height: 120 };
         this.lavaY = 900;
         this.hasRisingLava = false;
@@ -30,7 +32,8 @@ class Level {
 
     loadLevel(levelIndex) {
         try {
-            const filepath = path.join(__dirname, 'levels', `level${levelIndex}.json`);
+            const file = typeof levelIndex === 'number' ? `level${levelIndex}` : String(levelIndex).replace(/[^a-z0-9_]/gi, '');
+            const filepath = path.join(__dirname, 'levels', `${file}.json`);
             const rawData = fs.readFileSync(filepath, 'utf8');
             const data = JSON.parse(rawData);
 
@@ -95,6 +98,7 @@ class Level {
             this.checkpoints = (data.checkpoints || []).map(c => ({ x: c.x, y: c.y }));
             this.timeLimit = data.timeLimit || 90;
             this.theme = data.theme || 'meadow';
+            this.mode = data.mode === 'survival' ? 'survival' : 'race';
 
             // Rising lava
             this.hasRisingLava = data.hasRisingLava || false;

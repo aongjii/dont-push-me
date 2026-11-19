@@ -1080,3 +1080,13 @@ body.touch #btn-fullscreen { display: flex; }
 }
 .kick-btn:hover { background: #FFECEC; border-color: var(--danger); }
 .kick-btn .icon { margin: 0; }
+
+/* room settings */
+.settings-box { background: var(--surface-2); border-radius: 14px; padding: 14px 18px; margin-bottom: 14px; text-align: left; }
+.settings-box h3 { font-size: 0.95rem; color: var(--muted); margin-bottom: 10px; }
+.settings-note { font-weight: 400; font-size: 0.8rem; }
+.setting-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 0; font-size: 0.92rem; font-weight: 600; }
+.seg { display: inline-flex; border: 2px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface); }
+.seg button { border: none; background: transparent; padding: 6px 14px; font-family: var(--font-family); font-weight: 600; font-size: 0.9rem; color: var(--ink); cursor: pointer; }
+.seg button.on { background: var(--ink); color: #FFFFFF; }
+.seg button:disabled { cursor: default; opacity: 0.85; }
