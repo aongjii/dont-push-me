@@ -149,8 +149,8 @@ io.on('connection', (socket) => {
             return;
         }
 
-        if (Object.keys(room.players).length >= 4) {
-            socket.emit('error_msg', { message: 'ห้องเต็มแล้ว! (รับได้สูงสุด 4 คน)' });
+        if (Object.keys(room.players).length >= room.settings.maxPlayers) {
+            socket.emit('error_msg', { message: `ห้องเต็มแล้ว! (รับได้สูงสุด ${room.settings.maxPlayers} คน)` });
             return;
         }
 

@@ -71,6 +71,8 @@
                 <h3>ตั้งค่าห้อง <span id="settings-note" class="settings-note"></span></h3>
                 <div class="setting-row" data-key="rounds"><span>จำนวนด่านที่เล่น <small id="pool-note" class="settings-note"></small></span>
                     <div class="stepper"><button data-delta="-1" aria-label="น้อยลง">&minus;</button><b id="rounds-value">3</b><button data-delta="1" aria-label="มากขึ้น">+</button></div></div>
+                <div class="setting-row" data-key="maxPlayers"><span>ผู้เล่นสูงสุด</span>
+                    <div class="seg"><button data-value="4">4</button><button data-value="6">6</button><button data-value="8">8</button></div></div>
                 <div class="setting-row" data-key="lives"><span>หัวใจต่อรอบ</span>
                     <div class="seg"><button data-value="1">1</button><button data-value="3">3</button></div></div>
                 <div class="setting-row" data-key="items"><span>ดาว/ผลไม้</span>
@@ -80,7 +82,7 @@
             </div>
 
             <div class="lobby-content">
-                <h3>ผู้เล่นในห้อง (<span id="lobby-count">0</span>/4)</h3>
+                <h3>ผู้เล่นในห้อง (<span id="lobby-count">0</span>/<span id="lobby-max">8</span>)</h3>
                 <div class="player-list" id="lobby-player-list">
                     <!-- Players will be dynamically added here -->
                 </div>

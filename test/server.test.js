@@ -429,3 +429,27 @@ test('host adds and removes bots; they are listed after the humans; non-hosts ca
 
     host.disconnect(); guest.disconnect(); third.disconnect();
 });
+
+test('eight people can share a room; the ninth is told it is full', async () => {
+    const host = await connect();
+    host.emit('create_room', { playerName: 'Host' });
+    const created = await once(host, 'room_created');
+    const sockets = [host];
+    for (let i = 1; i < 8; i++) {
+        const s = await connect();
+        s.emit('join_room', { roomCode: created.roomCode, playerName: `P${i}` });
+        await once(s, 'room_joined');
+        sockets.push(s);
+    }
+    const ninth = await connect();
+    ninth.emit('join_room', { roomCode: created.roomCode, playerName: 'Late' });
+    const err = await once(ninth, 'error_msg');
+    assert.match(err.message, /8/);
+
+    // and a full round runs with 8 in it
+    host.emit('start_game');
+    const state = await new Promise(resolve => host.once('game_state', resolve));
+    assert.equal(state.players.length, 8);
+
+    sockets.forEach(s => s.disconnect()); ninth.disconnect();
+});

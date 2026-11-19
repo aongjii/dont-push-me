@@ -28,6 +28,9 @@ function shuffled(list, rnd = Math.random) {
 
 const KO_POINTS = 3; // bonus for sending a rival to their doom
 const MAX_CMDS_PER_MESSAGE = 30;
+// Up to 5 players side by side at the start (every level's start area fits that); more share spots
+const SPAWN_COLUMNS = 5;
+const SPAWN_SPACING = 32;
 const MOVE_BUDGET_CAP = 500;     // ms of banked movement (covers a burst after a lag spike)
 const MOVE_BUDGET_RATE = 1.05;   // a little slack for clock drift between client and server
 const RESPAWN_MS = 3000;         // how long you wait after dying
@@ -69,7 +72,7 @@ class GameRoom {
     // `rawSkin` is whatever the client asked for; it is validated here. Body colours are unique
     // within a room (so you can tell players apart), so a taken colour is swapped for a free one.
     addPlayer(id, name, rawSkin) {
-        if (Object.keys(this.players).length >= 4) return null;
+        if (Object.keys(this.players).length >= this.settings.maxPlayers) return null;
 
         const skin = Skins.sanitizeSkin(rawSkin);
         const used = Object.values(this.players).map(p => p.color);
@@ -97,7 +100,7 @@ class GameRoom {
 
     // ---- computer players
     addBot(opts = {}) {
-        if (Object.keys(this.players).length >= 4 || this.status !== 'lobby') return null;
+        if (Object.keys(this.players).length >= this.settings.maxPlayers || this.status !== 'lobby') return null;
         this.botSeq++;
         const id = `bot${this.botSeq}`;
         const player = this.addPlayer(id, opts.name || `บอท ${this.botSeq}`, Skins.randomSkin());
@@ -155,7 +158,10 @@ class GameRoom {
     // Host changes in the waiting room. Returns the settings now in force, or null if not allowed.
     setSettings(raw) {
         if (this.status !== 'lobby') return null;
-        this.settings = sanitizeSettings(raw, this.settings);
+        const next = sanitizeSettings(raw, this.settings);
+        // can't shrink the room below the number of people already in it
+        if (next.maxPlayers < Object.keys(this.players).length) next.maxPlayers = this.settings.maxPlayers;
+        this.settings = next;
         return this.settings;
     }
 
@@ -197,7 +203,7 @@ class GameRoom {
         // Reset players to spawn coordinates
         // Spread the spawn points so players aren't stacked inside each other
         Object.values(this.players).forEach((p, i) => {
-            p.reset(this.level.spawnX + i * 40, this.level.spawnY, this.settings.lives);
+            p.reset(this.level.spawnX + (i % SPAWN_COLUMNS) * SPAWN_SPACING, this.level.spawnY, this.settings.lives);
         });
         if (!this.settings.items) this.level.items = [];
         // Bots never run out of hearts: they just keep trying, like a beginner who won't give up
@@ -401,7 +407,7 @@ class GameRoom {
             if (safe(pt)) return pt;
         }
         const idx = Object.keys(this.players).indexOf(player.id);
-        const start = { x: level.spawnX + Math.max(0, idx) * 40, y: level.spawnY };
+        const start = { x: level.spawnX + (Math.max(0, idx) % SPAWN_COLUMNS) * SPAWN_SPACING, y: level.spawnY };
         return safe(start) ? start : null;
     }
 

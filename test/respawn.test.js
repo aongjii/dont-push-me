@@ -40,7 +40,7 @@ test('dying costs a life: you wait, then come back at the start with a moment of
     run(room, 700);
     assert.equal(b.isDead, false, 'back after about 3 seconds');
     assert.ok(b.invulnMs > 0);
-    assert.ok(Math.abs(b.x - (room.level.spawnX + 40)) < 5, `respawned at x=${b.x}`);
+    assert.ok(Math.abs(b.x - (room.level.spawnX + 32)) < 5, `respawned at x=${b.x}`);
 });
 
 test('the round keeps going while someone is waiting to respawn', () => {

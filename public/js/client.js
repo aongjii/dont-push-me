@@ -1064,6 +1064,7 @@ function refreshSettingsUI() {
         });
     });
     document.getElementById('settings-note').textContent = isHost ? '' : '(หัวหน้าห้องเป็นคนเลือก)';
+    document.getElementById('lobby-max').textContent = roomSettings.maxPlayers;
 }
 
 socket.onAny((event, data) => {

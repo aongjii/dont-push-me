@@ -85,3 +85,39 @@ test('real rooms start with shuffled level order switched on', () => {
     const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'server.js'), 'utf8');
     assert.match(src, /new GameRoom\(roomCode, io, \{ shuffle: true \}\)/);
 });
+
+test('a room takes up to 8 players by default, with the cap chosen by the host', () => {
+    const room = new GameRoom('0', io);
+    for (let i = 0; i < 8; i++) assert.ok(room.addPlayer(`p${i}`, `P${i}`), `player ${i + 1} should fit`);
+    assert.equal(room.addPlayer('p9', 'extra'), null, 'the 9th does not');
+    const colors = Object.values(room.players).map(p => p.color.toUpperCase());
+    assert.equal(new Set(colors).size, 8, 'every player has their own colour');
+
+    const small = new GameRoom('0', io);
+    small.setSettings({ maxPlayers: 4 });
+    for (let i = 0; i < 4; i++) small.addPlayer(`p${i}`, `P${i}`);
+    assert.equal(small.addPlayer('x', 'x'), null);
+});
+
+test('the cap cannot be lowered below the people already in the room', () => {
+    const room = new GameRoom('0', io);
+    for (let i = 0; i < 6; i++) room.addPlayer(`p${i}`, `P${i}`);
+    assert.equal(room.setSettings({ maxPlayers: 4 }).maxPlayers, 8, 'refused');
+    assert.equal(room.setSettings({ maxPlayers: 6 }).maxPlayers, 6);
+});
+
+test('8 players start the round on solid ground in every level, and nobody spawns inside the pit', () => {
+    for (const level of [1, 2, 3]) {
+        const room = new GameRoom('0', io);
+        for (let i = 0; i < 8; i++) room.addPlayer(`p${i}`, `P${i}`);
+        room.startGame(); clearInterval(room.countdownInterval);
+        room.levelIndex = level; room.startRound(); clearInterval(room.countdownInterval);
+        room.status = 'playing'; room.roundTimeLeft = 1e9;
+        const start = room.level.platforms.find(p => room.level.spawnX >= p.x && room.level.spawnX < p.x + p.width);
+        for (const p of Object.values(room.players)) {
+            assert.ok(p.x >= start.x && p.x + p.width <= start.x + start.width, `level ${level}: ${p.id} spawns at x=${p.x}, off the start platform (${start.x}-${start.x + start.width})`);
+        }
+        for (let t = 0; t < 1000; t += 1000 / 60) room.gameLoop.update(1000 / 60);
+        assert.ok(Object.values(room.players).every(p => !p.isDead), `level ${level}: someone died at the start`);
+    }
+});

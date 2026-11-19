@@ -23,6 +23,7 @@ function startOn(room, level = 1) {
 
 test('bots can be added and removed in the waiting room, up to 4 players in total', () => {
     const room = lobby();
+    room.setSettings({ maxPlayers: 4 });
     assert.ok(room.addBot());
     assert.ok(room.addBot());
     assert.ok(room.addBot());
