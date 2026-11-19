@@ -110,11 +110,12 @@ io.on('connection', (socket) => {
 
     // Create a new room
     socket.on('create_room', (payload) => {
-        const { playerName, skin } = asObject(payload);
+        const { playerName, skin, tutorial } = asObject(payload);
         if (!allowAction() || playerId) return;
 
         const roomCode = generateRoomCode();
         const room = new GameRoom(roomCode, io, { shuffle: true }); // real rooms mix up the level order
+        if (tutorial === true) { room.tutorial = true; room.settings.rounds = 1; room.settings.lives = 3; }
         rooms[roomCode] = room;
 
         const id = generatePlayerId();
@@ -130,6 +131,12 @@ io.on('connection', (socket) => {
         });
 
         console.log(`Room ${roomCode} created by ${player.name}`);
+
+        // Practice room: a friendly bot to push around, and the tutorial level starts right away
+        if (room.tutorial) {
+            room.addBot({ name: 'เพื่อนซ้อม' });
+            setTimeout(() => { if (rooms[roomCode]) room.startGame(); }, 400);
+        }
     });
 
     // Join an existing room

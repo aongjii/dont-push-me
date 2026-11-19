@@ -1114,3 +1114,12 @@ body.touch #btn-fullscreen { display: flex; }
 .keys-actions { display: flex; gap: 10px; justify-content: center; margin-top: 14px; }
 .open-keys-link { color: var(--blue-dark); font-weight: 600; }
 body.touch .btn-keys, body.touch .open-keys-link { display: none; }
+
+/* practice level hint banner */
+.tutorial-hint {
+    position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%);
+    max-width: min(640px, 90vw); padding: 12px 20px; border-radius: 16px;
+    background: #fff; color: #2b2140; font-weight: 700; font-size: 18px; text-align: center;
+    border: 3px solid #ffd24a; box-shadow: 0 6px 0 rgba(43,33,64,0.15); pointer-events: none; z-index: 5;
+}
+body.touch .tutorial-hint { bottom: 150px; font-size: 15px; }

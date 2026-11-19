@@ -453,3 +453,15 @@ test('eight people can share a room; the ninth is told it is full', async () => 
 
     sockets.forEach(s => s.disconnect()); ninth.disconnect();
 });
+
+test('practice room starts the tutorial level right away with hints and a bot', async () => {
+    const a = await connect();
+    const load = until(a, 'round_load', () => true, 5000);
+    a.emit('create_room', { playerName: 'Solo', tutorial: true });
+    const data = await load;
+    assert.equal(data.tutorial, true);
+    assert.equal(data.maxRounds, 1);
+    assert.ok(Array.isArray(data.hints) && data.hints.length >= 5);
+    assert.ok(data.hints.every(h => typeof h.text === 'string' && typeof h.x === 'number'));
+    a.close();
+});

@@ -9,9 +9,10 @@ const GROUND_Y = 500;
 const WOOD = '#C98B4B';
 
 function write(index, data) {
-    const file = path.join(__dirname, '..', 'game', 'levels', `level${index}.json`);
+    const name = typeof index === 'number' ? `level${index}` : index;
+    const file = path.join(__dirname, '..', 'game', 'levels', `${name}.json`);
     fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n');
-    console.log(`wrote level${index}.json  (${data.platforms.length} platforms, ${data.hazards.length} hazards, ${(data.items || []).length} items, width ${data.width}, height ${data.height})`);
+    console.log(`wrote ${name}.json  (${data.platforms.length} platforms, ${data.hazards.length} hazards, ${(data.items || []).length} items, width ${data.width}, height ${data.height})`);
 }
 
 // ---------------------------------------------------------------- level 1: bridges
@@ -212,4 +213,58 @@ function level3() {
     });
 }
 
-level1(); level2(); level3();
+// ---------------------------------------------------------------- tutorial (practice room, not in the level pool)
+// `hints` show on screen while the player is past that x; {jump} etc. become the player's own keys.
+function tutorial() {
+    const platforms = [], switches = [], hazards = [], items = [], checkpoints = [], hints = [];
+    let x = 0, sw = 0;
+    const ground = (w, extra = {}) => { platforms.push({ x, y: GROUND_Y, width: w, height: 220, ...extra }); x += w; };
+    const pit = (w) => { hazards.push({ x, y: 660, width: w, height: 60, type: 'spikes' }); x += w; };
+    const hint = (hx, text) => hints.push({ x: hx, text });
+
+    hint(0, 'เดินไปทางขวาด้วย {left} / {right}');
+    ground(520);
+    hint(320, 'กระโดดด้วย {jump} (กดค้างจะสูงขึ้น)');
+    // a gap with spikes: the first thing to jump over
+    hint(430, 'กระโดดข้ามหนามไปให้ได้!');
+    pit(110);
+    ground(500);
+    hint(x - 380, 'ดาวสุ่มพลัง: ค้าง {inhale} ใกล้ดาวเพื่ออม แล้วปล่อยให้กลืน');
+    items.push({ type: 'star', x: x - 300, y: 470 }, { type: 'star', x: x - 240, y: 470 });
+    hint(x - 180, 'ได้พลังแล้ว กด {power} เพื่อใช้ (ไฟ น้ำแข็ง ใบพัด หรือปีก)');
+    checkpoints.push({ x: x - 60, y: GROUND_Y });
+    hint(x - 90, 'ธงชมพู = จุดเกิดใหม่ ถ้าหัวใจยังเหลือ ตายแล้วจะกลับมาที่ธง');
+
+    // a wooden bridge with its switch just past the far end
+    const bx = x, bw = 340;
+    platforms.push({ x, y: GROUND_Y, width: bw, height: 20, active: true, triggerIndex: sw, color: WOOD });
+    hazards.push({ x, y: 660, width: bw, height: 60, type: 'spikes' });
+    switches.push({ x: x + bw + 20, y: GROUND_Y - 40, width: 30, height: 40 });
+    x += bw;
+    hint(bx, 'สะพานไม้: ข้ามไปแล้วกด {interact} ที่คันโยก จะตัดสะพานหลังตัวเอง (กลับมาเองใน 7 วิ)');
+    ground(420);
+    hint(x - 400, 'เจอเพื่อน? ผลักด้วย {push} ดึงด้วย {pull} หรือค้าง {inhale} เพื่ออมเพื่อน แล้วพ่นออก (ค้างนานพ่นแรง)');
+    items.push({ type: 'orb', x: x - 200, y: 470 });
+    hint(x - 220, 'ลูกแก้วอมไว้แล้วพ่นใส่เพื่อนได้ (กด {inhale} อีกครั้ง)');
+
+    // spring pad over the last gap
+    hint(x - 60, 'แผ่นสปริงสีชมพู: เหยียบแล้วเด้งสูง');
+    pit(140);
+    platforms.push({ x, y: GROUND_Y, width: 90, height: 220, bounce: true }); x += 90;
+    ground(200);
+    // the finish
+    hint(x - 180, 'เส้นชัยอยู่ข้างหน้าแล้ว!');
+    ground(380);
+
+    const width = x;
+    write('tutorial', {
+        theme: 'meadow',
+        timeLimit: 600,
+        width, height: 720,
+        spawn: { x: 80, y: 440 },
+        finish: { x: width - 180, y: 380, width: 80, height: 120 },
+        platforms, switches, hazards, items, checkpoints, shooters: [], hints
+    });
+}
+
+level1(); level2(); level3(); tutorial();

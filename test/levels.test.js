@@ -51,3 +51,13 @@ test('new levels are meaningfully longer than the originals (1600px / 800px-wide
     for (const i of [1, 2]) assert.ok(new Level(i).width >= 5000, `level ${i} width ${new Level(i).width}`);
     assert.ok(new Level(3).height >= 3000);
 });
+
+test('the tutorial level can be finished and every hint is in the level', () => {
+    const r = checkLevel('tutorial');
+    assert.ok(r.solvable, 'tutorial cannot be finished');
+    assert.deepEqual(r.unreachable, []);
+    const lv = new Level('tutorial');
+    assert.ok(lv.hints.length >= 5);
+    lv.hints.forEach(h => assert.ok(h.x >= 0 && h.x < lv.width));
+    for (let i = 1; i < lv.hints.length; i++) assert.ok(lv.hints[i].x >= lv.hints[i - 1].x, 'hints must be in order of x');
+});

@@ -29,6 +29,10 @@ class Level {
         this.lavaY = 900;
         this.hasRisingLava = false;
         this.lavaSpeed = 0;
+        this.hints = [];
+        this.shooters = [];
+        this.shots = [];
+        this.shotId = 0;
 
         this.loadLevel(levelIndex);
     }
@@ -94,6 +98,7 @@ class Level {
             }));
 
             // Arrow / rock launchers. Each fires a harmful shot every intervalMs.
+            this.hints = data.hints || [];
             this.shooters = (data.shooters || []).map((s, i) => ({
                 x: s.x, y: s.y,
                 vx: s.vx || 0, vy: s.vy || 0,

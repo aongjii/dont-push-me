@@ -173,6 +173,7 @@ class GameRoom {
 
     // The levels for this match, one per round (shuffled without repeats when asked to)
     buildLevelOrder() {
+        if (this.tutorial) return ['tutorial'];
         const pool = this.settings.mode === 'survival' && ARENA_LEVELS.length ? ARENA_LEVELS : RACE_LEVELS;
         const order = [];
         while (order.length < this.settings.rounds) {
@@ -252,6 +253,8 @@ class GameRoom {
             theme: this.level.theme,
             checkpoints: this.level.checkpoints,
             lives: this.settings.lives,
+            hints: this.level.hints || [],
+            tutorial: !!this.tutorial,
             mode: this.level.mode
         };
     }

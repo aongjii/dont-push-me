@@ -187,6 +187,13 @@ function updateHostStatus(players) {
 
 // --- BUTTONS INTERACTIVE ACTIONS ---
 
+// Practice: a private room with a bot and the tutorial level
+document.getElementById('btn-practice').addEventListener('click', () => {
+    const nameInput = document.getElementById('input-name').value.trim() || 'Player';
+    UI.saveName(nameInput);
+    socket.emit('create_room', { playerName: nameInput, skin: SkinUI.current(), tutorial: true });
+});
+
 // Create Room
 document.getElementById('btn-create').addEventListener('click', () => {
     const nameInput = document.getElementById('input-name').value.trim();
@@ -437,6 +444,8 @@ socket.on('round_load', (data) => {
     prevPlayerFlags = {}; prevShotIds = new Set(); prevPlatformFlags = []; prevWarn = [];
     spectateBanner.style.display = 'none';
     document.getElementById('hud-catchup').style.display = 'none';
+    document.getElementById('tutorial-hint').style.display = 'none';
+    tutorialHintText = '';
     Sfx.stopMusic();
 
     // Set HUD room code
@@ -666,9 +675,26 @@ function showPowerToast(info) {
 // Last-seen per-player flags, to detect jumps / landings / breaking free between states
 let prevPlayerFlags = {};
 let prevTimeLeft = null;
+let tutorialHintText = '';
 let prevShotIds = new Set();
 let prevPlatformFlags = [];
 let prevWarn = [];
+
+// Practice level: show the hint for wherever the local player has got to
+function updateTutorialHint(state) {
+    const el = document.getElementById('tutorial-hint');
+    const hints = levelData && levelData.hints;
+    if (!hints || !hints.length) return;
+    const me = state.players.find(p => p.id === localPlayerId);
+    if (!me) return;
+    let cur = null;
+    for (const h of hints) if (h.x <= me.x) cur = h;
+    const text = cur ? cur.text.replace(/\{(\w+)\}/g, (_, a) => KeysUI.keyName(a)) : '';
+    if (text === tutorialHintText) return;
+    tutorialHintText = text;
+    el.textContent = text;
+    el.style.display = text ? 'block' : 'none';
+}
 
 // Sounds and puffs for the obstacles: shots being fired, stones crumbling, springs, launcher warnings
 function detectObstacleEffects(state) {
@@ -738,6 +764,7 @@ socket.on('game_state', (state) => {
 
     detectMotionEffects(state);
     detectObstacleEffects(state);
+    updateTutorialHint(state);
 
     const mine = state.players.find(p => p.id === localPlayerId);
     if (mine) predictor.reconcile(mine, state.platforms);
