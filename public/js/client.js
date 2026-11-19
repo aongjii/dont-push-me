@@ -862,8 +862,11 @@ socket.on('game_effect', (effect) => {
             const [icon, verb] = verbs[effect.kind] || ['push', 'ผลัก'];
             showHudAlert(`${pusher.name} ${verb} ${victim.name}!`, 2000, icon);
             Sfx.play(effect.kind === 'ice' ? 'ice' : 'push');
-            renderer.triggerShake(180, 8);
+            // the screen only shakes hard when you are part of it; everyone sees the burst
+            const mine = effect.pusher === localPlayerId || effect.victim === localPlayerId;
+            renderer.triggerShake(mine ? 200 : 90, mine ? 9 : 3);
             renderer.addParticles(victim.x + victim.width/2, victim.y + victim.height/2, victim.color, 12);
+            renderer.addImpact(victim.x + victim.width / 2, victim.y + victim.height / 2, effect.kind === 'spit' ? 1.5 : 1);
         }
     }
 
@@ -936,9 +939,14 @@ socket.on('game_effect', (effect) => {
     }
 
     if (effect.type === 'spit') {
-        Sfx.play('spit');
+        const power = effect.charge || 0; // 0..1: how long it was held
+        Sfx.play('spit', 0.6 + 0.4 * power);
         const by = gameState.players.find(p => p.id === effect.by);
-        if (by) renderer.addParticles(by.x + by.width / 2 + by.facing * 24, by.y + by.height / 2, '#FFD94A', 8, { spread: 220, up: 40, size: 3 });
+        if (by) {
+            renderer.addParticles(by.x + by.width / 2 + by.facing * 24, by.y + by.height / 2, '#FFD94A', 8 + Math.round(14 * power), { spread: 220 + 260 * power, up: 40, size: 3 + 2 * power });
+            if (power > 0.5) renderer.addImpact(by.x + by.width / 2 + by.facing * 30, by.y + by.height / 2, 1 + power);
+            if (by.id === localPlayerId && power > 0.3) renderer.triggerShake(120 + 160 * power, 3 + 6 * power);
+        }
     }
 
     if (effect.type === 'escape') {

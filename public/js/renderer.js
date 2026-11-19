@@ -87,12 +87,15 @@ class Renderer {
 
         // Visual properties
         this.particles = [];
+        this.impacts = [];   // expanding star bursts where something hit hard
         this.emotes = {}; // playerId -> { emoji, start }
     }
 
     setTheme(name) {
         this.theme = THEMES[name] || THEMES.meadow;
     }
+
+    addImpact(x, y, size = 1) { this.impacts.push({ x, y, size, age: 0 }); }
 
     triggerShake(duration = 200, intensity = 5) {
         this.shakeTimer = duration;
@@ -214,6 +217,18 @@ class Renderer {
 
         (gameState.shots || []).forEach(sh => this.drawShot(sh));
         (gameState.projectiles || []).forEach(pr => this.drawProjectile(pr));
+
+        // Impact bursts: a white star that grows and fades in ~0.25s
+        this.impacts = this.impacts.filter(im => (im.age += dt) < 0.25);
+        this.impacts.forEach(im => {
+            const k = im.age / 0.25;
+            ctx.save();
+            ctx.globalAlpha = 1 - k;
+            ctx.fillStyle = '#FFFFFF'; ctx.strokeStyle = '#FFD24A'; ctx.lineWidth = 3;
+            this.starPath(im.x, im.y, (14 + 26 * k) * im.size, (6 + 10 * k) * im.size);
+            ctx.fill(); ctx.stroke();
+            ctx.restore();
+        });
 
         // Particles on top of characters
         this.particles.forEach(p => {
