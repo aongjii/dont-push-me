@@ -1099,3 +1099,18 @@ body.touch #btn-fullscreen { display: flex; }
 .bot-row { display: flex; gap: 8px; justify-content: center; margin: 0 0 14px; }
 .bot-row .btn-small { margin: 0; }
 .bot-tag { background: #E3EEFF; color: #3F6FD1; margin-left: 8px; }
+
+/* key settings */
+.keys-card { max-width: 640px; text-align: left; max-height: 100%; overflow-y: auto; }
+.keys-card h2 { text-align: center; margin-bottom: 6px; }
+.keys-list { display: flex; flex-direction: column; gap: 6px; margin: 12px 0 6px; }
+.key-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--surface-2); border-radius: 12px; padding: 7px 12px; }
+.key-name { font-weight: 600; font-size: 0.92rem; }
+.key-slots { display: inline-flex; gap: 6px; }
+.key-slot { min-width: 74px; padding: 6px 10px; border: 2px solid var(--line); border-bottom-width: 3px; border-radius: 10px; background: var(--surface); font-family: var(--font-family); font-weight: 700; font-size: 0.9rem; color: var(--ink); cursor: pointer; }
+.key-slot:hover { border-color: var(--blue); }
+.key-slot.empty { color: var(--muted); font-weight: 500; }
+.key-slot.listening { border-color: var(--pink); background: #FFF0F5; animation: nudge 0.5s ease-in-out infinite alternate; transform-origin: center; }
+.keys-actions { display: flex; gap: 10px; justify-content: center; margin-top: 14px; }
+.open-keys-link { color: var(--blue-dark); font-weight: 600; }
+body.touch .btn-keys, body.touch .open-keys-link { display: none; }

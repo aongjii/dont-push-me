@@ -107,34 +107,9 @@ function pumpCommands(now, elapsedMs) {
     }
 }
 
-// Track keys
-const keyMap = {
-    // Left
-    'KeyA': 'left',
-    'ArrowLeft': 'left',
-    // Right
-    'KeyD': 'right',
-    'ArrowRight': 'right',
-    // Jump
-    'KeyW': 'jump',
-    'ArrowUp': 'jump',
-    'Space': 'jump',
-    // Push
-    'KeyF': 'push',
-    'KeyZ': 'push',
-    // Pull
-    'KeyG': 'pull',
-    'KeyX': 'pull',
-    // Interact
-    'KeyE': 'interact',
-    // Inhale (hold) / spit (press again)
-    'KeyC': 'inhale',
-    // Use the power you got from a star
-    'KeyV': 'power'
-};
+// (key bindings now come from KeysUI / shared/keybinds.js, so players can change them)
 
 const EMOTES = ['laugh', 'angry', 'wave', 'skull']; // icon names (see icons.js)
-const emoteKeys = { Digit1: 0, Digit2: 1, Digit3: 2, Digit4: 3, Numpad1: 0, Numpad2: 1, Numpad3: 2, Numpad4: 3 };
 
 function inGame() {
     return UI.screens.game.classList.contains('active');
@@ -146,36 +121,39 @@ refreshMuteButton();
 muteBtn.addEventListener('click', () => { Sfx.toggleMute(); refreshMuteButton(); muteBtn.blur(); });
 
 window.addEventListener('keydown', (e) => {
+    if (KeysUI.isCapturing()) return; // the key-binding screen is listening for a new key
     // Don't hijack typing in the menu inputs
     if (e.target && e.target.tagName === 'INPUT') return;
 
-    if (e.code === 'KeyH' && !e.repeat) {
+    if (e.code === 'Escape') { setHelp(false); KeysUI.close(); return; }
+
+    const action = KeysUI.actionOf(e.code);
+
+    if (action === 'help' && !e.repeat) {
         toggleHelp();
         return;
     }
-    if (e.code === 'Escape') { setHelp(false); return; }
 
-    if (e.code === 'KeyM' && !e.repeat) {
+    if (action === 'mute' && !e.repeat) {
         Sfx.toggleMute();
         refreshMuteButton();
         return;
     }
 
     if (inGame() && !e.repeat) {
-        if (e.code in emoteKeys) {
-            socket.emit('emote', emoteKeys[e.code]);
+        if (action && action.startsWith('emote')) {
+            socket.emit('emote', parseInt(action.slice(5), 10) - 1);
             return;
         }
         // Dead or finished: left/right switches who you are watching
         const me = gameState && gameState.players.find(p => p.id === localPlayerId);
         if (me && (me.isDead || me.isFinished)) {
-            if (e.code === 'KeyA' || e.code === 'ArrowLeft') cycleSpectate(-1);
-            if (e.code === 'KeyD' || e.code === 'ArrowRight') cycleSpectate(1);
+            if (action === 'left') cycleSpectate(-1);
+            if (action === 'right') cycleSpectate(1);
         }
     }
 
-    const action = keyMap[e.code];
-    if (action) {
+    if (action && action in inputState) {
         inputState[action] = true;
     }
 });
@@ -186,8 +164,8 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) clear
 
 window.addEventListener('keyup', (e) => {
     if (e.target && e.target.tagName === 'INPUT') return;
-    const action = keyMap[e.code];
-    if (action) {
+    const action = KeysUI.actionOf(e.code);
+    if (action && action in inputState) {
         inputState[action] = false;
     }
 });
@@ -611,7 +589,7 @@ function updatePowerCard(localP) {
     Icons.set(document.getElementById('power-icon'), info.icon, 34);
     document.getElementById('power-name').textContent = `พลัง${info.name}`;
     document.getElementById('power-how').textContent = info.how;
-    document.getElementById('power-key').textContent = info.key;
+    document.getElementById('power-key').textContent = info.key === 'V' ? KeysUI.keyName('power') : KeysUI.keyName('jump');
     document.getElementById('power-bar').style.transform =
         `scaleX(${Math.max(0, Math.min(1, localP.powerMs / POWER_MS[localP.power]))})`;
     if (localP.power === 'wings') {
@@ -650,11 +628,11 @@ function updateCoach(p) {
         document.getElementById('coach-fill').style.width = `${Math.min(100, (p.swallowTaps / p.tapsNeeded) * 100)}%`;
     } else if (p.spitBodyMs > 0 && p.recover > 0 && !p.isGrounded && !p.isDead) {
         coach.style.display = 'block';
-        setCoachText('wind', 'ถูกพ่น! กด Space เพื่อกระโดดเบรก!');
+        setCoachText('wind', `ถูกพ่น! กด ${KeysUI.keyName('jump')} เพื่อกระโดดเบรก!`);
         bar.style.display = 'none';
     } else if (p.mouth && !p.isDead) {
         coach.style.display = 'block';
-        setCoachText('inhale', 'อมไว้นานแค่ไหนก็ได้ ยิ่งนานยิ่งพ่นแรง — กด C เพื่อพ่น');
+        setCoachText('inhale', `อมไว้นานแค่ไหนก็ได้ ยิ่งนานยิ่งพ่นแรง — กด ${KeysUI.keyName('inhale')} เพื่อพ่น`);
         bar.style.display = 'block';
         document.getElementById('coach-fill').style.width = `${Math.round(p.charge * 100)}%`;
     } else if (p.isDead && p.respawnMs > 0) {
@@ -677,7 +655,7 @@ function showPowerToast(info) {
     big.appendChild(document.createTextNode(`ได้พลัง${info.name}!`));
     const how = document.createElement('div');
     how.className = 'toast-how';
-    how.textContent = info.key === 'V' ? `กดปุ่ม V เพื่อ${info.how}` : info.how;
+    how.textContent = info.key === 'V' ? `กดปุ่ม ${KeysUI.keyName('power')} เพื่อ${info.how}` : info.how;
     el.appendChild(big);
     el.appendChild(how);
     el.style.display = 'block';
@@ -1109,3 +1087,10 @@ settingsBox.addEventListener('click', (e) => {
 
 document.getElementById('btn-add-bot').addEventListener('click', () => socket.emit('add_bot'));
 document.getElementById('btn-remove-bot').addEventListener('click', () => socket.emit('remove_bot'));
+
+// the in-world "press E / hold C" prompts follow the player's own keys
+function syncPromptKeys() {
+    renderer.keyLabels = { interact: KeysUI.keyName('interact'), inhale: KeysUI.keyName('inhale') };
+}
+KeysUI.onChange(syncPromptKeys);
+syncPromptKeys();

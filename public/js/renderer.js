@@ -60,6 +60,7 @@ class Renderer {
 
         this.time = 0;
         this.theme = THEMES.meadow;
+        this.keyLabels = { interact: 'E', inhale: 'C' }; // updated from the player's key settings
 
         // Visual properties
         this.particles = [];
@@ -158,7 +159,7 @@ class Renderer {
             if (localPlayer && !localPlayer.isDead && !localPlayer.isFinished) {
                 const dx = sw.x + sw.width / 2 - (localPlayer.x + localPlayer.width / 2);
                 const dy = sw.y + sw.height / 2 - (localPlayer.y + localPlayer.height / 2);
-                if (Math.hypot(dx, dy) < 60) this.drawKeyPrompt(sw.x + sw.width / 2, sw.y - 26, 'E');
+                if (Math.hypot(dx, dy) < 60) this.drawKeyPrompt(sw.x + sw.width / 2, sw.y - 26, this.keyLabels.interact);
             }
         });
         gameState.hazards.forEach(h => this.drawHazard(h));
@@ -616,7 +617,7 @@ class Renderer {
 
         // Hint when you're close enough to inhale it
         if (showHint && localPlayer && !localPlayer.isDead && !localPlayer.isFinished && !localPlayer.mouth && !localPlayer.inhaling) {
-            this.drawKeyPrompt(it.x, it.y - 34, 'C', 'ค้างเพื่ออม');
+            this.drawKeyPrompt(it.x, it.y - 34, this.keyLabels.inhale, 'ค้างเพื่ออม');
         }
     }
 

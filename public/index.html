@@ -54,6 +54,7 @@
 
         <div class="menu-buttons">
             <button class="btn btn-secondary btn-skin"><i data-icon="shirt"></i> แต่งตัว</button>
+            <button class="btn btn-secondary btn-keys"><i data-icon="keyboard"></i> ตั้งค่าปุ่ม</button>
             <button class="btn btn-secondary btn-help"><i data-icon="book"></i> วิธีเล่น</button>
         </div>
     </div>
@@ -94,6 +95,7 @@
                 <button id="btn-start" class="btn btn-success" disabled>เริ่มเกมเลย!</button>
                 <div class="lobby-buttons">
                     <button class="btn btn-secondary btn-skin"><i data-icon="shirt"></i> แต่งตัว</button>
+                    <button class="btn btn-secondary btn-keys"><i data-icon="keyboard"></i> ปุ่ม</button>
                     <button class="btn btn-secondary btn-help"><i data-icon="book"></i> วิธีเล่น</button>
                 </div>
                 <button class="btn btn-leave" data-leave>ออกจากห้อง</button>
@@ -125,17 +127,17 @@
                 <div class="abilities">
                     <div class="ability-slot" id="ability-inhale">
                         <span class="ability-icon"><i data-icon="inhale"></i></span>
-                        <span class="ability-key">C</span>
+                        <span class="ability-key" data-act="inhale">C</span>
                         <div class="state-overlay" id="inhale-state"></div>
                     </div>
                     <div class="ability-slot" id="ability-push">
                         <span class="ability-icon"><i data-icon="push"></i></span>
-                        <span class="ability-key">F</span>
+                        <span class="ability-key" data-act="push">F</span>
                         <div class="cooldown-overlay" id="cooldown-push"></div>
                     </div>
                     <div class="ability-slot" id="ability-pull">
                         <span class="ability-icon"><i data-icon="pull"></i></span>
-                        <span class="ability-key">G</span>
+                        <span class="ability-key" data-act="pull">G</span>
                         <div class="cooldown-overlay" id="cooldown-pull"></div>
                     </div>
                 </div>
@@ -158,7 +160,7 @@
             <div class="pc-track"><div id="power-bar"></div></div>
         </div>
         <div class="hud-emotes" title="กดเลข 1-4 เพื่อส่งอีโมจิ">
-            <span><kbd>1</kbd><i data-icon="laugh"></i></span><span><kbd>2</kbd><i data-icon="angry"></i></span><span><kbd>3</kbd><i data-icon="wave"></i></span><span><kbd>4</kbd><i data-icon="skull"></i></span>
+            <span><kbd data-act="emote1">1</kbd><i data-icon="laugh"></i></span><span><kbd data-act="emote2">2</kbd><i data-icon="angry"></i></span><span><kbd data-act="emote3">3</kbd><i data-icon="wave"></i></span><span><kbd data-act="emote4">4</kbd><i data-icon="skull"></i></span>
         </div>
 
         <!-- Canvas Container -->
@@ -280,6 +282,20 @@
         </div>
     </div>
 
+    <!-- KEY BINDINGS -->
+    <div id="keys-overlay" class="help-overlay">
+        <div class="card keys-card">
+            <h2><i data-icon="keyboard" data-size="26"></i> ตั้งค่าปุ่ม</h2>
+            <p class="help-note">กดช่องปุ่มที่ต้องการเปลี่ยน แล้วกดปุ่มใหม่บนคีย์บอร์ด (กด <b>Esc</b> ยกเลิก • กด <b>Backspace</b> เพื่อลบปุ่มในช่องนั้น) ทุกคำสั่งมีได้สูงสุด 3 ปุ่ม และปุ่มหนึ่งใช้ได้กับคำสั่งเดียว</p>
+            <div id="keys-list" class="keys-list"></div>
+            <p id="keys-note" class="skin-note"></p>
+            <div class="keys-actions">
+                <button id="btn-keys-reset" class="btn btn-secondary">คืนค่าเริ่มต้น</button>
+                <button id="btn-keys-done" class="btn btn-primary">เสร็จแล้ว</button>
+            </div>
+        </div>
+    </div>
+
     <!-- HELP -->
     <div id="help-overlay" class="help-overlay">
         <div class="card help-card">
@@ -287,37 +303,37 @@
 
             <h3>ปุ่มควบคุม</h3>
             <div class="guide-grid">
-                <div class="guide-item"><span class="keys"><kbd>A</kbd><kbd>D</kbd></span><span>เดินซ้าย/ขวา (หรือ ← →)</span></div>
-                <div class="guide-item"><span class="keys"><kbd>W</kbd><kbd>Space</kbd></span><span>กระโดด</span></div>
-                <div class="guide-item"><span class="keys"><kbd>F</kbd></span><span><i data-icon="push"></i> ผลักคนข้างหน้า</span></div>
-                <div class="guide-item"><span class="keys"><kbd>G</kbd></span><span><i data-icon="pull"></i> ดึงให้ค้าง 1 วินาที</span></div>
-                <div class="guide-item"><span class="keys"><kbd>C</kbd></span><span><i data-icon="inhale"></i> กดค้าง = อม • กดอีกครั้ง = พ่น</span></div>
-                <div class="guide-item"><span class="keys"><kbd>V</kbd></span><span><i data-icon="star"></i> ใช้พลังจากดาว</span></div>
-                <div class="guide-item"><span class="keys"><kbd>E</kbd></span><span><i data-icon="lever"></i> สับสวิตช์สะพาน</span></div>
-                <div class="guide-item"><span class="keys"><kbd>1</kbd>–<kbd>4</kbd></span><span>ส่งอีโมจิ</span></div>
-                <div class="guide-item"><span class="keys"><kbd>M</kbd></span><span>เปิด/ปิดเสียง</span></div>
-                <div class="guide-item"><span class="keys"><kbd>H</kbd></span><span>เปิดหน้านี้</span></div>
+                <div class="guide-item"><span class="keys"><kbd data-act="left">A</kbd><kbd data-act="right">D</kbd></span><span>เดินซ้าย/ขวา</span></div>
+                <div class="guide-item"><span class="keys"><kbd data-act="jump" data-slot="0">Space</kbd><kbd data-act="jump" data-slot="1">W</kbd></span><span>กระโดด</span></div>
+                <div class="guide-item"><span class="keys"><kbd data-act="push">F</kbd></span><span><i data-icon="push"></i> ผลักคนข้างหน้า</span></div>
+                <div class="guide-item"><span class="keys"><kbd data-act="pull">G</kbd></span><span><i data-icon="pull"></i> ดึงให้ค้าง 1 วินาที</span></div>
+                <div class="guide-item"><span class="keys"><kbd data-act="inhale">C</kbd></span><span><i data-icon="inhale"></i> กดค้าง = อม • กดอีกครั้ง = พ่น</span></div>
+                <div class="guide-item"><span class="keys"><kbd data-act="power">V</kbd></span><span><i data-icon="star"></i> ใช้พลังจากดาว</span></div>
+                <div class="guide-item"><span class="keys"><kbd data-act="interact">E</kbd></span><span><i data-icon="lever"></i> สับสวิตช์สะพาน</span></div>
+                <div class="guide-item"><span class="keys"><kbd data-act="emote1">1</kbd><kbd data-act="emote2">2</kbd><kbd data-act="emote3">3</kbd><kbd data-act="emote4">4</kbd></span><span>ส่งอีโมจิ</span></div>
+                <div class="guide-item"><span class="keys"><kbd data-act="mute">M</kbd></span><span>เปิด/ปิดเสียง</span></div>
+                <div class="guide-item"><span class="keys"><kbd data-act="help">H</kbd></span><span>เปิดหน้านี้ • <a href="#" class="open-keys-link">เปลี่ยนปุ่ม</a></span></div>
             </div>
 
             <h3>เล่นบนมือถือ</h3>
             <p class="help-note">ปุ่มบนจอ: <b>ลูกศรซ้าย/ขวา</b> เดิน (ลากนิ้วสลับด้านได้) • <b>ลูกศรขึ้น</b> กระโดด • <b>ดาวระเบิด</b> ผลัก • <b>แม่เหล็ก</b> ดึง • <b>หน้าอ้าปาก</b> กดค้างเพื่ออม กดอีกครั้งเพื่อพ่น • <b>ไอคอนพลัง</b> ใช้พลัง • <b>หน้าหัวเราะ</b> เปิดอีโมจิ ควรหมุนจอแนวนอน และกดปุ่มเต็มจอมุมขวาบนเพื่อให้เห็นเกมเต็มที่</p>
 
             <h3><i data-icon="star"></i> พลังจากดาว</h3>
-            <p class="help-note">เดินไปใกล้ดาว แล้ว <b>กด C ค้างไว้</b> เพื่ออมดาว จะได้พลังสุ่ม (ใช้ได้ 15 วินาที) แล้วกด <b>V</b> เพื่อใช้</p>
+            <p class="help-note">เดินไปใกล้ดาว แล้ว <b>กด <kbd data-act="inhale">C</kbd> ค้างไว้</b> เพื่ออมดาว จะได้พลังสุ่ม (ใช้ได้ 15 วินาที) แล้วกด <b><kbd data-act="power">V</kbd></b> เพื่อใช้</p>
             <div class="power-grid">
-                <div class="power-item"><span class="pi"><i data-icon="fire"></i></span><div><b>ไฟ</b><span>กด V พ่นลูกไฟพุ่งไปข้างหน้า ชนใครคนนั้นกระเด็น</span></div></div>
-                <div class="power-item"><span class="pi"><i data-icon="ice"></i></span><div><b>น้ำแข็ง</b><span>กด V แช่แข็งคนที่อยู่ข้างหน้า 1 วินาที</span></div></div>
-                <div class="power-item"><span class="pi"><i data-icon="spin"></i></span><div><b>ปั่น</b><span>กด V หมุนติ้วชนทุกคนรอบตัว เดินเร็วขึ้นด้วย</span></div></div>
-                <div class="power-item"><span class="pi"><i data-icon="wings"></i></span><div><b>ปีก</b><span>ไม่ต้องกด V: กดกระโดดซ้ำกลางอากาศเพื่อกระพือ (8 ครั้ง) กดค้างเพื่อร่อน</span></div></div>
+                <div class="power-item"><span class="pi"><i data-icon="fire"></i></span><div><b>ไฟ</b><span>กด <kbd data-act="power">V</kbd> พ่นลูกไฟพุ่งไปข้างหน้า ชนใครคนนั้นกระเด็น</span></div></div>
+                <div class="power-item"><span class="pi"><i data-icon="ice"></i></span><div><b>น้ำแข็ง</b><span>กด <kbd data-act="power">V</kbd> แช่แข็งคนที่อยู่ข้างหน้า 1 วินาที</span></div></div>
+                <div class="power-item"><span class="pi"><i data-icon="spin"></i></span><div><b>ปั่น</b><span>กด <kbd data-act="power">V</kbd> หมุนติ้วชนทุกคนรอบตัว เดินเร็วขึ้นด้วย</span></div></div>
+                <div class="power-item"><span class="pi"><i data-icon="wings"></i></span><div><b>ปีก</b><span>ไม่ต้องกด <kbd data-act="power">V</kbd>: กดกระโดดซ้ำกลางอากาศเพื่อกระพือ (8 ครั้ง) กดค้างเพื่อร่อน</span></div></div>
             </div>
 
             <h3><i data-icon="inhale"></i> อมของและอมเพื่อน</h3>
             <ul class="help-list">
-                <li><b>ผลไม้ <i data-icon="apple"></i></b> อมไว้ในปาก แล้วกด C อีกครั้งเพื่อพ่นเป็นดาวพุ่งใส่คนอื่น</li>
+                <li><b>ผลไม้ <i data-icon="apple"></i></b> อมไว้ในปาก แล้วกด <kbd data-act="inhale">C</kbd> อีกครั้งเพื่อพ่นเป็นดาวพุ่งใส่คนอื่น</li>
                 <li><b>ยิ่งอมนาน ยิ่งพ่นแรง!</b> อมค้างไว้เต็ม 3 วินาทีพ่นได้แรงเกือบ 2 เท่า (ทั้งดาวและคน) แต่เหยื่อมีเวลาดิ้นหนีมากขึ้นด้วย</li>
                 <li><b>เพื่อน</b> ถ้าอยู่ใกล้ๆ จะถูกดูดเข้าไป (วิ่งหนีทันได้) พอกลืนแล้วพ่นออกไปชนคนอื่น หรือพ่นลงเหวเพื่อรับโบนัส KO +3</li>
                 <li>ถูกกลืน? <b>กดปุ่มเดิน/กระโดดรัวๆ</b> เพื่อดิ้นออกมา ไม่งั้นจะถูกพ่นเองใน 3 วินาที</li>
-                <li>ถูกพ่นออกมาเหนือหลุม? <b>กด Space ทันที</b> เพื่อกระโดดเบรกกลางอากาศ (ใช้ได้ครั้งเดียว) แล้วเดินกลับเข้าฝั่ง</li>
+                <li>ถูกพ่นออกมาเหนือหลุม? <b>กด <kbd data-act="jump" data-slot="0">Space</kbd> ทันที</b> เพื่อกระโดดเบรกกลางอากาศ (ใช้ได้ครั้งเดียว) แล้วเดินกลับเข้าฝั่ง</li>
                 <li>ถูกดึง? กดปุ่มเดิน/กระโดดรัวๆ เพื่อสลัดหลุดเร็วขึ้น</li>
             </ul>
 
@@ -336,6 +352,7 @@
 
     <!-- Client scripts -->
     <script src="shared/skins.js"></script>
+    <script src="shared/keybinds.js"></script>
     <script src="shared/movement.js"></script>
     <script src="shared/predictor.js"></script>
     <script src="js/icons.js"></script>
@@ -343,6 +360,7 @@
     <script src="js/ui.js"></script>
     <script src="js/renderer.js"></script>
     <script src="js/skin-ui.js"></script>
+    <script src="js/keys-ui.js"></script>
     <script src="js/client.js"></script>
     <script src="js/touch.js"></script>
 </body>
