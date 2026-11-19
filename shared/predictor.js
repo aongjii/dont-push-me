@@ -30,6 +30,7 @@
             this.enabled = false;    // false while the server is in control of us
             this.active = false;     // true only during a round
             this.platforms = [];
+            this.zones = [];         // wind / low-gravity areas of the level
             this.mods = {};
             this.acc = 0;            // leftover time toward the next step (ms)
             this.offX = 0;           // visual correction being eased out
@@ -37,6 +38,14 @@
 
             const self = this;
             this.world = {
+                zoneAt(p) {
+                    const cx = p.x + p.width / 2, cy = p.y + p.height / 2;
+                    let vx = 0, g = 1, found = false;
+                    for (const z of self.zones) {
+                        if (cx >= z.x && cx <= z.x + z.width && cy >= z.y && cy <= z.y + z.height) { vx += z.vx; g = Math.min(g, z.g); found = true; }
+                    }
+                    return found ? { vx, g } : null;
+                },
                 getCollidingTiles(p) {
                     return self.platforms.filter(pl => pl.active &&
                         p.x < pl.x + pl.width && p.x + p.width > pl.x &&

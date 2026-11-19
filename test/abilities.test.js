@@ -368,7 +368,7 @@ test('the charge grows with time and is capped at 1; it is part of the state sen
     assert.equal(a.mouthCharge(), 0);
 });
 
-test('a held orb is also spat harder: faster star that knocks further', () => {
+test('holding an orb longer does NOT make it fly harder (charging is for swallowed players only)', () => {
     const shoot = (holdMs) => {
         const { room, ps: [a, b] } = setup(2);
         b.x = 400;
@@ -378,8 +378,8 @@ test('a held orb is also spat harder: faster star that knocks further', () => {
         return room.projectiles[0];
     };
     const quick = shoot(0), held = shoot(2500);
-    assert.ok(Math.abs(held.vx) > Math.abs(quick.vx) * 1.5);
-    assert.ok(held.power > quick.power);
+    assert.equal(held.vx, quick.vx);
+    assert.equal(held.power, quick.power);
 });
 
 test('the spit effect tells clients how charged it was', () => {

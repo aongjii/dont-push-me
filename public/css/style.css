@@ -369,8 +369,8 @@ kbd {
     background: var(--ink);
     color: #FFFFFF;
     border-radius: 16px;
-    padding: 9px 20px;
-    font-size: 1rem;
+    padding: 6px 14px;
+    font-size: 0.85rem;
     font-weight: 600;
     display: none;
     text-align: center;
@@ -755,21 +755,21 @@ canvas {
 /* Big message when you get a power */
 .power-toast {
     position: absolute;
-    top: 22%;
+    top: 16%;
     left: 50%;
     transform: translateX(-50%);
     z-index: 105;
     background: var(--ink);
     color: #FFFFFF;
-    border-radius: 20px;
-    padding: 14px 30px;
+    border-radius: 14px;
+    padding: 8px 20px;
     text-align: center;
     pointer-events: none;
     animation: popToast 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.power-toast .toast-title { font-size: 1.8rem; font-weight: 700; }
-.power-toast .toast-how { font-size: 1.05rem; margin-top: 4px; color: #FFE08A; }
+.power-toast .toast-title { font-size: 1.2rem; font-weight: 700; }
+.power-toast .toast-how { font-size: 0.85rem; margin-top: 2px; color: #FFE08A; }
 
 @keyframes popToast {
     from { transform: translateX(-50%) scale(0.6); opacity: 0; }
@@ -799,14 +799,14 @@ canvas {
     transform: translateX(-50%);
     z-index: 106;
     background: #FFF1BF;
-    border: 3px solid var(--yellow);
-    border-radius: 18px;
-    padding: 12px 26px 16px;
-    font-size: 1.25rem;
+    border: 2px solid var(--yellow);
+    border-radius: 14px;
+    padding: 7px 16px 9px;
+    font-size: 0.95rem;
     font-weight: 700;
     text-align: center;
     pointer-events: none;
-    min-width: 320px;
+    min-width: 200px;
     animation: nudge 0.5s ease-in-out infinite alternate;
 }
 
@@ -814,7 +814,7 @@ canvas {
     height: 8px;
     border-radius: 4px;
     background: rgba(43, 33, 64, 0.12);
-    margin-top: 10px;
+    margin-top: 6px;
     overflow: hidden;
 }
 
@@ -927,8 +927,8 @@ canvas {
 .hud-emotes span { display: inline-flex; align-items: center; gap: 4px; }
 .hud-emotes .icon { width: 24px; height: 24px; }
 .hud-alert-box .icon { margin-right: 8px; vertical-align: -5px; }
-.power-toast .toast-title .icon { margin-right: 10px; width: 36px; height: 36px; vertical-align: -8px; }
-.coach #coach-text .icon { margin-right: 10px; vertical-align: -7px; }
+.power-toast .toast-title .icon { margin-right: 8px; width: 24px; height: 24px; vertical-align: -5px; }
+.coach #coach-text .icon { margin-right: 8px; width: 20px; height: 20px; vertical-align: -5px; }
 .hud-spectate .icon { margin-right: 8px; vertical-align: -6px; }
 .help-card h3 .icon, .skin-card h2 .icon { margin-right: 6px; vertical-align: -5px; }
 .guide-item .icon, .help-list .icon { margin-right: 4px; vertical-align: -4px; }
@@ -1118,8 +1118,8 @@ body.touch .btn-keys, body.touch .open-keys-link { display: none; }
 /* practice level hint banner */
 .tutorial-hint {
     position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%);
-    max-width: min(640px, 90vw); padding: 12px 20px; border-radius: 16px;
-    background: #fff; color: #2b2140; font-weight: 700; font-size: 18px; text-align: center;
+    max-width: min(520px, 88vw); padding: 8px 14px; border-radius: 12px;
+    background: #fff; color: #2b2140; font-weight: 700; font-size: 14px; text-align: center;
     border: 3px solid #ffd24a; box-shadow: 0 6px 0 rgba(43,33,64,0.15); pointer-events: none; z-index: 5;
 }
-body.touch .tutorial-hint { bottom: 150px; font-size: 15px; }
+body.touch .tutorial-hint { bottom: 150px; font-size: 13px; }

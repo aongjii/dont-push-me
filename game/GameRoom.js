@@ -245,6 +245,7 @@ class GameRoom {
             switches: this.level.switches,
             hazards: this.level.hazards,
             shooters: this.level.shooters,
+            zones: this.level.zones,
             finishZone: this.level.finishZone,
             hasRisingLava: this.level.hasRisingLava,
             lavaSpeed: this.level.lavaSpeed,

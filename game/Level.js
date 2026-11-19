@@ -30,6 +30,7 @@ class Level {
         this.hasRisingLava = false;
         this.lavaSpeed = 0;
         this.hints = [];
+        this.zones = [];
         this.shooters = [];
         this.shots = [];
         this.shotId = 0;
@@ -66,6 +67,8 @@ class Level {
                 ice: !!plat.ice,
                 conveyor: plat.conveyor || 0,    // px/s the belt carries you (negative = left)
                 crumble: !!plat.crumble,         // drops away shortly after somebody stands on it
+                blink: plat.blink ? { onMs: plat.blink.onMs, offMs: plat.blink.offMs, offsetMs: plat.blink.offsetMs || 0 } : null,
+                phaseMs: 0,                      // blinking platforms: ms until the next switch
                 weightMs: 0,                     // how long somebody has stood on it (builds up, eases off when empty)
                 stoodOn: false
             }));
@@ -99,6 +102,8 @@ class Level {
 
             // Arrow / rock launchers. Each fires a harmful shot every intervalMs.
             this.hints = data.hints || [];
+            // Areas that change the physics: wind (vx = px/s push) and low gravity (g = gravity multiplier)
+            this.zones = (data.zones || []).map(z => ({ x: z.x, y: z.y, width: z.width, height: z.height, kind: z.kind || (z.g !== undefined ? 'moon' : 'wind'), vx: z.vx || 0, g: z.g !== undefined ? z.g : 1 }));
             this.shooters = (data.shooters || []).map((s, i) => ({
                 x: s.x, y: s.y,
                 vx: s.vx || 0, vy: s.vy || 0,
@@ -176,7 +181,12 @@ class Level {
 
         // Update hazards (e.g. moving platforms/hazards)
         this.hazards.forEach(haz => {
-            if (haz.type === 'moving_spikes' || haz.type === 'moving_platform') {
+            if (haz.type === 'saw') {
+                // a saw blade circling its centre
+                haz.time += dt / 1000;
+                haz.x = haz.startX + Math.sin(haz.time * haz.freq) * haz.rangeX;
+                haz.y = haz.startY + Math.cos(haz.time * haz.freq) * haz.rangeY;
+            } else if (haz.type === 'moving_spikes' || haz.type === 'moving_platform') {
                 haz.time += dt / 1000;
                 // Periodic ping-pong motion
                 if (haz.rangeX > 0) {
@@ -186,6 +196,16 @@ class Level {
                     haz.y = haz.startY + Math.sin(haz.time * haz.freq) * haz.rangeY;
                 }
             }
+        });
+
+        // Blinking platforms are solid for onMs, then gone for offMs, on a fixed clock
+        this.blinkClock = (this.blinkClock || 0) + dt;
+        this.platforms.forEach(p => {
+            if (!p.blink) return;
+            const cycle = p.blink.onMs + p.blink.offMs;
+            const t = (this.blinkClock + p.blink.offsetMs) % cycle;
+            p.active = t < p.blink.onMs;
+            p.phaseMs = Math.round(p.active ? p.blink.onMs - t : cycle - t);
         });
 
         // Crumbling platforms: standing on one builds up weight; they only give way after a good while
@@ -236,6 +256,18 @@ class Level {
         if (this.hasRisingLava) {
             this.lavaY -= this.lavaSpeed * (dt / 1000);
         }
+    }
+
+    // Wind / low-gravity areas: what applies at the player's centre
+    zoneAt(p) {
+        const cx = p.x + p.width / 2, cy = p.y + p.height / 2;
+        let vx = 0, g = 1, found = false;
+        for (const z of this.zones) {
+            if (cx >= z.x && cx <= z.x + z.width && cy >= z.y && cy <= z.y + z.height) {
+                vx += z.vx; g = Math.min(g, z.g); found = true;
+            }
+        }
+        return found ? { vx, g } : null;
     }
 
     // Called for every grounded player: standing on a crumbling platform builds up its weight

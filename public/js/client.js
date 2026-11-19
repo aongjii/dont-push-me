@@ -430,6 +430,7 @@ function updatePlayerLobbyList(players) {
 // Loaded Level info
 socket.on('round_load', (data) => {
     levelData = data;
+    predictor.zones = data.zones || [];
     renderer.setTheme(data.theme);
     gameState = null;
     snapshots.length = 0;
@@ -623,7 +624,7 @@ function renderLives(n) {
 }
 
 function setCoachText(icon, text) {
-    document.getElementById('coach-text').replaceChildren(Icons.svg(icon, 26), document.createTextNode(text));
+    document.getElementById('coach-text').replaceChildren(Icons.svg(icon, 20), document.createTextNode(text));
 }
 
 // Big hint when you're swallowed (mash keys) or spat out over danger (hop!)
@@ -660,7 +661,7 @@ function showPowerToast(info) {
     el.innerHTML = '';
     const big = document.createElement('div');
     big.className = 'toast-title';
-    big.appendChild(Icons.svg(info.icon, 34));
+    big.appendChild(Icons.svg(info.icon, 24));
     big.appendChild(document.createTextNode(`ได้พลัง${info.name}!`));
     const how = document.createElement('div');
     how.className = 'toast-how';

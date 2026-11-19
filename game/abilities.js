@@ -143,9 +143,9 @@ function install(Player) {
             this.mouth = null;
         },
 
-        // 0..1: how long this mouthful has been held (the longer, the harder the spit)
+        // 0..1: how long a swallowed PLAYER has been held (the longer, the harder the spit); orbs always fly the same
         mouthCharge() {
-            if (!this.mouth) return 0;
+            if (!this.mouth || this.mouth.kind === 'orb') return 0; // only a swallowed player is spat harder the longer they are held
             return Math.max(0, Math.min(1, (ABILITY.mouthMax - this.mouthMs) / ABILITY.mouthMax));
         },
 

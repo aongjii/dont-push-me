@@ -105,6 +105,8 @@
             (sucking ? MOVE.inhaleSlow : (mods.mouth ? MOVE.mouthSlow : 1));
 
         const under = p.isGrounded ? groundTile(p, world) : null;
+        const zone = world.zoneAt ? world.zoneAt(p) : null;   // wind / low gravity
+        const wind = zone ? zone.vx : 0;
         const drag = under && under.ice ? MOVE.iceDrag : MOVE.drag;
         const belt = under && under.conveyor ? under.conveyor : 0;
 
@@ -120,7 +122,7 @@
         // A spat-out player flies ballistically (no braking)
         if (!mods.ballistic) p.vx += (targetVx - p.vx) * drag * (dt / 1000);
 
-        p.vy += MOVE.gravity * (mods.spat ? MOVE.spitGravity : 1) * (dt / 1000);
+        p.vy += MOVE.gravity * (mods.spat ? MOVE.spitGravity : 1) * (zone ? zone.g : 1) * (dt / 1000);
         p.vy = Math.min(p.vy, MOVE.terminal);
 
         // Jump input: remember a recent press so a slightly-early tap still works
@@ -153,8 +155,8 @@
             }
         }
 
-        p.x += (p.vx + belt) * (dt / 1000);
-        resolveHorizontal(p, world, p.vx + belt);
+        p.x += (p.vx + belt + wind) * (dt / 1000);
+        resolveHorizontal(p, world, p.vx + belt + wind);
 
         p.y += p.vy * (dt / 1000);
         resolveVertical(p, world);
