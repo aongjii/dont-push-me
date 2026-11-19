@@ -1181,3 +1181,28 @@ body.touch .tutorial-hint { bottom: 118px; max-width: 54vw; }
 .replay-bar #replay-label { min-width: 220px; text-align: center; }
 body.replaying .hud, body.replaying .touch-controls, body.replaying .power-card, body.replaying .coach, body.replaying .tutorial-hint, body.replaying .abilities, body.replaying .hud-emotes, body.replaying .hud-spectate { display: none !important; }
 #btn-replay { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+
+/* short screens (phones in landscape): compact menu, two-column waiting room */
+@media (max-height: 520px) {
+    #menu-mascots, .game-tagline { display: none; }
+    .game-logo { font-size: 2rem; margin: 0 0 6px; }
+    #screen-menu .card { padding: 12px 18px; }
+    #screen-menu .input-group { margin-bottom: 8px; }
+    #screen-menu .btn { padding: 9px 16px; }
+    .menu-buttons { margin-top: 8px; }
+    .menu-buttons .btn { min-height: 54px; padding: 8px 4px; font-size: 0.85rem; }
+    .menu-buttons .btn .icon { width: 20px; height: 20px; }
+}
+@media (min-width: 760px) and (max-height: 520px) {
+    #screen-lobby .lobby-card { max-width: 780px; display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px; align-content: start; padding: 12px 18px; }
+    #screen-lobby .lobby-card > h2, #screen-lobby .lobby-card > .room-code-display,
+    #screen-lobby .lobby-card > .lobby-subtitle, #screen-lobby .lobby-card > #btn-copy-link { grid-column: 1 / -1; justify-self: center; }
+    #screen-lobby .lobby-card > h2 { display: none; }
+    #screen-lobby .lobby-card > .room-code-display { font-size: 2.4rem; margin: 0; }
+    #screen-lobby .lobby-card > .lobby-subtitle { display: none; }
+    #screen-lobby .lobby-card > #btn-copy-link { margin-bottom: 8px; }
+    #screen-lobby .lobby-card > .settings-box { grid-column: 1; margin-bottom: 8px; padding: 8px 12px; }
+    #screen-lobby .lobby-card > .lobby-content { grid-column: 2; grid-row: 4 / span 2; margin: 0; }
+    #screen-lobby .lobby-card > .lobby-actions { grid-column: 1 / -1; }
+    #screen-lobby .setting-row { margin-bottom: 4px; }
+}
