@@ -44,6 +44,17 @@ function shade(hex, amt) {
     return `rgb(${r},${g},${b})`;
 }
 
+// An item colour that would vanish into the body colour is swapped for its alternative
+function rgbOf(hex) { const n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function clashes(a, b) {
+    const x = rgbOf(a), y = rgbOf(b);
+    return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]) < 105;
+}
+function away(body, base, ...alts) {
+    if (!clashes(base, body)) return base;
+    return alts.find(c => !clashes(c, body)) || alts[alts.length - 1];
+}
+
 class Renderer {
     constructor(canvasId) {
         this.canvas = typeof canvasId === 'string' ? document.getElementById(canvasId) : canvasId;
@@ -1015,7 +1026,7 @@ class Renderer {
         ctx.fill();
 
         this.drawPattern(skin.pat, o.color, R);
-        if (skin.acc === 'overalls') this.drawOveralls(R);
+        if (skin.acc === 'overalls') this.drawOveralls(R, o.color);
         if (skin.acc === 'apron') this.drawApron(R);
 
         // something in the cheeks
@@ -1533,7 +1544,7 @@ class Renderer {
 
         switch (hat) {
             case 'crown':
-                ctx.fillStyle = '#FFD94A'; ctx.strokeStyle = '#E8A317';
+                ctx.fillStyle = away(o.color, '#FFD94A', '#FF9D5C', '#B28DFF'); ctx.strokeStyle = shade(ctx.fillStyle, -0.25);
                 ctx.beginPath();
                 ctx.moveTo(-10, 3); ctx.lineTo(-11, -8); ctx.lineTo(-5, -3); ctx.lineTo(0, -12);
                 ctx.lineTo(5, -3); ctx.lineTo(11, -8); ctx.lineTo(10, 3);
@@ -1541,24 +1552,28 @@ class Renderer {
                 ctx.fillStyle = '#FF6B6B';
                 ctx.beginPath(); ctx.arc(0, -1, 2, 0, Math.PI * 2); ctx.fill();
                 break;
-            case 'cap':
-                ctx.fillStyle = '#FF6B6B'; ctx.strokeStyle = '#C94B4B';
-                ctx.beginPath(); ctx.arc(0, 3, 11.5, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
-                ctx.fillStyle = '#E04F4F';
-                ctx.beginPath(); ctx.ellipse(f * 9, 3, 8.5, 2.6, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            case 'cap': {
+                const cc = away(o.color, '#FF6B6B', '#5B8DEF', '#FFD94A');
+                ctx.fillStyle = shade(cc, -0.12); ctx.strokeStyle = shade(cc, -0.35);
+                ctx.beginPath(); ctx.ellipse(f * 8, 4, 9.5, 2.8, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); // brim first, the crown sits over it
+                ctx.fillStyle = cc;
+                ctx.beginPath(); ctx.arc(0, 4, 11.5, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
                 ctx.fillStyle = '#FFFFFF';
-                ctx.beginPath(); ctx.arc(0, -8.2, 1.6, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(0, -7.2, 1.6, 0, Math.PI * 2); ctx.fill();
                 break;
-            case 'beanie':
-                ctx.fillStyle = '#5B8DEF'; ctx.strokeStyle = '#3F6FD1';
+            }
+            case 'beanie': {
+                const bc = away(o.color, '#5B8DEF', '#FF6B6B', '#FFD94A');
+                ctx.fillStyle = bc; ctx.strokeStyle = shade(bc, -0.3);
                 ctx.beginPath(); ctx.arc(0, 4, 12.5, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
-                ctx.fillStyle = '#3F6FD1';
+                ctx.fillStyle = shade(bc, -0.3);
                 ctx.beginPath(); ctx.roundRect(-12.5, 2, 25, 5, 2); ctx.fill();
                 ctx.fillStyle = '#FFFFFF';
                 ctx.beginPath(); ctx.arc(0, -10, 4, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = '#C8D4EA'; ctx.stroke();
                 break;
+            }
             case 'party':
-                ctx.fillStyle = '#FF7EA8'; ctx.strokeStyle = '#E25C8A';
+                ctx.fillStyle = away(o.color, '#FF7EA8', '#5B8DEF', '#6FD98C'); ctx.strokeStyle = shade(ctx.fillStyle, -0.25);
                 ctx.beginPath(); ctx.moveTo(-9, 3); ctx.lineTo(0, -20); ctx.lineTo(9, 3); ctx.closePath(); ctx.fill(); ctx.stroke();
                 ctx.fillStyle = '#FFD94A';
                 [[-3, -2], [3, -6], [-1, -10]].forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, 1.6, 0, Math.PI * 2); ctx.fill(); });
@@ -1611,19 +1626,25 @@ class Renderer {
                 break;
             }
             case 'tophat':
+                ctx.translate(0, 3);
                 ctx.fillStyle = '#2B2140'; ctx.strokeStyle = '#2B2140';
                 ctx.beginPath(); ctx.ellipse(0, 3, 13.5, 3.4, 0, 0, Math.PI * 2); ctx.fill();
                 ctx.beginPath(); ctx.roundRect(-8.5, -15, 17, 18, 2); ctx.fill();
                 ctx.fillStyle = '#FF6B6B';
                 ctx.fillRect(-8.5, -3.5, 17, 3.6);
                 break;
-            case 'headband':
-                ctx.strokeStyle = '#FF6B6B'; ctx.lineWidth = 4.2;
-                ctx.beginPath(); ctx.moveTo(-16.5, 9); ctx.quadraticCurveTo(0, 2.5, 16.5, 9); ctx.stroke();
-                ctx.fillStyle = '#FF6B6B';
-                ctx.beginPath(); ctx.moveTo(15, 8); ctx.lineTo(21, 4); ctx.lineTo(20, 12); ctx.closePath(); ctx.fill();
-                ctx.beginPath(); ctx.moveTo(15, 8); ctx.lineTo(22, 10); ctx.lineTo(17, 15); ctx.closePath(); ctx.fill();
+            case 'headband': {
+                const hb = away(o.color, '#FF6B6B', '#5B8DEF', '#FFD94A');
+                ctx.save();
+                ctx.beginPath(); ctx.ellipse(0, 16, R, R - 1, 0, 0, Math.PI * 2); ctx.clip(); // stay on the head
+                ctx.strokeStyle = hb; ctx.lineWidth = 4.4;
+                ctx.beginPath(); ctx.moveTo(-18, 7.5); ctx.quadraticCurveTo(0, 3, 18, 7.5); ctx.stroke();
+                ctx.restore();
+                ctx.fillStyle = hb;
+                ctx.beginPath(); ctx.arc(-13, 5.6, 3, 0, Math.PI * 2); ctx.fill();   // a little knot at the side
+                ctx.beginPath(); ctx.moveTo(-13, 6); ctx.lineTo(-18.5, 10); ctx.lineTo(-14, 11.5); ctx.closePath(); ctx.fill();
                 break;
+            }
             case 'pirate':
                 ctx.fillStyle = INK; ctx.strokeStyle = '#4A3F66';
                 ctx.beginPath();
@@ -1635,19 +1656,22 @@ class Renderer {
                 ctx.fillStyle = INK;
                 ctx.beginPath(); ctx.arc(-1.2, -3, 0.8, 0, Math.PI * 2); ctx.arc(1.2, -3, 0.8, 0, Math.PI * 2); ctx.fill();
                 break;
-            case 'wizard':
-                ctx.fillStyle = '#6B4FC4'; ctx.strokeStyle = '#4F37A0';
+            case 'wizard': {
+                const wz = away(o.color, '#6B4FC4', '#E0525C', '#2B2140');
+                ctx.fillStyle = wz; ctx.strokeStyle = shade(wz, -0.3);
                 ctx.beginPath();
                 ctx.moveTo(-11, 4); ctx.quadraticCurveTo(-4, -12, 5, -29); ctx.quadraticCurveTo(7, -12, 11, 4);
                 ctx.closePath(); ctx.fill(); ctx.stroke();
-                ctx.fillStyle = '#5A3FAE';
+                ctx.fillStyle = shade(wz, -0.15);
                 ctx.beginPath(); ctx.ellipse(0, 4, 17, 4.2, 0, 0, Math.PI * 2); ctx.fill();
                 ctx.fillStyle = '#FFD94A';
                 ctx.fillRect(-10.5, -1.5, 21, 3.4);
                 this.starPath(-1, -11, 3.4, 1.5); ctx.fill();
                 this.starPath(3, -19, 2.6, 1.1); ctx.fill();
                 break;
+            }
             case 'cowboy':
+                ctx.translate(0, 3);
                 ctx.fillStyle = '#A9703A'; ctx.strokeStyle = '#7C4E20';
                 ctx.beginPath(); ctx.ellipse(0, 4, 20, 4.8, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
                 ctx.fillStyle = '#C98B4B';
@@ -1664,7 +1688,7 @@ class Renderer {
                 });
                 break;
             case 'helmet':
-                ctx.fillStyle = '#FFD94A'; ctx.strokeStyle = '#C98A10';
+                ctx.fillStyle = away(o.color, '#FFD94A', '#FF6B6B', '#5B8DEF'); ctx.strokeStyle = shade(ctx.fillStyle, -0.3);
                 ctx.beginPath(); ctx.arc(0, 4, 13, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
                 ctx.fillStyle = '#E8A317';
                 ctx.beginPath(); ctx.roundRect(-16, 2, 32, 4, 2); ctx.fill();
@@ -1758,46 +1782,51 @@ class Renderer {
                     ctx.fill();
                 });
                 break;
-            case 'bowtie':
+            case 'bowtie': {
+                const bt = away(o.color, '#FF6B6B', '#5B8DEF', '#2B2140');
                 ctx.save();
-                ctx.translate(fx * 0.4, R - 3);
-                ctx.fillStyle = '#FF6B6B';
+                ctx.translate(fx * 0.4, R - 6);
+                ctx.fillStyle = bt;
                 [-1, 1].forEach(side => {
-                    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(side * 8, -4.5); ctx.lineTo(side * 8, 4.5); ctx.closePath(); ctx.fill();
+                    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(side * 7.5, -4); ctx.lineTo(side * 7.5, 4); ctx.closePath(); ctx.fill();
                 });
-                ctx.fillStyle = '#C94B4B';
+                ctx.fillStyle = shade(bt, -0.25);
                 ctx.beginPath(); ctx.arc(0, 0, 2.2, 0, Math.PI * 2); ctx.fill();
                 ctx.restore();
                 break;
-            case 'scarf':
-                ctx.strokeStyle = '#FF9D5C'; ctx.lineWidth = 5.5;
-                ctx.beginPath(); ctx.arc(0, -1, R - 2.5, 0.16 * Math.PI, 0.84 * Math.PI); ctx.stroke();
-                ctx.strokeStyle = '#E8823A'; ctx.lineWidth = 1.4;
-                [0.3, 0.5, 0.7].forEach(a => {
-                    ctx.beginPath();
-                    ctx.moveTo(Math.cos(a * Math.PI) * (R - 5.5), -1 + Math.sin(a * Math.PI) * (R - 5.5));
-                    ctx.lineTo(Math.cos(a * Math.PI) * (R - 0.5), -1 + Math.sin(a * Math.PI) * (R - 0.5));
-                    ctx.stroke();
-                });
-                ctx.fillStyle = '#FF9D5C';
-                ctx.beginPath(); ctx.roundRect(-f * 12 - 3, R - 7, 6, 12, 2); ctx.fill();
-                break;
-            case 'tie':
+            }
+            case 'scarf': {
+                // a band round the "neck" with a short tail, kept inside the body outline
+                const sc = away(o.color, '#FF9D5C', '#5B8DEF', '#FFFFFF');
                 ctx.save();
-                ctx.translate(fx * 0.4, R - 7);
-                ctx.fillStyle = '#5B8DEF'; ctx.strokeStyle = '#3F6FD1'; ctx.lineWidth = 1.4;
-                ctx.beginPath(); ctx.moveTo(-3, 2); ctx.lineTo(3, 2); ctx.lineTo(5, 11); ctx.lineTo(0, 14.5); ctx.lineTo(-5, 11); ctx.closePath(); ctx.fill(); ctx.stroke();
-                ctx.fillStyle = '#3F6FD1';
-                ctx.beginPath(); ctx.roundRect(-3.4, -2.6, 6.8, 5.2, 1.6); ctx.fill();
+                ctx.beginPath(); ctx.ellipse(0, 0, R, R - 1, 0, 0, Math.PI * 2); ctx.clip();
+                ctx.strokeStyle = sc; ctx.lineWidth = 6;
+                ctx.beginPath(); ctx.moveTo(-R, R - 9); ctx.quadraticCurveTo(0, R - 1, R, R - 9); ctx.stroke();
+                ctx.strokeStyle = shade(sc, -0.25); ctx.lineWidth = 1.4;
+                [-8, -3, 2, 7].forEach(x => { ctx.beginPath(); ctx.moveTo(x, R - 6.5 + x * x * 0.012); ctx.lineTo(x + 2, R - 1 + x * x * 0.012); ctx.stroke(); });
+                ctx.restore();
+                ctx.fillStyle = sc; ctx.strokeStyle = shade(sc, -0.25); ctx.lineWidth = 1.4;
+                ctx.beginPath(); ctx.roundRect(-f * 9 - 3, R - 8, 6, 11, 2); ctx.fill(); ctx.stroke();
+                break;
+            }
+            case 'tie': {
+                const tc = away(o.color, '#5B8DEF', '#FF6B6B', '#2B2140');
+                ctx.save();
+                ctx.translate(fx * 0.4, R - 9);
+                ctx.fillStyle = tc; ctx.strokeStyle = shade(tc, -0.3); ctx.lineWidth = 1.4;
+                ctx.beginPath(); ctx.moveTo(-2.6, 1.5); ctx.lineTo(2.6, 1.5); ctx.lineTo(4, 7); ctx.lineTo(0, 10); ctx.lineTo(-4, 7); ctx.closePath(); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = shade(tc, -0.3);
+                ctx.beginPath(); ctx.roundRect(-3.2, -2.2, 6.4, 4.6, 1.6); ctx.fill();
                 ctx.restore();
                 break;
+            }
             case 'medal':
                 ctx.save();
-                ctx.translate(fx * 0.5, R - 9);
+                ctx.translate(fx * 0.5, R - 7);
                 ctx.fillStyle = '#FF6B6B';
-                ctx.beginPath(); ctx.moveTo(-6, -6); ctx.lineTo(-1.5, 4); ctx.lineTo(2, 4); ctx.lineTo(-2.5, -6); ctx.closePath(); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(-6, -3); ctx.lineTo(-1.5, 4); ctx.lineTo(2, 4); ctx.lineTo(-2.5, -3); ctx.closePath(); ctx.fill();
                 ctx.fillStyle = '#4C9BE8';
-                ctx.beginPath(); ctx.moveTo(6, -6); ctx.lineTo(1.5, 4); ctx.lineTo(-2, 4); ctx.lineTo(2.5, -6); ctx.closePath(); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(6, -3); ctx.lineTo(1.5, 4); ctx.lineTo(-2, 4); ctx.lineTo(2.5, -3); ctx.closePath(); ctx.fill();
                 ctx.fillStyle = '#FFD94A'; ctx.strokeStyle = '#C98A10'; ctx.lineWidth = 1.4;
                 ctx.beginPath(); ctx.arc(0, 7, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
                 ctx.fillStyle = '#C98A10';
@@ -1826,7 +1855,7 @@ class Renderer {
                 ctx.fillStyle = 'rgba(255,255,255,0.28)';
                 ctx.beginPath(); ctx.arc(fx + 6.5, ey, 5.8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
                 ctx.lineWidth = 1.3;
-                ctx.beginPath(); ctx.moveTo(fx + 10.6, ey + 4.2); ctx.quadraticCurveTo(fx + 15, ey + 9, fx + 12, R - 3); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(fx + 10.6, ey + 4.2); ctx.quadraticCurveTo(fx + 13, ey + 9, fx + 10, R - 8); ctx.stroke();
                 break;
             case 'lei': {
                 const cols = ['#FF7EA8', '#FFD94A', '#FF9D5C', '#FFFFFF'];
@@ -1841,9 +1870,12 @@ class Renderer {
                 break;
             }
             case 'eyepatch':
-                ctx.strokeStyle = INK; ctx.lineWidth = 1.4;
-                ctx.beginPath(); ctx.moveTo(fx + 1.5, ey - 3.5); ctx.lineTo(-R + 1.5, ey - 9); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(fx + 11.5, ey - 3.5); ctx.lineTo(R - 1.5, ey - 9); ctx.stroke();
+                ctx.save();
+                ctx.beginPath(); ctx.ellipse(0, 0, R, R - 1, 0, 0, Math.PI * 2); ctx.clip(); // strap stays on the head
+                ctx.strokeStyle = INK; ctx.lineWidth = 1.6;
+                ctx.beginPath(); ctx.moveTo(fx + 1.5, ey - 3.5); ctx.lineTo(-R - 2, ey - 9); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(fx + 11.5, ey - 3.5); ctx.lineTo(R + 2, ey - 9); ctx.stroke();
+                ctx.restore();
                 ctx.fillStyle = INK;
                 ctx.beginPath(); ctx.ellipse(fx + 6.5, ey, 5.8, 5, -0.2, 0, Math.PI * 2); ctx.fill();
                 break;
@@ -1852,23 +1884,24 @@ class Renderer {
     }
 
     // Blue work overalls: drawn over the lower body, clipped to the round shape
-    drawOveralls(R) {
+    drawOveralls(R, o_color) {
         const ctx = this.ctx;
         ctx.save();
         ctx.beginPath();
         ctx.ellipse(0, 0, R, R - 1, 0, 0, Math.PI * 2);
         ctx.clip();
-        ctx.fillStyle = '#3E7BD6';
+        const ov = away(o_color, '#3E7BD6', '#E0525C', '#2B2140');
+        ctx.fillStyle = ov;
         ctx.fillRect(-R - 2, 7, R * 2 + 4, R);
-        ctx.fillStyle = '#2F63B5';
+        ctx.fillStyle = shade(ov, -0.25);
         ctx.fillRect(-R - 2, 7, R * 2 + 4, 2);
         // straps over the shoulders (kept out of the face)
-        ctx.fillStyle = '#3E7BD6';
+        ctx.fillStyle = ov;
         [-1, 1].forEach(side => ctx.fillRect(side * 12.5 - 2, -6, 4, 14));
         // buttons and pocket
         ctx.fillStyle = '#FFD94A';
         [-1, 1].forEach(side => { ctx.beginPath(); ctx.arc(side * 12.5, 8, 1.6, 0, Math.PI * 2); ctx.fill(); });
-        ctx.strokeStyle = '#2F63B5';
+        ctx.strokeStyle = shade(ov, -0.25);
         ctx.lineWidth = 1.4;
         ctx.strokeRect(-5, 12, 10, 5);
         ctx.restore();
@@ -1889,7 +1922,8 @@ class Renderer {
         }
         ctx.beginPath();
         ctx.ellipse(0, 0, R, R - 1, 0, 0, Math.PI * 2);
-        ctx.clip();
+        ctx.ellipse(0, 0.5, 13.5, 10.5, 0, 0, Math.PI * 2); // keep the face clear
+        ctx.clip('evenodd');
         const dark = shade(color, -0.14);
         const heart = (x, y, s) => {
             ctx.beginPath();
@@ -1944,11 +1978,11 @@ class Renderer {
         ctx.fillStyle = '#FFF4E2';
         ctx.strokeStyle = '#E6CFA8';
         ctx.lineWidth = 1.6;
-        ctx.beginPath(); ctx.roundRect(-10, 6, 20, R, 3); ctx.fill(); ctx.stroke();
-        ctx.lineWidth = 2.4;
-        ctx.beginPath(); ctx.moveTo(-7, 6.5); ctx.lineTo(-12, -4); ctx.moveTo(7, 6.5); ctx.lineTo(12, -4); ctx.stroke();
+        ctx.beginPath(); ctx.roundRect(-9, 10, 18, R, 3); ctx.fill(); ctx.stroke();
+        ctx.lineWidth = 2.2;
+        ctx.beginPath(); ctx.moveTo(-6, 10.5); ctx.lineTo(-13, 3); ctx.moveTo(6, 10.5); ctx.lineTo(13, 3); ctx.stroke();
         ctx.fillStyle = '#FFD0DC';
-        ctx.beginPath(); ctx.roundRect(-5, 12, 10, 6, 2); ctx.fill();
+        ctx.beginPath(); ctx.roundRect(-4.5, 14, 9, 4.5, 2); ctx.fill();
         ctx.restore();
     }
 
