@@ -39,6 +39,9 @@ const RESPAWN_MS = 3000;         // how long you wait after dying
 const INVULN_MS = 2000;          // spikes/lava can't hurt right after you come back
 const LAVA_SAFETY_MARGIN = 140;  // don't respawn closer than this to rising lava (px)
 
+// Snapshot numbers are rounded to 3 decimals: a third of the bytes, far below anything visible
+const r3 = (n) => Math.round(n * 1000) / 1000;
+
 class GameRoom {
     constructor(code, io, initialSettings) {
         this.code = code;
@@ -263,6 +266,16 @@ class GameRoom {
                 this.io.to(this.code).emit('round_start');
             }
         }, 1000);
+    }
+
+    // [index, active, returnMs, phaseMs, weightMs, warn] for every platform that can switch, crumble or blink
+    dynamicPlatforms() {
+        const out = [];
+        this.level.platforms.forEach((p, i) => {
+            if (p.triggerIndex === null && !p.blink && !p.crumble && p.crumbleAt === null) return;
+            out.push([i, p.active ? 1 : 0, Math.round(p.returnMs), Math.round(p.phaseMs), Math.round(p.weightMs), p.warn ? 1 : 0]);
+        });
+        return out;
     }
 
     getRoundLoadPayload() {
@@ -683,10 +696,10 @@ class GameRoom {
             acc: p.skin.acc,
             acc2: p.skin.acc2,
             pat: p.skin.pat,
-            x: p.x,
-            y: p.y,
-            vx: p.vx,
-            vy: p.vy,
+            x: r3(p.x),
+            y: r3(p.y),
+            vx: r3(p.vx),
+            vy: r3(p.vy),
             width: p.width,
             height: p.height,
             isDead: p.isDead,
@@ -695,10 +708,10 @@ class GameRoom {
             isGrounded: p.isGrounded,
             // for the owner's client-side prediction (see shared/movement.js)
             ack: p.ackSeq,
-            coyote: p.coyote,
-            jbuf: p.jbuf,
+            coyote: r3(p.coyote),
+            jbuf: r3(p.jbuf),
             prevJump: p.prevJump,
-            flapCd: p.flapCd,
+            flapCd: r3(p.flapCd),
             flaps: p.flaps,
             recover: p.recover,
             lives: p.isDead && p.respawnMs <= 0 ? 0 : p.respawnsLeft + 1,
@@ -745,7 +758,7 @@ class GameRoom {
             hazards: hazardsData,
             shots: shotsData,
             shooterTimers: (this.level.shooters || []).map(sh => Math.max(0, Math.round(sh.timer))),
-            platforms: this.level.platforms, // send current toggle status
+            dp: this.dynamicPlatforms(), // only the platforms whose state can change (the rest was sent in round_load)
             items: this.level.items.map(it => ({ id: it.id, type: it.type, x: Math.round(it.x), y: Math.round(it.y), alive: it.alive })),
             projectiles: this.projectiles.map(pr => ({ id: pr.id, type: pr.type, x: Math.round(pr.x), y: Math.round(pr.y), vx: pr.vx })),
             lavaY: this.level.hasRisingLava ? this.level.lavaY : null,

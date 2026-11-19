@@ -29,7 +29,10 @@ function snapshotOf(room, id) {
     const sent = room.io.events.length;
     room.broadcastState();
     const state = room.io.events.slice(sent).find(e => e.type === 'game_state').data;
-    return { me: state.players.find(p => p.id === id), platforms: state.platforms };
+    // (the real client rebuilds the platform list from round_load plus the small per-snapshot patch)
+    const platforms = room.level.platforms.map(p => ({ ...p }));
+    (state.dp || []).forEach(([i, active]) => { platforms[i].active = active === 1; });
+    return { me: state.players.find(p => p.id === id), platforms };
 }
 
 // A network between one predictor and one room with fixed one-way latency.

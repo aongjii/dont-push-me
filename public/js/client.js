@@ -446,6 +446,7 @@ function updatePlayerLobbyList(players) {
 // Loaded Level info
 socket.on('round_load', (data) => {
     Replay.clear();
+    livePlatforms = [];
     levelData = data;
     predictor.zones = data.zones || [];
     renderer.setTheme(data.theme);
@@ -615,6 +616,19 @@ let powerUsed = false;
 
 // Bottom-centre card that always tells you what you hold and how to use it
 // On a phone a lever button appears while you stand next to a switch
+// Platforms are sent once (round_load); each snapshot only says which of them are switched on or going
+let livePlatforms = [];
+function applyPlatformPatch(state) {
+    if (!levelData) return;
+    if (livePlatforms.length !== levelData.platforms.length) livePlatforms = levelData.platforms.map(p => ({ ...p }));
+    (state.dp || []).forEach(([i, active, returnMs, phaseMs, weightMs, warn]) => {
+        const p = livePlatforms[i];
+        if (!p) return;
+        p.active = active === 1; p.returnMs = returnMs; p.phaseMs = phaseMs; p.weightMs = weightMs; p.warn = warn === 1;
+    });
+    state.platforms = livePlatforms;
+}
+
 function updateLeverButton(localP) {
     const btn = document.getElementById('tc-interact');
     if (!btn || !document.body.classList.contains('touch')) return;
@@ -808,6 +822,7 @@ socket.on('game_state', (state) => {
     // Keep ~1 second of history
     while (snapshots.length > 40) snapshots.shift();
 
+    applyPlatformPatch(state);
     Replay.record(state);
     detectMotionEffects(state);
     detectObstacleEffects(state);

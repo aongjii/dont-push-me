@@ -112,7 +112,9 @@ test('the platform state sent to players includes how long until a cut bridge re
     room.level.toggleSwitch(0);
     room.broadcastState();
     const state = events.filter(e => e.t === 'game_state').pop().d;
-    const cut = state.platforms.find(p => p.triggerIndex === 0);
-    assert.equal(cut.active, false);
-    assert.ok(cut.returnMs > 6000);
+    const idx = room.level.platforms.findIndex(p => p.triggerIndex === 0);
+    const cut = state.dp.find(d => d[0] === idx);      // [index, active, returnMs, ...]
+    assert.equal(cut[1], 0);
+    assert.ok(cut[2] > 6000);
+    assert.equal(state.platforms, undefined, 'the full platform list is not repeated in every snapshot');
 });
