@@ -80,11 +80,18 @@ test('shooters fire shots that hurt and then expire', () => {
     assert.ok(!lv.shots.some(s => s.id === shot.id), 'shot expired');
 });
 
-test('patrolling spikes keep a brisk pace (range x freq >= 90 px/s)', () => {
+test('patrolling spikes are gentle (~60 px/s) but sweep their whole platform edge to edge', () => {
     for (const i of [1, 2, 3]) {
         const lv = new Level(i);
-        for (const h of lv.hazards.filter(h => h.type === 'moving_spikes')) {
-            assert.ok(h.rangeX * h.freq >= 90, `level ${i}: spikes only do ${h.rangeX * h.freq} px/s`);
+        const spikes = lv.hazards.filter(h => h.type === 'moving_spikes');
+        assert.ok(spikes.length > 0);
+        for (const h of spikes) {
+            const speed = h.rangeX * h.freq;
+            assert.ok(speed >= 45 && speed <= 75, `level ${i}: spikes do ${speed} px/s`);
+            const plat = lv.platforms.find(p => Math.abs(p.y - (h.y + h.height)) < 1 && h.startX >= p.x - 1 && h.startX <= p.x + p.width);
+            assert.ok(plat, `level ${i}: spikes are not on a platform`);
+            assert.ok(h.startX - h.rangeX <= plat.x + 2, 'reaches the left edge');
+            assert.ok(h.startX + h.rangeX + h.width >= plat.x + plat.width - 2, 'reaches the right edge');
         }
     }
 });

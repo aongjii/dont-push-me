@@ -279,9 +279,9 @@
       "width": 40,
       "height": 40,
       "type": "moving_spikes",
-      "rangeX": 15,
+      "rangeX": 75,
       "rangeY": 0,
-      "freq": 7.5
+      "freq": 0.8
     },
     {
       "x": 615,
@@ -289,9 +289,9 @@
       "width": 40,
       "height": 40,
       "type": "moving_spikes",
-      "rangeX": 15,
+      "rangeX": 75,
       "rangeY": 0,
-      "freq": 7.5
+      "freq": 0.8
     },
     {
       "x": 195,
@@ -299,9 +299,9 @@
       "width": 40,
       "height": 40,
       "type": "moving_spikes",
-      "rangeX": 15,
+      "rangeX": 75,
       "rangeY": 0,
-      "freq": 7.5
+      "freq": 0.8
     },
     {
       "x": 615,
@@ -309,9 +309,9 @@
       "width": 40,
       "height": 40,
       "type": "moving_spikes",
-      "rangeX": 15,
+      "rangeX": 75,
       "rangeY": 0,
-      "freq": 7.5
+      "freq": 0.8
     },
     {
       "x": 195,
@@ -319,9 +319,9 @@
       "width": 40,
       "height": 40,
       "type": "moving_spikes",
-      "rangeX": 15,
+      "rangeX": 75,
       "rangeY": 0,
-      "freq": 7.5
+      "freq": 0.8
     }
   ],
   "items": [

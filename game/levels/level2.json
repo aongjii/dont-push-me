@@ -233,9 +233,9 @@
       "width": 40,
       "height": 40,
       "type": "moving_spikes",
-      "rangeX": 12,
+      "rangeX": 65,
       "rangeY": 0,
-      "freq": 9
+      "freq": 0.92
     },
     {
       "x": 3250,
@@ -243,9 +243,9 @@
       "width": 40,
       "height": 40,
       "type": "moving_spikes",
-      "rangeX": 12,
+      "rangeX": 70,
       "rangeY": 0,
-      "freq": 9
+      "freq": 0.86
     },
     {
       "x": 5255,
@@ -253,9 +253,9 @@
       "width": 40,
       "height": 40,
       "type": "moving_spikes",
-      "rangeX": 12,
+      "rangeX": 65,
       "rangeY": 0,
-      "freq": 9
+      "freq": 0.92
     },
     {
       "x": 6670,
@@ -263,9 +263,9 @@
       "width": 40,
       "height": 40,
       "type": "moving_spikes",
-      "rangeX": 12,
+      "rangeX": 60,
       "rangeY": 0,
-      "freq": 9
+      "freq": 1
     },
     {
       "x": 240,

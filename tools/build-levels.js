@@ -7,6 +7,12 @@ const path = require('path');
 
 const GROUND_Y = 500;
 const WOOD = '#C98B4B';
+// Patrolling spikes sweep their whole platform, edge to edge, at a gentle ~60 px/s (speed = range x freq)
+const PATROL_SPEED = 60;
+const patrol = (platX, platW, y, w = 40) => {
+    const range = (platW - w) / 2;
+    return { x: platX + range, y, width: w, height: 40, type: 'moving_spikes', rangeX: range, rangeY: 0, freq: +(PATROL_SPEED / range).toFixed(2) };
+};
 
 function write(index, data) {
     const name = typeof index === 'number' ? `level${index}` : index;
@@ -54,7 +60,7 @@ function level1() {
     hazards.push({ x: stairStart, y: 660, width: sx - 100 - stairStart + 100, height: 60, type: 'spikes' });
     // patrolling spikes ride on top of the highest stone: land, then time your jump
     // (kept to the right half: you can't hop over them from the lower stone, so the left side must stay free to land on)
-    hazards.push({ x: stairStart + 100 + 2 * 240 + 72, y: 250, width: 40, height: 40, type: 'moving_spikes', rangeX: 14, rangeY: 0, freq: 8 });
+    hazards.push(patrol(stairStart + 100 + 2 * 240, 140, 250));
     item('star', stairStart + 100 + 1 * 240 + 70, 320);
     x = sx; // landing starts right after the last gap
     ground(350); item('orb', x - 150, 470); checkpoint(x - 250);
@@ -125,7 +131,7 @@ function level2() {
         platforms.push(plat);
         if (CHECKPOINT_AT.includes(i)) checkpoints.push({ x: x + w / 2, y });
         if (flag === 'spikes') {
-            hazards.push({ x: x + w / 2 - 20, y: y - 40, width: 40, height: 40, type: 'moving_spikes', rangeX: 12, rangeY: 0, freq: 9 }); // short patrol in the middle: a safe lane at each side
+            hazards.push(patrol(x, w, y - 40)); // sweeps the whole platform
         }
         if (flag === 'star') items.push({ type: 'star', x: x + w / 2, y: y - 30 });
         if (flag === 'orb') items.push({ type: 'orb', x: x + w / 2, y: y - 30 });
@@ -188,7 +194,7 @@ function level3() {
         if (n % 10 === 4) items.push({ type: 'star', x: x + w / 2, y: y - 30 });
         if (n % 10 === 8) items.push({ type: 'orb', x: x + w / 2, y: y - 30 });
         if (n % 6 === 2 && n > 4) {
-            hazards.push({ x: x + (w - 40) / 2, y: y - 40, width: 40, height: 40, type: 'moving_spikes', rangeX: 15, rangeY: 0, freq: 7.5 });
+            hazards.push(patrol(x, w, y - 40));
         }
         n++;
     }
