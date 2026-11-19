@@ -329,15 +329,15 @@ function level5() {
 
 // ---------------------------------------------------------------- survival arenas (last one standing)
 // Everything collapses on a schedule, outer parts first; the finish is off the map so nobody "finishes".
-function arena(n, theme, build) {
-    const platforms = [], hazards = [];
-    build({ platforms, hazards });
+function arena(n, theme, build, spawnX = 560) {
+    const platforms = [], hazards = [], shooters = [], zones = [];
+    build({ platforms, hazards, shooters, zones });
     write(`arena${n}`, {
         theme, mode: 'survival', timeLimit: 75,
         width: 1280, height: 720,
-        spawn: { x: 560, y: 440 },
+        spawn: { x: spawnX, y: 440 },
         finish: { x: -9999, y: -9999, width: 10, height: 10 },
-        platforms, switches: [], hazards, items: [], checkpoints: [], shooters: []
+        platforms, switches: [], hazards, items: [], checkpoints: [], shooters, zones
     });
 }
 function arenas() {
@@ -358,6 +358,25 @@ function arenas() {
         hazards.push({ x: 618, y: 238, width: 44, height: 44, type: 'saw', startX: 618, startY: 238, rangeX: 150, rangeY: 110, freq: 1.5 });
         hazards.push({ x: 0, y: 660, width: 1280, height: 60, type: 'spikes' });
     });
+    // icy islands with a steady wind pushing everyone towards the right-hand edge
+    arena(3, 'dusk', ({ platforms, hazards, zones }) => {
+        [[60, 230, 22000], [320, 230, 32000], [580, 230, 42000], [840, 230, 32000], [1100, 100, 22000]].forEach(([x, w, t]) =>
+            platforms.push({ x, y: 500, width: w, height: 220, ice: true, crumbleAt: t }));
+        platforms.push({ x: 330, y: 360, width: 150, height: 24, ice: true, crumbleAt: 14000 });
+        platforms.push({ x: 780, y: 360, width: 150, height: 24, ice: true, crumbleAt: 14000 });
+        zones.push({ kind: 'wind', x: 0, y: 100, width: 1280, height: 560, vx: 70 });
+        hazards.push({ x: 0, y: 660, width: 1280, height: 60, type: 'spikes' });
+    }, 600);
+    // conveyor belts pulling towards the middle spring, with arrows flying across the floor
+    arena(4, 'candy', ({ platforms, hazards, shooters }) => {
+        platforms.push({ x: 90, y: 500, width: 400, height: 220, conveyor: 90, crumbleAt: 30000 });
+        platforms.push({ x: 790, y: 500, width: 400, height: 220, conveyor: -90, crumbleAt: 30000 });
+        platforms.push({ x: 490, y: 500, width: 300, height: 220, bounce: true, crumbleAt: 46000 });
+        platforms.push({ x: 560, y: 340, width: 160, height: 24, crumbleAt: 18000 });
+        shooters.push({ x: 0, y: 476, vx: 280, vy: 0, width: 36, height: 14, kind: 'arrow', intervalMs: 3200, lifeMs: 4800, offsetMs: 4000 });
+        shooters.push({ x: 1244, y: 476, vx: -280, vy: 0, width: 36, height: 14, kind: 'arrow', intervalMs: 3200, lifeMs: 4800, offsetMs: 5600 });
+        hazards.push({ x: 0, y: 660, width: 1280, height: 60, type: 'spikes' });
+    }, 120);
 }
 
 // ---------------------------------------------------------------- tutorial (practice room, not in the level pool)

@@ -1,0 +1,98 @@
+{
+  "theme": "dusk",
+  "mode": "survival",
+  "timeLimit": 75,
+  "width": 1280,
+  "height": 720,
+  "spawn": {
+    "x": 600,
+    "y": 440
+  },
+  "finish": {
+    "x": -9999,
+    "y": -9999,
+    "width": 10,
+    "height": 10
+  },
+  "platforms": [
+    {
+      "x": 60,
+      "y": 500,
+      "width": 230,
+      "height": 220,
+      "ice": true,
+      "crumbleAt": 22000
+    },
+    {
+      "x": 320,
+      "y": 500,
+      "width": 230,
+      "height": 220,
+      "ice": true,
+      "crumbleAt": 32000
+    },
+    {
+      "x": 580,
+      "y": 500,
+      "width": 230,
+      "height": 220,
+      "ice": true,
+      "crumbleAt": 42000
+    },
+    {
+      "x": 840,
+      "y": 500,
+      "width": 230,
+      "height": 220,
+      "ice": true,
+      "crumbleAt": 32000
+    },
+    {
+      "x": 1100,
+      "y": 500,
+      "width": 100,
+      "height": 220,
+      "ice": true,
+      "crumbleAt": 22000
+    },
+    {
+      "x": 330,
+      "y": 360,
+      "width": 150,
+      "height": 24,
+      "ice": true,
+      "crumbleAt": 14000
+    },
+    {
+      "x": 780,
+      "y": 360,
+      "width": 150,
+      "height": 24,
+      "ice": true,
+      "crumbleAt": 14000
+    }
+  ],
+  "switches": [],
+  "hazards": [
+    {
+      "x": 0,
+      "y": 660,
+      "width": 1280,
+      "height": 60,
+      "type": "spikes"
+    }
+  ],
+  "items": [],
+  "checkpoints": [],
+  "shooters": [],
+  "zones": [
+    {
+      "kind": "wind",
+      "x": 0,
+      "y": 100,
+      "width": 1280,
+      "height": 560,
+      "vx": 70
+    }
+  ]
+}

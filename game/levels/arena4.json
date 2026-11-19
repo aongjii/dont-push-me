@@ -1,0 +1,89 @@
+{
+  "theme": "candy",
+  "mode": "survival",
+  "timeLimit": 75,
+  "width": 1280,
+  "height": 720,
+  "spawn": {
+    "x": 120,
+    "y": 440
+  },
+  "finish": {
+    "x": -9999,
+    "y": -9999,
+    "width": 10,
+    "height": 10
+  },
+  "platforms": [
+    {
+      "x": 90,
+      "y": 500,
+      "width": 400,
+      "height": 220,
+      "conveyor": 90,
+      "crumbleAt": 30000
+    },
+    {
+      "x": 790,
+      "y": 500,
+      "width": 400,
+      "height": 220,
+      "conveyor": -90,
+      "crumbleAt": 30000
+    },
+    {
+      "x": 490,
+      "y": 500,
+      "width": 300,
+      "height": 220,
+      "bounce": true,
+      "crumbleAt": 46000
+    },
+    {
+      "x": 560,
+      "y": 340,
+      "width": 160,
+      "height": 24,
+      "crumbleAt": 18000
+    }
+  ],
+  "switches": [],
+  "hazards": [
+    {
+      "x": 0,
+      "y": 660,
+      "width": 1280,
+      "height": 60,
+      "type": "spikes"
+    }
+  ],
+  "items": [],
+  "checkpoints": [],
+  "shooters": [
+    {
+      "x": 0,
+      "y": 476,
+      "vx": 280,
+      "vy": 0,
+      "width": 36,
+      "height": 14,
+      "kind": "arrow",
+      "intervalMs": 3200,
+      "lifeMs": 4800,
+      "offsetMs": 4000
+    },
+    {
+      "x": 1244,
+      "y": 476,
+      "vx": -280,
+      "vy": 0,
+      "width": 36,
+      "height": 14,
+      "kind": "arrow",
+      "intervalMs": 3200,
+      "lifeMs": 4800,
+      "offsetMs": 5600
+    }
+  ],
+  "zones": []
+}
