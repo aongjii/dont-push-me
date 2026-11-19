@@ -62,6 +62,8 @@ class Player {
         this.respawnMs = 0;      // > 0 while dead and waiting to come back
         this.cpIndex = -1;       // furthest checkpoint reached this round
         this.invulnMs = 0;       // spikes/lava can't hurt for a moment after respawning
+        this.stunMs = 0;         // squashed by a stomp: nearly stuck, can't jump
+        this.stompGuardMs = 0;   // can't be stunned again for a while
 
         // Game states
         this.score = 0;
@@ -203,6 +205,8 @@ class Player {
         if (this.powerCd > 0) this.powerCd -= dt;
         if (this.inhaleCd > 0) this.inhaleCd -= dt;
         if (this.invulnMs > 0) this.invulnMs -= dt;
+        if (this.stunMs > 0) this.stunMs -= dt;
+        if (this.stompGuardMs > 0) this.stompGuardMs -= dt;
         if (this.spinMs > 0) this.spinMs -= dt;
         if (this.spitBodyMs > 0) {
             this.spitBodyMs -= dt;
@@ -245,7 +249,8 @@ class Player {
         // Movement. A client that sends commands is moved by applyCmd() as they arrive;
         // everyone else (and any player the server has taken control of) is stepped here.
         if (!this.movesFromCmds()) {
-            const res = Movement.stepMovement(this, this.input, dt, level, this.movementMods());
+            const res = Movement.stepMovement(this, this.input, dt, gameRoom.moveWorld || level, this.movementMods());
+            if (res.stomped !== null) gameRoom.onStomp(this, res.stomped);
             if (res.flapped) gameRoom.broadcastEffect('flap', { id: this.id });
             if (res.recovered) gameRoom.broadcastEffect('recover', { id: this.id });
         }
@@ -308,6 +313,8 @@ class Player {
             mouth: !!this.mouth,
             wings: this.power === 'wings',
             dash: this.power === 'dash',
+            stun: this.stunMs > 0,
+            ghost: this.spitBodyMs > 0 || this.invulnMs > 0,
             spat: this.spitBodyMs > 0,
             // just spat out: straight-line flight for the first moments, then you can steer
             ballistic: this.spitBodyMs > ABILITY.spitBodyMs - ABILITY.spitBallisticMs
@@ -341,7 +348,8 @@ class Player {
         this.input.power = keys.power;
 
         if (!canMove || this.serverControlled()) return;
-        const res = Movement.stepMovement(this, keys, Movement.MOVE.step, level, this.movementMods());
+        const res = Movement.stepMovement(this, keys, Movement.MOVE.step, room.moveWorld || level, this.movementMods());
+        if (res.stomped !== null) room.onStomp(this, res.stomped);
         if (res.flapped) room.broadcastEffect('flap', { id: this.id });
         if (res.recovered) room.broadcastEffect('recover', { id: this.id });
     }

@@ -85,6 +85,7 @@ const Sfx = (() => {
         whirl:  () => { tone({ freq: 300, freqEnd: 800, dur: 0.35, type: 'sawtooth', vol: 0.14 }); tone({ freq: 800, freqEnd: 300, dur: 0.35, type: 'sawtooth', vol: 0.1, delay: 0.3 }); },
         flap:   () => { noise({ dur: 0.07, vol: 0.12, filter: 3000 }); },
         bounce: () => { tone({ freq: 220, freqEnd: 760, dur: 0.22, type: 'sine', vol: 0.28 }); tone({ freq: 330, freqEnd: 1100, dur: 0.18, type: 'triangle', vol: 0.12, delay: 0.03 }); },
+        stomp:  () => { tone({ freq: 180, freqEnd: 60, dur: 0.16, type: 'square', vol: 0.3 }); noise({ dur: 0.1, vol: 0.2, filter: 700 }); tone({ freq: 400, freqEnd: 700, dur: 0.12, type: 'sine', vol: 0.15, delay: 0.08 }); },
         arrow:  () => { noise({ dur: 0.14, vol: 0.2, filter: 3500 }); tone({ freq: 1200, freqEnd: 500, dur: 0.14, type: 'triangle', vol: 0.1 }); },
         rock:   () => { tone({ freq: 90, freqEnd: 45, dur: 0.25, type: 'sine', vol: 0.3 }); noise({ dur: 0.18, vol: 0.18, filter: 500 }); },
         fireball: () => { noise({ dur: 0.3, vol: 0.22, filter: 1500 }); tone({ freq: 200, freqEnd: 120, dur: 0.28, type: 'sawtooth', vol: 0.1 }); },

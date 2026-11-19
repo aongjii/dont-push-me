@@ -796,6 +796,7 @@ socket.on('game_state', (state) => {
     updateTutorialHint(state);
 
     const mine = state.players.find(p => p.id === localPlayerId);
+    predictor.others = state.players.filter(p => p.id !== localPlayerId);
     if (mine) predictor.reconcile(mine, state.platforms);
 
     // Update HUD Cooldown progress bars (max differs when the catch-up boost is active)
@@ -897,6 +898,15 @@ socket.on('game_effect', (effect) => {
         }
         Sfx.play('death');
         renderer.triggerShake(200, 10);
+    }
+
+    if (effect.type === 'stomp') {
+        const victim = gameState.players.find(p => p.id === effect.victim);
+        if (victim) renderer.addParticles(victim.x + victim.width / 2, victim.y, '#FFFFFF', 12, { spread: 260, up: 60, size: 4 });
+        Sfx.play('stomp');
+        if (effect.by === localPlayerId || effect.victim === localPlayerId) renderer.triggerShake(140, 6);
+        if (effect.by === localPlayerId) { PlayerStats.add('stomps'); showHudAlert(`เหยียบหัว ${effect.victimName}!`, 1500, 'burst'); }
+        else if (effect.victim === localPlayerId) showHudAlert(`${effect.byName} เหยียบหัวคุณ!`, 1500, 'burst');
     }
 
     if (effect.type === 'player_finished') {

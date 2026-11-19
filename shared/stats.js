@@ -14,6 +14,7 @@
         { id: 'matchWins',  name: 'ชนะทั้งเกม' },
         { id: 'kos',        name: 'ส่งคนลงเหว' },
         { id: 'swallows',   name: 'กลืนเพื่อน' },
+        { id: 'stomps',     name: 'เหยียบหัวเพื่อน' },
         { id: 'deaths',     name: 'ตาย' },
         { id: 'tutorials',  name: 'ผ่านด่านฝึกเล่น' }
     ];

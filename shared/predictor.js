@@ -31,13 +31,14 @@
             this.active = false;     // true only during a round
             this.platforms = [];
             this.zones = [];         // wind / low-gravity areas of the level
+            this.others = [];        // the other players (from the latest snapshot): solid bodies for us
             this.mods = {};
             this.acc = 0;            // leftover time toward the next step (ms)
             this.offX = 0;           // visual correction being eased out
             this.offY = 0;
 
             const self = this;
-            this.world = {
+            const base = {
                 zoneAt(p) {
                     const cx = p.x + p.width / 2, cy = p.y + p.height / 2;
                     let vx = 0, g = 1, found = false;
@@ -52,6 +53,7 @@
                         p.y < pl.y + pl.height && p.y + p.height > pl.y);
                 }
             };
+            this.world = new Movement.PlayerWorld(base, () => self.others);
         }
 
         // Forget everything (new round, reconnect)
@@ -113,6 +115,8 @@
                 mouth: !!me.mouth,
                 wings: me.power === 'wings',
                 dash: me.power === 'dash',
+                stun: me.stunMs > 0,
+                ghost: me.spitBodyMs > 0 || me.invulnMs > 0,
                 spat: me.spitBodyMs > 0,
                 ballistic: me.spitBodyMs > ME_SPIT_BALLISTIC_FLOOR
             };

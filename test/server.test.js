@@ -174,9 +174,9 @@ test('movement commands move the player and are acknowledged in game_state', asy
     host.emit('start_game');
     await once(host, 'round_start', 6000);
 
-    const RIGHT = 2;
+    const LEFT = 1; // (to the right the guest stands in the way: players are solid now)
     const cmds = [];
-    for (let i = 1; i <= 20; i++) cmds.push({ s: i, k: RIGHT });
+    for (let i = 1; i <= 20; i++) cmds.push({ s: i, k: LEFT });
     const stateAfter = new Promise(resolve => host.on('game_state', st => {
         const me = st.players.find(p => p.id === created.playerId);
         if (me.ack >= 20) resolve(me);
@@ -184,7 +184,7 @@ test('movement commands move the player and are acknowledged in game_state', asy
     const before = await new Promise(resolve => host.once('game_state', st => resolve(st.players.find(p => p.id === created.playerId))));
     host.emit('cmds', cmds);
     const me = await stateAfter;
-    assert.ok(me.x > before.x + 10, `did not move: ${before.x} -> ${me.x}`);
+    assert.ok(me.x < before.x - 10, `did not move: ${before.x} -> ${me.x}`);
     assert.equal(me.ack, 20);
 
     // garbage is ignored without crashing

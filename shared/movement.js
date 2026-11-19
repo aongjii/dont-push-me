@@ -26,6 +26,10 @@
         inhaleSlow: 0.5,
         mouthSlow: 0.8,
         dashBoost: 1.45,       // dash power: run much faster
+        stompSpeed: 300,       // landing on a head at least this fast is a stomp
+        stompBounce: -380,     // ...which bounces you up
+        stompJump: -600,       // ...or much higher if you hold jump (jumping off a head)
+        stunSlow: 0.25,        // a stomped player is nearly stuck for a moment
         bounceForce: -780,     // bounce pad: launches you ~250px up
         iceDrag: 1.8,          // on ice you speed up and slow down very slowly
     };
@@ -59,12 +63,17 @@
         }
     }
 
-    function resolveVertical(p, world) {
+    // `info` (optional) is filled with { stomp: id } when we land hard on another player's head
+    function resolveVertical(p, world, info) {
         p.isGrounded = false;
         for (const tile of world.getCollidingTiles(p)) {
             if (p.vy > 0) {
                 p.y = tile.y - p.height;
-                if (tile.bounce) {
+                if (tile.isPlayer && info && p.vy >= MOVE.stompSpeed) {
+                    info.stomp = tile.id;      // the caller turns this into a bounce
+                    p.vy = 0;
+                    p.isGrounded = true;
+                } else if (tile.bounce) {
                     p.vy = MOVE.bounceForce;   // springs back up; never counts as standing
                 } else {
                     p.vy = 0;
@@ -75,6 +84,43 @@
                 p.vy = 0;
             }
         }
+    }
+
+    // ---- other players as solid bodies --------------------------------------------------------
+    // Someone is a solid body unless they are dead, done, carried in a mouth, flying after a spit,
+    // or just respawned. (Used for both "who blocks me" and "am I a ghost".)
+    function isSolid(q) {
+        return !(q.isDead || q.isFinished || q.swallowed || q.swallowedBy || q.spitBodyMs > 0 || q.invulnMs > 0);
+    }
+
+    const overlaps = (a, b) => a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+
+    // Wraps a platform world: adds the other players as blocks. Anyone we already overlap at the
+    // start of a step (spawning on top of each other) is ignored until we separate.
+    class PlayerWorld {
+        constructor(base, getOthers) {
+            this.base = base;
+            this.getOthers = getOthers;
+            this.solids = [];
+        }
+        beginStep(p, mods) {
+            this.solids.length = 0;
+            if (mods && mods.ghost) return;
+            for (const q of this.getOthers()) {
+                if (q === p || (q.id !== undefined && q.id === p.id) || !isSolid(q) || overlaps(p, q)) continue;
+                this.solids.push({ x: q.x, y: q.y, width: q.width, height: q.height, isPlayer: true, id: q.id });
+            }
+        }
+        getCollidingTiles(p) {
+            const tiles = this.base.getCollidingTiles(p);
+            if (!this.solids.length) return tiles;
+            let out = tiles;
+            for (const s of this.solids) {
+                if (overlaps(p, s)) { if (out === tiles) out = tiles.slice(); out.push(s); }
+            }
+            return out;
+        }
+        zoneAt(p) { return this.base.zoneAt ? this.base.zoneAt(p) : null; }
     }
 
     // The platform we are standing on (for ice / conveyors), or null
@@ -96,13 +142,15 @@
     // Returns { flapped } so the server can announce wing flaps.
     function stepMovement(p, keys, dt, world, mods) {
         mods = mods || {};
-        const out = { flapped: false, recovered: false };
+        const out = { flapped: false, recovered: false, stomped: null };
+        if (world.beginStep) world.beginStep(p, mods);
+        const jump = !!keys.jump && !mods.stun; // a stomped player can't jump
 
         if (p.flapCd > 0) p.flapCd -= dt;
 
         // Slower while sucking things in or carrying something; faster while spinning
         const sucking = keys.inhale && !mods.mouth;
-        const speedMul = (mods.spin ? MOVE.spinBoost : 1) * (mods.dash ? MOVE.dashBoost : 1) *
+        const speedMul = (mods.spin ? MOVE.spinBoost : 1) * (mods.dash ? MOVE.dashBoost : 1) * (mods.stun ? MOVE.stunSlow : 1) *
             (sucking ? MOVE.inhaleSlow : (mods.mouth ? MOVE.mouthSlow : 1));
 
         const under = p.isGrounded ? groundTile(p, world) : null;
@@ -127,13 +175,13 @@
         p.vy = Math.min(p.vy, MOVE.terminal);
 
         // Jump input: remember a recent press so a slightly-early tap still works
-        const pressed = !!keys.jump && !p.prevJump;
-        p.prevJump = !!keys.jump;
+        const pressed = jump && !p.prevJump;
+        p.prevJump = jump;
         if (pressed) p.jbuf = MOVE.jumpBufferMs;
         else if (p.jbuf > 0) p.jbuf -= dt;
 
         const canJump = p.isGrounded || p.coyote > 0;
-        if ((keys.jump || p.jbuf > 0) && canJump) {
+        if ((jump || p.jbuf > 0) && canJump) {
             p.vy = MOVE.jumpForce;
             p.isGrounded = false;
             p.coyote = 0;
@@ -151,7 +199,7 @@
                 p.flapCd = MOVE.flapCooldown;
                 p.flaps--;
                 out.flapped = true;
-            } else if (keys.jump && p.vy > MOVE.glideFall) {
+            } else if (jump && p.vy > MOVE.glideFall) {
                 p.vy = MOVE.glideFall;
             }
         }
@@ -160,7 +208,14 @@
         resolveHorizontal(p, world, p.vx + belt + wind);
 
         p.y += p.vy * (dt / 1000);
-        resolveVertical(p, world);
+        const hit = {};
+        resolveVertical(p, world, hit);
+        if (hit.stomp !== undefined) {
+            // landed hard on someone's head: bounce off it (higher while holding jump)
+            p.vy = jump ? MOVE.stompJump : MOVE.stompBounce;
+            p.isGrounded = false;
+            out.stomped = hit.stomp;
+        }
 
         if (p.isGrounded) {
             p.coyote = MOVE.coyoteMs;
@@ -175,5 +230,5 @@
     // The physics-relevant fields of a player, for copying between server and client
     const FIELDS = ['x', 'y', 'vx', 'vy', 'isGrounded', 'facing', 'coyote', 'jbuf', 'prevJump', 'flapCd', 'flaps', 'recover'];
 
-    return { MOVE, KEY, FIELDS, encodeKeys, decodeKeys, stepMovement, resolveHorizontal, resolveVertical };
+    return { MOVE, KEY, FIELDS, encodeKeys, decodeKeys, stepMovement, resolveHorizontal, resolveVertical, PlayerWorld, isSolid };
 });

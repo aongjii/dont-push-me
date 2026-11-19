@@ -923,7 +923,8 @@ class Renderer {
             skin: { face: player.face, hat: player.hat, acc: player.acc, pat: player.pat },
             frozen,
             rot: rolling ? t * 20 * (player.facing || 1) : (tumbling ? t * 9 * Math.sign(player.vx) : 0),
-            flapping: player.power === 'wings' && !player.isGrounded
+            flapping: player.power === 'wings' && !player.isGrounded,
+            stunned: player.stunMs > 0
         });
 
         if (blinking) ctx.restore();
@@ -1038,6 +1039,7 @@ class Renderer {
         }
         if (o.mouthColor) { sx *= 1.14 + 0.12 * (o.charge || 0); sy *= 1.06 + 0.08 * (o.charge || 0); }
         if (o.mood === 'dead') { sy *= 0.78; sx *= 1.1; }
+        if (o.stunned) { sy *= 0.62; sx *= 1.28; } // squashed flat by a stomp
 
         const hop = moving ? -Math.abs(Math.sin(o.t * 11)) * 3.5 : 0;
         const tilt = o.rot || Math.max(-1, Math.min(1, o.vx / 250)) * 0.14;

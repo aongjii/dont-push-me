@@ -33,6 +33,8 @@ const SPAWN_COLUMNS = 5;
 const SPAWN_SPACING = 32;
 const MOVE_BUDGET_CAP = 500;     // ms of banked movement (covers a burst after a lag spike)
 const MOVE_BUDGET_RATE = 1.05;   // a little slack for clock drift between client and server
+const STUN_MS = 700;             // how long a stomped player is squashed
+const STOMP_GUARD_MS = 1500;     // ...and then can't be stomped-stunned again for this long
 const RESPAWN_MS = 3000;         // how long you wait after dying
 const INVULN_MS = 2000;          // spikes/lava can't hurt right after you come back
 const LAVA_SAFETY_MARGIN = 140;  // don't respawn closer than this to rising lava (px)
@@ -55,6 +57,11 @@ class GameRoom {
         this.countdownInterval = null;
         
         this.level = null;
+        // Walking/jumping world: the level's platforms plus the other players as solid bodies
+        this.moveWorld = new Movement.PlayerWorld({
+            getCollidingTiles: (p) => this.level.getCollidingTiles(p),
+            zoneAt: (p) => this.level.zoneAt(p)
+        }, () => Object.values(this.players));
         this.gameLoop = new GameLoop(this);
 
         this.finishOrder = []; // array of player ids who finished this round
@@ -478,6 +485,17 @@ class GameRoom {
         }
     }
 
+    // Somebody landed hard on somebody's head (called from the movement step)
+    onStomp(stomper, victimId) {
+        const victim = this.players[victimId];
+        if (!victim || victim.isDead) return;
+        if (victim.stompGuardMs > 0) return; // bouncing off them is fine, but no stun-locking
+        victim.stunMs = STUN_MS;
+        victim.stompGuardMs = STUN_MS + STOMP_GUARD_MS;
+        victim.markHit(stomper); // if they end up in a pit, the stomper gets the KO
+        this.broadcastEffect('stomp', { by: stomper.id, victim: victim.id, byName: stomper.name, victimName: victim.name });
+    }
+
     handleDeath(victim) {
         victim.dropMouth(this); // anyone we were holding comes out
         const credit = victim.hitCredit;
@@ -651,6 +669,7 @@ class GameRoom {
             lives: p.isDead && p.respawnMs <= 0 ? 0 : p.respawnsLeft + 1,
             respawnMs: Math.max(0, Math.round(p.respawnMs)),
             invulnMs: Math.max(0, Math.round(p.invulnMs)),
+            stunMs: Math.max(0, Math.round(p.stunMs)),
             cp: p.cpIndex,
             swallowTaps: p.swallowTaps,
             tapsNeeded: ABILITY.escapeTaps,
