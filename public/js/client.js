@@ -475,9 +475,15 @@ socket.on('countdown', ({ timer }) => {
 });
 
 // Round Start (Release movement)
+PlayerStats.onUnlock = (names) => showHudAlert(`ปลดล็อกของใหม่: ${names.join(', ')}`, 3600, 'trophy');
+let roundStartedAt = 0;
+let currentLevelKey = '';
 socket.on('round_start', () => {
     document.getElementById('countdown-overlay').style.display = 'none';
-    Sfx.startMusic();
+    Sfx.startMusic(levelData && levelData.theme);
+    roundStartedAt = performance.now();
+    currentLevelKey = levelData && levelData.tutorial ? 'tutorial' : String(levelData ? levelData.levelIndex : '');
+    PlayerStats.add('rounds');
     predictor.active = true;
 });
 
@@ -856,6 +862,8 @@ socket.on('game_effect', (effect) => {
     }
 
     if (effect.type === 'player_died') {
+        if (effect.id === localPlayerId) PlayerStats.add('deaths');
+        if (effect.killerId === localPlayerId) PlayerStats.add('kos');
         if (effect.killerName) {
             showHudAlert(`${effect.killerName} ส่ง ${effect.name} ลงเหว! (+3)`, 2600, 'burst');
             if (effect.killerId === localPlayerId) Sfx.play('ko');
@@ -871,12 +879,19 @@ socket.on('game_effect', (effect) => {
     }
 
     if (effect.type === 'player_finished') {
+        if (effect.id === localPlayerId) {
+            PlayerStats.add('finishes');
+            const ms = performance.now() - roundStartedAt;
+            if (PlayerStats.recordTime(currentLevelKey, ms)) showHudAlert(`สถิติใหม่! ${(ms / 1000).toFixed(1)} วินาที`, 2600, 'trophy');
+            if (currentLevelKey === 'tutorial') PlayerStats.add('tutorials');
+        }
         showHudAlert(`${effect.name} วิ่งรอดเข้าเส้นชัยสำเร็จ!`, 2000, 'flag');
         Sfx.play('finish');
     }
 
     if (effect.type === 'swallow') {
         const by = gameState.players.find(p => p.id === effect.by);
+        if (effect.kind === 'player' && effect.by === localPlayerId) PlayerStats.add('swallows');
         if (effect.kind === 'player' && by) showHudAlert(`${effect.byName} กลืน ${effect.victimName} เข้าไปแล้ว! (กดรัวๆ เพื่อหนีออกมา)`, 2400, 'inhale');
         Sfx.play('swallow');
         if (by) renderer.triggerShake(90, 3);
@@ -939,6 +954,9 @@ socket.on('game_effect', (effect) => {
 // Round ended screen
 socket.on('round_end', ({ round, levelIndex, scoreboard, finishOrder }) => {
     Sfx.stopMusic();
+    const mineRow = scoreboard.find(p => p.id === localPlayerId);
+    const topPoints = Math.max(...scoreboard.map(p => p.roundPoints));
+    if (mineRow && topPoints > 0 && mineRow.roundPoints === topPoints && scoreboard.length > 1) PlayerStats.add('roundWins');
     predictor.active = false;
     // Hide overlay
     document.getElementById('countdown-overlay').style.display = 'none';
@@ -1009,6 +1027,7 @@ socket.on('round_end', ({ round, levelIndex, scoreboard, finishOrder }) => {
 
 // Match ended Champion announcement
 socket.on('match_end', ({ scoreboard, winner }) => {
+    if (scoreboard[0] && scoreboard[0].id === localPlayerId && scoreboard.length > 1) PlayerStats.add('matchWins');
     document.getElementById('match-winner').textContent = winner.name;
     document.getElementById('match-winner').style.background = winner.color;
 

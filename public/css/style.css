@@ -1123,3 +1123,13 @@ body.touch .btn-keys, body.touch .open-keys-link { display: none; }
     border: 3px solid #ffd24a; box-shadow: 0 6px 0 rgba(43,33,64,0.15); pointer-events: none; z-index: 5;
 }
 body.touch .tutorial-hint { bottom: 150px; font-size: 13px; }
+
+/* stats + locked cosmetics */
+.stats-list { display: grid; gap: 6px; margin: 6px 0 12px; text-align: left; }
+.stats-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 12px; border-radius: 10px; background: #f6f3fb; font-weight: 600; font-size: 0.95rem; }
+.stats-row b { color: var(--ink); }
+.stats-row.done { background: #e3f7e9; }
+.skin-option.locked { opacity: 0.55; cursor: not-allowed; position: relative; }
+.skin-option.locked canvas { filter: grayscale(1) brightness(1.1); }
+.skin-option.locked .lock-badge { position: absolute; top: 4px; right: 4px; }
+.skin-option.locked span { font-size: 0.7rem; }

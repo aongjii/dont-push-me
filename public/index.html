@@ -55,6 +55,7 @@
         <div class="menu-buttons">
             <button class="btn btn-secondary" id="btn-practice"><i data-icon="book"></i> ฝึกเล่น</button>
             <button class="btn btn-secondary btn-skin"><i data-icon="shirt"></i> แต่งตัว</button>
+            <button class="btn btn-secondary" id="btn-stats"><i data-icon="trophy"></i> สถิติ</button>
             <button class="btn btn-secondary btn-keys"><i data-icon="keyboard"></i> ตั้งค่าปุ่ม</button>
             <button class="btn btn-secondary btn-help"><i data-icon="book"></i> วิธีเล่น</button>
         </div>
@@ -300,6 +301,20 @@
         </div>
     </div>
 
+    <!-- STATS -->
+    <div id="stats-overlay" class="help-overlay">
+        <div class="card help-card">
+            <h2><i data-icon="trophy"></i> สถิติของคุณ</h2>
+            <p class="host-tip">เก็บไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น</p>
+            <div id="stats-list" class="stats-list"></div>
+            <h3>เวลาเข้าเส้นชัยที่เร็วที่สุด</h3>
+            <div id="stats-best" class="stats-list"></div>
+            <h3>ของที่ปลดล็อกได้</h3>
+            <div id="stats-unlocks" class="stats-list"></div>
+            <button id="btn-stats-close" class="btn btn-primary">ปิด</button>
+        </div>
+    </div>
+
     <!-- HELP -->
     <div id="help-overlay" class="help-overlay">
         <div class="card help-card">
@@ -356,6 +371,7 @@
 
     <!-- Client scripts -->
     <script src="shared/skins.js"></script>
+    <script src="shared/stats.js"></script>
     <script src="shared/keybinds.js"></script>
     <script src="shared/movement.js"></script>
     <script src="shared/predictor.js"></script>
@@ -363,6 +379,7 @@
     <script src="js/audio.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/renderer.js"></script>
+    <script src="js/stats-ui.js"></script>
     <script src="js/skin-ui.js"></script>
     <script src="js/keys-ui.js"></script>
     <script src="js/client.js"></script>

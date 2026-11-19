@@ -98,6 +98,51 @@
         { id: 'freckles', name: 'กระ' }
     ];
 
+    // Things you earn by playing. `stat` is a counter from shared/stats.js. Everything else is free.
+    // (Purely cosmetic and checked in the browser only: the server accepts any valid skin.)
+    const UNLOCKS = {
+        hat: {
+            crown:  { stat: 'roundWins', n: 3,  text: 'ชนะด่าน 3 ครั้ง' },
+            halo:   { stat: 'matchWins', n: 1,  text: 'ชนะทั้งเกม 1 ครั้ง' },
+            wizard: { stat: 'finishes',  n: 10, text: 'เข้าเส้นชัย 10 ครั้ง' },
+            horns:  { stat: 'kos',       n: 5,  text: 'ส่งคนลงเหว 5 ครั้ง' },
+            helmet: { stat: 'tutorials', n: 1,  text: 'ผ่านด่านฝึกเล่น' }
+        },
+        acc: {
+            medal:      { stat: 'matchWins', n: 1, text: 'ชนะทั้งเกม 1 ครั้ง' },
+            cape:       { stat: 'roundWins', n: 5, text: 'ชนะด่าน 5 ครั้ง' },
+            sunglasses: { stat: 'kos',       n: 3, text: 'ส่งคนลงเหว 3 ครั้ง' },
+            eyepatch:   { stat: 'swallows',  n: 3, text: 'กลืนเพื่อน 3 ครั้ง' }
+        },
+        pat: {
+            stars: { stat: 'rounds', n: 15, text: 'เล่นครบ 15 ด่าน' }
+        }
+    };
+
+    function unlockOf(part, id) { return (UNLOCKS[part] && UNLOCKS[part][id]) || null; }
+
+    // counters = { roundWins: 3, ... }
+    function isUnlocked(part, id, counters) {
+        const u = unlockOf(part, id);
+        return !u || ((counters && counters[u.stat]) || 0) >= u.n;
+    }
+
+    // Everything the given counters unlock: ['hat:crown', ...]
+    function unlockedList(counters) {
+        const out = [];
+        for (const part of Object.keys(UNLOCKS)) for (const id of Object.keys(UNLOCKS[part])) {
+            if (isUnlocked(part, id, counters)) out.push(`${part}:${id}`);
+        }
+        return out;
+    }
+
+    // Replace anything not yet earned by the plain option
+    function withoutLocked(skin, counters) {
+        const s = { ...skin };
+        for (const part of Object.keys(UNLOCKS)) if (!isUnlocked(part, s[part], counters)) s[part] = 'none';
+        return s;
+    }
+
     const DEFAULT_SKIN = { color: COLORS[0].hex, face: 'classic', hat: 'none', acc: 'none', pat: 'none' };
 
     const has = (list, id) => list.some(o => o.id === id);
@@ -136,5 +181,5 @@
         return c ? c.hex : COLORS[0].hex;
     }
 
-    return { COLORS, FACES, HATS, ACCS, PATTERNS, DEFAULT_SKIN, sanitizeSkin, randomSkin, freeColor };
+    return { COLORS, FACES, HATS, ACCS, PATTERNS, DEFAULT_SKIN, UNLOCKS, unlockOf, isUnlocked, unlockedList, withoutLocked, sanitizeSkin, randomSkin, freeColor };
 });

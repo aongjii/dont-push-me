@@ -27,9 +27,9 @@ const SkinUI = (() => {
     function load() {
         try {
             const raw = JSON.parse(localStorage.getItem(STORAGE_KEY));
-            if (raw) return Skins.sanitizeSkin(raw);
+            if (raw) return Skins.withoutLocked(Skins.sanitizeSkin(raw), PlayerStats.counters());
         } catch (e) {}
-        return Skins.randomSkin();
+        return Skins.withoutLocked(Skins.randomSkin(), PlayerStats.counters());
     }
 
     function save() {
@@ -70,18 +70,28 @@ const SkinUI = (() => {
         }
 
         const list = { face: Skins.FACES, hat: Skins.HATS, acc: Skins.ACCS, pat: Skins.PATTERNS }[tab];
+        const counters = PlayerStats.counters();
         list.forEach(item => {
             const b = document.createElement('button');
-            b.className = 'skin-option' + (skin[tab] === item.id ? ' selected' : '');
+            const locked = !Skins.isUnlocked(tab, item.id, counters);
+            b.className = 'skin-option' + (skin[tab] === item.id ? ' selected' : '') + (locked ? ' locked' : '');
             const cv = document.createElement('canvas');
             cv.width = 68; cv.height = 68;
             const variant = { ...skin, [tab]: item.id };
             new Renderer(cv).drawPortrait(variant, skin.color, 1.2);
             const label = document.createElement('span');
-            label.textContent = item.name;
+            label.textContent = locked ? Skins.unlockOf(tab, item.id).text : item.name;
             b.appendChild(cv);
             b.appendChild(label);
-            b.addEventListener('click', () => choose(tab, item.id));
+            if (locked) {
+                const badge = Icons.svg('lock', 18);
+                badge.classList.add('lock-badge');
+                b.appendChild(badge);
+                b.title = `ปลดล็อกโดย: ${Skins.unlockOf(tab, item.id).text}`;
+                b.addEventListener('click', () => { noteEl.textContent = `ยังล็อกอยู่ ปลดล็อกโดย: ${Skins.unlockOf(tab, item.id).text}`; });
+            } else {
+                b.addEventListener('click', () => choose(tab, item.id));
+            }
             grid.appendChild(b);
         });
     }

@@ -94,14 +94,21 @@ const Sfx = (() => {
         win:    () => { [523, 659, 784, 659, 784, 1047].forEach((f, i) => tone({ freq: f, dur: 0.2, type: 'triangle', vol: 0.25, delay: i * 0.12 })); }
     };
 
-    // --- Music: a short looping bass + arpeggio ---
-    const BASS = [110, 110, 110, 110, 87.3, 87.3, 98, 98];          // A2 A2 .. F2 F2 G2 G2
-    const ARP  = [440, 523, 659, 523, 440, 523, 698, 587];
+    // --- Music: a short looping bass + arpeggio, a different mood for each level theme ---
+    const MUSIC = {
+        meadow:  { ms: 230, bass: [110, 110, 110, 110, 87.3, 87.3, 98, 98],     arp: [440, 523, 659, 523, 440, 523, 698, 587], lead: 'square',   bassType: 'triangle' },
+        candy:   { ms: 200, bass: [131, 131, 196, 196, 175, 175, 196, 196],     arp: [523, 659, 784, 659, 523, 659, 880, 784], lead: 'triangle', bassType: 'triangle' },
+        volcano: { ms: 250, bass: [73.4, 73.4, 73.4, 87.3, 73.4, 73.4, 65.4, 82.4], arp: [294, 349, 311, 294, 262, 294, 349, 392], lead: 'sawtooth', bassType: 'sawtooth' },
+        dusk:    { ms: 300, bass: [98, 98, 110, 110, 87.3, 87.3, 98, 110],     arp: [392, 494, 587, 494, 440, 523, 587, 494], lead: 'sine',     bassType: 'triangle' },
+        night:   { ms: 260, bass: [82.4, 82.4, 98, 82.4, 73.4, 73.4, 98, 82.4], arp: [330, 311, 330, 392, 294, 277, 311, 247], lead: 'square',   bassType: 'sine' }
+    };
+    let musicTheme = 'meadow';
 
     function musicTick() {
+        const m = MUSIC[musicTheme] || MUSIC.meadow;
         const i = musicStep % 8;
-        tone({ freq: BASS[i], dur: 0.2, type: 'triangle', vol: 0.12 });
-        if (i % 2 === 0) tone({ freq: ARP[i], dur: 0.12, type: 'square', vol: 0.04 });
+        tone({ freq: m.bass[i], dur: m.ms / 1000 * 0.9, type: m.bassType, vol: 0.12 });
+        if (i % 2 === 0) tone({ freq: m.arp[i], dur: 0.12, type: m.lead, vol: m.lead === 'sawtooth' ? 0.03 : 0.04 });
         musicStep++;
     }
 
@@ -114,10 +121,13 @@ const Sfx = (() => {
             if (scale > 0.02) fn();
             scale = 1;
         },
-        startMusic() {
-            if (musicTimer) return;
+        startMusic(theme) {
+            const next = MUSIC[theme] ? theme : 'meadow';
+            if (musicTimer && next === musicTheme) return;
+            if (musicTimer) clearInterval(musicTimer);
+            musicTheme = next;
             musicStep = 0;
-            musicTimer = setInterval(musicTick, 230);
+            musicTimer = setInterval(musicTick, MUSIC[musicTheme].ms);
         },
         stopMusic() {
             if (musicTimer) clearInterval(musicTimer);
