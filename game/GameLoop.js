@@ -64,6 +64,9 @@ class GameLoop {
             this.room.level.update(dt);
         }
 
+        // Computer players decide what to press this step
+        this.room.updateBots(dt);
+
         // Who is trailing far behind? (gets a small boost)
         this.room.updateCatchUp();
 

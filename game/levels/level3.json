@@ -268,48 +268,48 @@
   ],
   "hazards": [
     {
-      "x": 140,
+      "x": 195,
       "y": 2345,
       "width": 40,
       "height": 40,
       "type": "moving_spikes",
-      "rangeX": 60,
+      "rangeX": 15,
       "rangeY": 0
     },
     {
-      "x": 560,
+      "x": 615,
       "y": 1835,
       "width": 40,
       "height": 40,
       "type": "moving_spikes",
-      "rangeX": 60,
+      "rangeX": 15,
       "rangeY": 0
     },
     {
-      "x": 140,
+      "x": 195,
       "y": 1325,
       "width": 40,
       "height": 40,
       "type": "moving_spikes",
-      "rangeX": 60,
+      "rangeX": 15,
       "rangeY": 0
     },
     {
-      "x": 560,
+      "x": 615,
       "y": 815,
       "width": 40,
       "height": 40,
       "type": "moving_spikes",
-      "rangeX": 60,
+      "rangeX": 15,
       "rangeY": 0
     },
     {
-      "x": 140,
+      "x": 195,
       "y": 305,
       "width": 40,
       "height": 40,
       "type": "moving_spikes",
-      "rangeX": 60,
+      "rangeX": 15,
       "rangeY": 0
     }
   ],

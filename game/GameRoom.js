@@ -5,6 +5,7 @@ const { sanitizeInput, sanitizeEmote } = require('./validation');
 const Movement = require('../shared/movement');
 const { ABILITY } = require('./abilities');
 const Skins = require('../shared/skins');
+const { Bot } = require('./Bot');
 const fs = require('fs');
 const path = require('path');
 const { sanitizeSettings, DEFAULTS } = require('./settings');
@@ -41,6 +42,9 @@ class GameRoom {
         this.status = 'lobby'; // lobby, countdown, playing, round_end, match_end
         this.levelIndex = 1;
         this.round = 1;
+        this.bots = {}; // id -> Bot (computer players)
+        this.botSeq = 0;
+        this.roundStartedAt = 0;
         this.settings = sanitizeSettings(initialSettings, DEFAULTS);
         this.maxRounds = this.settings.rounds;
         this.levelOrder = [1];
@@ -91,11 +95,47 @@ class GameRoom {
         return { color: player.color, ...player.skin };
     }
 
+    // ---- computer players
+    addBot(opts = {}) {
+        if (Object.keys(this.players).length >= 4 || this.status !== 'lobby') return null;
+        this.botSeq++;
+        const id = `bot${this.botSeq}`;
+        const player = this.addPlayer(id, opts.name || `บอท ${this.botSeq}`, Skins.randomSkin());
+        if (!player) return null;
+        player.isBot = true;
+        this.bots[id] = new Bot(player, { dummy: !!opts.dummy });
+        return player;
+    }
+
+    removeLastBot() {
+        if (this.status !== 'lobby') return false;
+        const id = Object.keys(this.bots).pop();
+        if (!id) return false;
+        delete this.bots[id];
+        delete this.players[id];
+        return true;
+    }
+
+    humanCount() {
+        return Object.values(this.players).filter(p => !p.isBot).length;
+    }
+
+    updateBots(dt) {
+        for (const id of Object.keys(this.bots)) {
+            if (this.players[id]) this.bots[id].think(this, dt);
+        }
+    }
+
+    roundElapsedMs() {
+        return this.roundTimeLimit - this.roundTimeLeft;
+    }
+
     removePlayer(id) {
         delete this.players[id];
+        delete this.bots[id];
         
-        // If room is empty, stop loop
-        if (Object.keys(this.players).length === 0) {
+        // If no human is left, stop the loop and close the room
+        if (this.humanCount() === 0) {
             this.destroy();
         } else {
             // Check round end in case the only remaining alive player left
@@ -117,6 +157,12 @@ class GameRoom {
         if (this.status !== 'lobby') return null;
         this.settings = sanitizeSettings(raw, this.settings);
         return this.settings;
+    }
+
+    // What the lobby shows: the settings plus how many levels the current mode can pick from
+    publicSettings() {
+        const survival = this.settings.mode === 'survival' && ARENA_LEVELS.length;
+        return { ...this.settings, pool: (survival ? ARENA_LEVELS : RACE_LEVELS).length };
     }
 
     // The levels for this match, one per round (shuffled without repeats when asked to)
@@ -154,6 +200,8 @@ class GameRoom {
             p.reset(this.level.spawnX + i * 40, this.level.spawnY, this.settings.lives);
         });
         if (!this.settings.items) this.level.items = [];
+        // Bots never run out of hearts: they just keep trying, like a beginner who won't give up
+        Object.values(this.players).forEach(p => { if (p.isBot) p.respawnsLeft = 999; });
 
         this.roundTimeLimit = this.level.timeLimit * 1000;
         this.roundTimeLeft = this.roundTimeLimit;
@@ -432,7 +480,9 @@ class GameRoom {
 
         // Still in the round: not finished, and not out of lives (a player waiting to respawn counts)
         const playersArr = Object.values(this.players);
-        const alivePlayers = playersArr.filter(p => !p.isFinished && !(p.isDead && p.respawnMs <= 0));
+        let alivePlayers = playersArr.filter(p => !p.isFinished && !(p.isDead && p.respawnMs <= 0));
+        // Computer players never keep a round going: once every human is done, the round is over
+        if (playersArr.some(p => !p.isBot)) alivePlayers = alivePlayers.filter(p => !p.isBot);
 
         this.collectFinishers();
 

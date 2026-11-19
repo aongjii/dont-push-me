@@ -68,14 +68,14 @@
 
             <div class="settings-box" id="settings-box">
                 <h3>ตั้งค่าห้อง <span id="settings-note" class="settings-note"></span></h3>
-                <div class="setting-row" data-key="rounds"><span>จำนวนรอบ</span>
-                    <div class="seg"><button data-value="1">1</button><button data-value="3">3</button><button data-value="5">5</button></div></div>
+                <div class="setting-row" data-key="rounds"><span>จำนวนด่านที่เล่น <small id="pool-note" class="settings-note"></small></span>
+                    <div class="stepper"><button data-delta="-1" aria-label="น้อยลง">&minus;</button><b id="rounds-value">3</b><button data-delta="1" aria-label="มากขึ้น">+</button></div></div>
                 <div class="setting-row" data-key="lives"><span>หัวใจต่อรอบ</span>
                     <div class="seg"><button data-value="1">1</button><button data-value="3">3</button></div></div>
                 <div class="setting-row" data-key="items"><span>ดาว/ผลไม้</span>
                     <div class="seg"><button data-value="true">เปิด</button><button data-value="false">ปิด</button></div></div>
                 <div class="setting-row" data-key="shuffle"><span>ลำดับด่าน</span>
-                    <div class="seg"><button data-value="true">สุ่ม</button><button data-value="false">เรียง</button></div></div>
+                    <div class="seg"><button data-value="true">สุ่มด่าน</button><button data-value="false">เรียงตามลำดับ</button></div></div>
             </div>
 
             <div class="lobby-content">
@@ -83,6 +83,11 @@
                 <div class="player-list" id="lobby-player-list">
                     <!-- Players will be dynamically added here -->
                 </div>
+            </div>
+
+            <div class="bot-row" id="bot-row" style="display:none">
+                <button id="btn-add-bot" class="btn btn-secondary btn-small"><i data-icon="inhale"></i><span>เพิ่มบอท</span></button>
+                <button id="btn-remove-bot" class="btn btn-secondary btn-small"><i data-icon="cross"></i><span>เอาบอทออก</span></button>
             </div>
 
             <div class="lobby-actions">

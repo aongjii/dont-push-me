@@ -59,9 +59,11 @@ function asObject(x) {
     return x && typeof x === 'object' ? x : {};
 }
 
+// People first, then bots, so the first entry is always a human (the host)
 function publicPlayers(room) {
-    return Object.values(room.players).map(p => ({
-        id: p.id, name: p.name, color: p.color, face: p.skin.face, hat: p.skin.hat, acc: p.skin.acc
+    const all = Object.values(room.players);
+    return [...all.filter(p => !p.isBot), ...all.filter(p => p.isBot)].map(p => ({
+        id: p.id, name: p.name, color: p.color, face: p.skin.face, hat: p.skin.hat, acc: p.skin.acc, bot: !!p.isBot
     }));
 }
 
@@ -81,7 +83,7 @@ function removeFromRoom(roomCode, playerId) {
         console.log(`Deleting empty room: ${roomCode}`);
         delete rooms[roomCode];
     } else {
-        io.to(roomCode).emit('room_update', { players: publicPlayers(room), settings: room.settings });
+        io.to(roomCode).emit('room_update', { players: publicPlayers(room), settings: room.publicSettings() });
     }
 }
 
@@ -124,7 +126,7 @@ io.on('connection', (socket) => {
             roomCode,
             playerId: id,
             token: player.token,
-            players: publicPlayers(room), settings: room.settings
+            players: publicPlayers(room), settings: room.publicSettings()
         });
 
         console.log(`Room ${roomCode} created by ${player.name}`);
@@ -163,11 +165,11 @@ io.on('connection', (socket) => {
             roomCode: code,
             playerId: id,
             token: player.token,
-            players: publicPlayers(room), settings: room.settings
+            players: publicPlayers(room), settings: room.publicSettings()
         });
 
         // Notify others in room
-        io.to(code).emit('room_update', { players: publicPlayers(room), settings: room.settings });
+        io.to(code).emit('room_update', { players: publicPlayers(room), settings: room.publicSettings() });
 
         console.log(`${name} joined Room ${code}`);
     });
@@ -206,7 +208,7 @@ io.on('connection', (socket) => {
         socket.emit('rejoined', {
             roomCode: code,
             playerId: player.id,
-            players: publicPlayers(room), settings: room.settings,
+            players: publicPlayers(room), settings: room.publicSettings(),
             status: room.status
         });
 
@@ -220,12 +222,13 @@ io.on('connection', (socket) => {
             socket.emit('match_end', room.lastMatchEnd);
         }
 
-        io.to(code).emit('room_update', { players: publicPlayers(room), settings: room.settings });
+        io.to(code).emit('room_update', { players: publicPlayers(room), settings: room.publicSettings() });
         console.log(`${player.name} rejoined Room ${code}`);
     });
 
     function isHost(room) {
-        return Object.keys(room.players)[0] === playerId;
+        const firstHuman = Object.values(room.players).find(p => !p.isBot);
+        return !!firstHuman && firstHuman.id === playerId;
     }
 
     // Start Game (Only host, which is the first player in the room)
@@ -268,7 +271,7 @@ io.on('connection', (socket) => {
         if (!currentRoomCode || !allowSkin()) return;
         const room = rooms[currentRoomCode];
         if (room && room.setSkin(playerId, skin)) {
-            io.to(currentRoomCode).emit('room_update', { players: publicPlayers(room), settings: room.settings });
+            io.to(currentRoomCode).emit('room_update', { players: publicPlayers(room), settings: room.publicSettings() });
         }
     });
 
@@ -277,13 +280,29 @@ io.on('connection', (socket) => {
         if (typeof ack === 'function' && allowInput()) ack();
     });
 
+    // Host adds / removes computer players in the waiting room
+    socket.on('add_bot', () => {
+        if (!allowAction() || !currentRoomCode) return;
+        const room = rooms[currentRoomCode];
+        if (room && isHost(room) && room.addBot()) {
+            io.to(currentRoomCode).emit('room_update', { players: publicPlayers(room), settings: room.publicSettings() });
+        }
+    });
+    socket.on('remove_bot', () => {
+        if (!allowAction() || !currentRoomCode) return;
+        const room = rooms[currentRoomCode];
+        if (room && isHost(room) && room.removeLastBot()) {
+            io.to(currentRoomCode).emit('room_update', { players: publicPlayers(room), settings: room.publicSettings() });
+        }
+    });
+
     // Host changes the match settings in the waiting room
     socket.on('set_settings', (payload) => {
         if (!allowAction() || !currentRoomCode) return;
         const room = rooms[currentRoomCode];
         if (!room || !isHost(room)) return;
         if (room.setSettings(payload)) {
-            io.to(currentRoomCode).emit('room_update', { players: publicPlayers(room), settings: room.settings });
+            io.to(currentRoomCode).emit('room_update', { players: publicPlayers(room), settings: room.publicSettings() });
         }
     });
 
@@ -292,7 +311,7 @@ io.on('connection', (socket) => {
         if (!allowAction() || !currentRoomCode) return;
         const room = rooms[currentRoomCode];
         if (!room || !isHost(room)) return;
-        if (room.resetToLobby()) io.to(currentRoomCode).emit('room_reset', { players: publicPlayers(room), settings: room.settings });
+        if (room.resetToLobby()) io.to(currentRoomCode).emit('room_reset', { players: publicPlayers(room), settings: room.publicSettings() });
     });
 
     // Host removes someone from the waiting room

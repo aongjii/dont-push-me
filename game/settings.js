@@ -2,7 +2,7 @@
 // client can only ever pick from these options.
 const OPTIONS = {
     mode: ['race', 'survival'],
-    rounds: [1, 3, 5],
+    rounds: [1, 2, 3, 4, 5, 6, 7, 8], // how many levels one match lasts
     lives: [1, 3],
     items: [true, false],
     shuffle: [true, false]

@@ -1090,3 +1090,12 @@ body.touch #btn-fullscreen { display: flex; }
 .seg button { border: none; background: transparent; padding: 6px 14px; font-family: var(--font-family); font-weight: 600; font-size: 0.9rem; color: var(--ink); cursor: pointer; }
 .seg button.on { background: var(--ink); color: #FFFFFF; }
 .seg button:disabled { cursor: default; opacity: 0.85; }
+
+.stepper { display: inline-flex; align-items: center; border: 2px solid var(--line); border-radius: 12px; background: var(--surface); overflow: hidden; }
+.stepper button { border: none; background: transparent; width: 34px; height: 32px; font-size: 1.2rem; font-weight: 700; font-family: var(--font-family); color: var(--ink); cursor: pointer; }
+.stepper button:disabled { opacity: 0.35; cursor: default; }
+.stepper b { min-width: 30px; text-align: center; font-size: 1rem; }
+
+.bot-row { display: flex; gap: 8px; justify-content: center; margin: 0 0 14px; }
+.bot-row .btn-small { margin: 0; }
+.bot-tag { background: #E3EEFF; color: #3F6FD1; margin-left: 8px; }

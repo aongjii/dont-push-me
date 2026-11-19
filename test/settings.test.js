@@ -70,3 +70,18 @@ test('each round loads the next level in the match order', () => {
     assert.equal(room.levelIndex, order[1]);
     assert.equal(room.round, 2);
 });
+
+test('a match can be 1 to 8 levels long, and the lobby is told how many levels there are to pick from', () => {
+    const room = new GameRoom('0', io);
+    for (let n = 1; n <= 8; n++) {
+        assert.equal(room.setSettings({ rounds: n }).rounds, n);
+        assert.equal(room.buildLevelOrder().length, n);
+    }
+    assert.equal(room.setSettings({ rounds: 9 }).rounds, 8, 'out of range is ignored');
+    assert.ok(room.publicSettings().pool >= 3);
+});
+
+test('real rooms start with shuffled level order switched on', () => {
+    const src = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'server.js'), 'utf8');
+    assert.match(src, /new GameRoom\(roomCode, io, \{ shuffle: true \}\)/);
+});

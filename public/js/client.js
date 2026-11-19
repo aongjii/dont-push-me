@@ -194,6 +194,7 @@ window.addEventListener('keyup', (e) => {
 
 // Helper to check if current user is room host (the first player in the room list)
 function updateHostStatus(players) {
+    document.getElementById('bot-row').style.display = players.length > 0 && players[0].id === localPlayerId ? 'flex' : 'none';
     setTimeout(() => { if (typeof refreshSettingsUI === 'function') refreshSettingsUI(); }, 0);
     if (players.length > 0 && players[0].id === localPlayerId) {
         isHost = true;
@@ -427,6 +428,12 @@ function updatePlayerLobbyList(players) {
             item.appendChild(host);
         } else if (players[0].id === localPlayerId) {
             item.appendChild(kickButton(p));
+        }
+        if (p.bot) {
+            const tag = document.createElement('span');
+            tag.className = 'host-tag bot-tag';
+            tag.textContent = 'BOT';
+            item.insertBefore(tag, item.querySelector('.kick-btn'));
         }
 
         list.appendChild(item);
@@ -1062,6 +1069,12 @@ function refreshSettingsUI() {
     settingsBox.querySelectorAll('.setting-row').forEach(row => {
         const key = row.dataset.key;
         row.style.display = key === 'shuffle' && roomSettings.mode === 'survival' ? 'none' : '';
+        if (key === 'rounds') {
+            document.getElementById('rounds-value').textContent = roomSettings.rounds;
+            document.getElementById('pool-note').textContent = roomSettings.pool ? `(มี ${roomSettings.pool} ด่านให้สุ่ม)` : '';
+            row.querySelectorAll('button').forEach(btn => { btn.disabled = !isHost; });
+            return;
+        }
         row.querySelectorAll('button').forEach(btn => {
             btn.classList.toggle('on', parseSettingValue(btn.dataset.value) === roomSettings[key]);
             btn.disabled = !isHost;
@@ -1081,5 +1094,13 @@ settingsBox.addEventListener('click', (e) => {
     const btn = e.target.closest('button');
     if (!btn || !isHost) return;
     const key = btn.closest('.setting-row').dataset.key;
+    if (btn.dataset.delta) {
+        const next = Math.max(1, Math.min(8, (roomSettings ? roomSettings.rounds : 3) + parseInt(btn.dataset.delta, 10)));
+        socket.emit('set_settings', { rounds: next });
+        return;
+    }
     socket.emit('set_settings', { [key]: parseSettingValue(btn.dataset.value) });
 });
+
+document.getElementById('btn-add-bot').addEventListener('click', () => socket.emit('add_bot'));
+document.getElementById('btn-remove-bot').addEventListener('click', () => socket.emit('remove_bot'));

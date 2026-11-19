@@ -9,6 +9,7 @@ class Level {
     // levelIndex: a number (race levels: level1.json, ...) or a file name such as 'arena1'
     constructor(levelIndex) {
         this.levelIndex = levelIndex;
+        this.id = String(levelIndex);
         this.width = 1600;
         this.height = 720;
         this.spawnX = 100;

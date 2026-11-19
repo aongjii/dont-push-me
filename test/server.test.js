@@ -398,3 +398,34 @@ test('only the host can change the room settings, and everyone sees the result',
 
     host.disconnect(); guest.disconnect();
 });
+
+test('host adds and removes bots; they are listed after the humans; non-hosts cannot', async () => {
+    const host = await connect();
+    host.emit('create_room', { playerName: 'Host' });
+    const created = await once(host, 'room_created');
+    const guest = await connect();
+    guest.emit('join_room', { roomCode: created.roomCode, playerName: 'Guest' });
+    await once(guest, 'room_joined');
+
+    guest.emit('add_bot');
+    await new Promise(r => setTimeout(r, 150));
+
+    const added = until(host, 'room_update', d => d.players.length === 3);
+    host.emit('add_bot');
+    const upd = await added;
+    assert.equal(upd.players[2].bot, true);
+    assert.deepEqual(upd.players.slice(0, 2).map(p => p.bot), [false, false]);
+
+    // a guest joining AFTER the bot still sorts before it
+    const third = await connect();
+    third.emit('join_room', { roomCode: created.roomCode, playerName: 'Third' });
+    const j = await once(third, 'room_joined');
+    assert.equal(j.players[2].name, 'Third');
+    assert.equal(j.players[3].bot, true);
+
+    const removed = until(host, 'room_update', d => d.players.length === 3 && !d.players.some(p => p.bot));
+    host.emit('remove_bot');
+    await removed;
+
+    host.disconnect(); guest.disconnect(); third.disconnect();
+});

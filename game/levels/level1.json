@@ -215,12 +215,12 @@
       "type": "spikes"
     },
     {
-      "x": 2690,
+      "x": 2712,
       "y": 250,
       "width": 40,
       "height": 40,
       "type": "moving_spikes",
-      "rangeX": 40,
+      "rangeX": 14,
       "rangeY": 0
     },
     {
