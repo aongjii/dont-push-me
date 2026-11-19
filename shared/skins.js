@@ -39,7 +39,8 @@
         { id: 'wink',    name: 'ขยิบตา' },
         { id: 'uwu',     name: 'ตาวิบวับ' },
         { id: 'bored',   name: 'เบื่อโลก' },
-        { id: 'cry',     name: 'ร้องไห้' }
+        { id: 'cry',     name: 'ร้องไห้' },
+        { id: 'custom',  name: 'รูปของคุณ' }   // a picture the player uploaded (see shared/faceimg.js)
     ];
 
     const HATS = [

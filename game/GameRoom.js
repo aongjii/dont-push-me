@@ -91,6 +91,14 @@ class GameRoom {
         return player;
     }
 
+    // A custom face picture (already a validated data URL, or null to remove it). Lobby only, like skins.
+    setFaceImage(id, img) {
+        const player = this.players[id];
+        if (!player || this.status !== 'lobby') return false;
+        player.faceImg = img || null;
+        return true;
+    }
+
     // Change look while waiting in the lobby. Returns the skin actually applied.
     setSkin(id, rawSkin) {
         const player = this.players[id];

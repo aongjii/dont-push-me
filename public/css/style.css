@@ -1206,3 +1206,10 @@ body.replaying .hud, body.replaying .touch-controls, body.replaying .power-card,
     #screen-lobby .lobby-card > .lobby-actions { grid-column: 1 / -1; }
     #screen-lobby .setting-row { margin-bottom: 4px; }
 }
+
+.skin-upload { display: flex; margin-bottom: 8px; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; }
+.skin-upload-hint { flex-basis: 100%; font-size: 0.78rem; color: var(--muted); }
+
+.skin-grid-face, .skin-grid-hat, .skin-grid-acc, .skin-grid-acc2, .skin-grid-pat { grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); }
+.skin-grid { max-height: 360px; }
+.skin-upload .btn { margin: 0; display: inline-block; }

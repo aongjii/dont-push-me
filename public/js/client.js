@@ -273,8 +273,21 @@ document.querySelectorAll('[data-leave]').forEach(b => b.addEventListener('click
 
 // --- SOCKET.IO EVENT HANDLERS ---
 
+// custom face pictures from the people in the room (validated by the server)
+let lastLobbyPlayers = [];
+socket.on('face_image', ({ id, img }) => {
+    CustomFaces.set(id, img);
+    setTimeout(() => { if (lastLobbyPlayers.length) updatePlayerLobbyList(lastLobbyPlayers); }, 200);
+});
+SkinUI.onFace((url) => { if (currentRoomCode) socket.emit('set_face_image', { img: url }); });
+function sendMyFace() {
+    CustomFaces.adopt(localPlayerId);
+    if (CustomFaces.hasMine()) socket.emit('set_face_image', { img: CustomFaces.mine() });
+}
+
 socket.on('room_created', ({ roomCode, playerId, token, players }) => {
     localPlayerId = playerId;
+    sendMyFace();
     currentRoomCode = roomCode;
     saveSession(roomCode, playerId, token);
     
@@ -293,6 +306,7 @@ socket.on('room_created', ({ roomCode, playerId, token, players }) => {
 
 socket.on('room_joined', ({ roomCode, playerId, token, players }) => {
     localPlayerId = playerId;
+    sendMyFace();
     currentRoomCode = roomCode;
     saveSession(roomCode, playerId, token);
 
@@ -384,6 +398,7 @@ SkinUI.onChange((skin) => {
 
 // Render the Lobby User list
 function updatePlayerLobbyList(players) {
+    lastLobbyPlayers = players;
     const list = document.getElementById('lobby-player-list');
     list.innerHTML = '';
 
@@ -394,7 +409,7 @@ function updatePlayerLobbyList(players) {
         const dot = document.createElement('canvas');
         dot.className = 'player-portrait';
         dot.width = 88; dot.height = 88;
-        new Renderer(dot).drawPortrait({ face: p.face, hat: p.hat, acc: p.acc, acc2: p.acc2, pat: p.pat }, p.color, 0);
+        new Renderer(dot).drawPortrait({ face: p.face, hat: p.hat, acc: p.acc, acc2: p.acc2, pat: p.pat }, p.color, 0, 'normal', p.id);
 
         const name = document.createElement('span');
         name.className = 'player-name';

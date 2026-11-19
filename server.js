@@ -4,6 +4,7 @@ const socketIo = require('socket.io');
 const path = require('path');
 const crypto = require('crypto');
 const GameRoom = require('./game/GameRoom');
+const FaceImg = require('./shared/faceimg');
 const { sanitizeName, sanitizeRoomCode, createRateLimiter } = require('./game/validation');
 
 // Parse port from arguments, env or fallback to 7488
@@ -66,6 +67,11 @@ function publicPlayers(room) {
     return [...all.filter(p => !p.isBot), ...all.filter(p => p.isBot)].map(p => ({
         id: p.id, name: p.name, color: p.color, face: p.skin.face, hat: p.skin.hat, acc: p.skin.acc, acc2: p.skin.acc2, pat: p.skin.pat, bot: !!p.isBot, team: teams[p.id] || null
     }));
+}
+
+// Everyone already in the room shows their custom face to a newcomer
+function sendFaceImages(socket, room) {
+    Object.values(room.players).forEach(p => { if (p.faceImg) socket.emit('face_image', { id: p.id, img: p.faceImg }); });
 }
 
 function removeFromRoom(roomCode, playerId) {
@@ -176,6 +182,8 @@ io.on('connection', (socket) => {
             players: publicPlayers(room), settings: room.publicSettings()
         });
 
+        sendFaceImages(socket, room);
+
         // Notify others in room
         io.to(code).emit('room_update', { players: publicPlayers(room), settings: room.publicSettings() });
 
@@ -213,6 +221,7 @@ io.on('connection', (socket) => {
         player.prevKeys = 0;
         player.usesCmds = false;
 
+        sendFaceImages(socket, room);
         socket.emit('rejoined', {
             roomCode: code,
             playerId: player.id,
@@ -281,6 +290,18 @@ io.on('connection', (socket) => {
         if (room && room.setSkin(playerId, skin)) {
             io.to(currentRoomCode).emit('room_update', { players: publicPlayers(room), settings: room.publicSettings() });
         }
+    });
+
+    // A custom face picture: checked hard, kept in memory only, shown to the people in this room
+    const allowFace = createRateLimiter(4, 10000);
+    socket.on('set_face_image', (payload) => {
+        if (!currentRoomCode || !allowFace()) return;
+        const room = rooms[currentRoomCode];
+        if (!room) return;
+        const raw = asObject(payload).img;
+        const img = raw === null ? null : FaceImg.validate(raw);
+        if (raw !== null && !img) { socket.emit('error_msg', { message: 'รูปหน้าไม่ถูกต้องหรือใหญ่เกินไป' }); return; }
+        if (room.setFaceImage(playerId, img)) io.to(currentRoomCode).emit('face_image', { id: playerId, img });
     });
 
     // Latency probe for the on-screen ping display

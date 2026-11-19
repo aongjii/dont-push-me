@@ -939,7 +939,8 @@ class Renderer {
             frozen,
             rot: rolling ? t * 20 * (player.facing || 1) : (tumbling ? t * 9 * Math.sign(player.vx) : 0),
             flapping: player.power === 'wings' && !player.isGrounded,
-            stunned: player.stunMs > 0
+            stunned: player.stunMs > 0,
+            faceKey: player.id
         });
 
         if (blinking) ctx.restore();
@@ -1205,8 +1206,12 @@ class Renderer {
         const fx = f * 3; // face looks toward travel direction
 
         if (face === 'abe' && ABE_FACE.ready) {
-            this.drawPastedFace(o, f, fx);
+            this.drawPastedFace(o, f, fx, ABE_FACE.img);
             return;
+        }
+        if (face === 'custom') {
+            const custom = CustomFaces.get(o.faceKey || 'me');
+            if (custom) { this.drawPastedFace(o, f, fx, custom); return; }
         }
 
         if (o.mood === 'dead') {
@@ -1284,7 +1289,7 @@ class Renderer {
 
     // A flat photo-style sticker over the face, clipped to an oval. Only the things that must stay
     // readable are drawn on top of it: an open mouth while inhaling, and X eyes when dead.
-    drawPastedFace(o, f, fx) {
+    drawPastedFace(o, f, fx, image) {
         const ctx = this.ctx;
         const cx = fx * 0.6, cy = -2, rx = 14.6, ry = 13.8; // a bit above centre so overalls / scarf still show below
 
@@ -1292,7 +1297,7 @@ class Renderer {
         ctx.beginPath();
         ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
         ctx.clip();
-        ctx.drawImage(ABE_FACE.img, cx - rx, cy - ry, rx * 2, ry * 2);
+        ctx.drawImage(image, cx - rx, cy - ry, rx * 2, ry * 2);
         ctx.restore();
 
         ctx.strokeStyle = 'rgba(43, 33, 64, 0.45)';
@@ -2114,14 +2119,14 @@ class Renderer {
     }
 
     // Draw a character's bust into this renderer's own canvas (dress-up preview, lobby list)
-    drawPortrait(skin, color, t = 0, mood = 'normal') {
+    drawPortrait(skin, color, t = 0, mood = 'normal', faceKey = 'me') {
         const ctx = this.ctx;
         const W = this.canvas.width, H = this.canvas.height;
         ctx.clearRect(0, 0, W, H);
         const s = H / 74;
         this.drawCharacter({
             x: W / 2 - (skin && (skin.acc === 'cape' || skin.acc2 === 'cape') ? 5 * s : 0), y: H - 5 * s, color, facing: 1, vx: 0, vy: 0,
-            grounded: true, t, mood, scale: s, skin
+            grounded: true, t, mood, scale: s, skin, faceKey
         });
     }
 

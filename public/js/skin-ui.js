@@ -16,6 +16,8 @@ const SkinUI = (() => {
     let tab = 'color';
     let taken = [];            // colours other players in the room already use
     let onChange = () => {};
+    let onFace = () => {};
+    let uploadEl = null;
     let previewRenderer = null;
     let previewTimer = null;
 
@@ -98,6 +100,54 @@ const SkinUI = (() => {
             }
             grid.appendChild(b);
         });
+
+        if (uploadEl) { uploadEl.remove(); uploadEl = null; }
+        if (tab === 'face') { uploadEl = uploadRow(); grid.before(uploadEl); }
+    }
+
+    // "Use your own picture": a photo is shrunk to a tiny circle-cropped face in the browser
+    function uploadRow() {
+        const row = document.createElement('div');
+        row.className = 'skin-upload';
+        const input = document.createElement('input');
+        input.type = 'file'; input.accept = 'image/*'; input.style.display = 'none';
+        const pick = document.createElement('button');
+        pick.className = 'btn btn-secondary btn-small';
+        pick.textContent = CustomFaces.hasMine() ? 'เปลี่ยนรูปหน้า' : 'อัปโหลดรูปหน้าของคุณ';
+        pick.addEventListener('click', () => input.click());
+        input.addEventListener('change', async () => {
+            const file = input.files && input.files[0];
+            input.value = '';
+            if (!file) return;
+            try {
+                const url = await CustomFaces.shrink(file);
+                CustomFaces.setMine(url);
+                onFace(url);
+                noteEl.textContent = 'ตั้งรูปหน้าแล้ว เพื่อนในห้องจะเห็นรูปนี้ (ย่อเหลือ 64 พิกเซล ไม่เก็บบนเซิร์ฟเวอร์)';
+                choose('face', 'custom');
+                refresh();
+            } catch (err) {
+                noteEl.textContent = err.message || 'ใช้รูปนี้ไม่ได้';
+            }
+        });
+        row.append(pick, input);
+        if (CustomFaces.hasMine()) {
+            const del = document.createElement('button');
+            del.className = 'btn btn-secondary btn-small';
+            del.textContent = 'ลบรูป';
+            del.addEventListener('click', () => {
+                CustomFaces.setMine(null);
+                onFace(null);
+                if (skin.face === 'custom') choose('face', 'classic');
+                refresh();
+            });
+            row.appendChild(del);
+        }
+        const hint = document.createElement('span');
+        hint.className = 'skin-upload-hint';
+        hint.textContent = 'ใช้ได้กับคนในห้องเดียวกันเท่านั้น กรุณาใช้รูปที่เหมาะสม';
+        row.appendChild(hint);
+        return row;
     }
 
     function summary() {
@@ -179,6 +229,7 @@ const SkinUI = (() => {
         isOpen: () => overlay.classList.contains('active'),
         close,
         onChange: (fn) => { onChange = fn; },
+        onFace: (fn) => { onFace = fn; },
         // The server may change our colour (someone else has it): follow its decision
         setFromServer(mine, others) {
             taken = others || [];

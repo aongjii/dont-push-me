@@ -465,3 +465,22 @@ test('practice room starts the tutorial level right away with hints and a bot', 
     assert.ok(data.hints.every(h => typeof h.text === 'string' && typeof h.x === 'number'));
     a.close();
 });
+
+test('a custom face picture is relayed to the room, and a bad one is refused', async () => {
+    const jpeg = 'data:image/jpeg;base64,' + Buffer.concat([Buffer.from([0xFF, 0xD8, 0xFF, 0xE0]), Buffer.alloc(600, 7)]).toString('base64');
+    const host = await connect();
+    host.emit('create_room', { playerName: 'Host' });
+    const created = await once(host, 'room_created');
+    const guest = await connect();
+    const got = until(guest, 'face_image', d => d.id === created.playerId, 3000);
+    guest.emit('join_room', { roomCode: created.roomCode, playerName: 'Guest' });
+    await once(guest, 'room_joined');
+    host.emit('set_face_image', { img: jpeg });
+    const msg = await got;
+    assert.equal(msg.img, jpeg);
+
+    const err = once(host, 'error_msg');
+    host.emit('set_face_image', { img: 'data:image/svg+xml;base64,PHN2Zz4=' });
+    assert.match((await err).message, /รูป/);
+    host.close(); guest.close();
+});
