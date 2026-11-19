@@ -1145,8 +1145,9 @@ class Renderer {
         }
 
         // a power's hat (fire/ice/spin) replaces the cosmetic one while it lasts
-        if (o.power && o.power !== 'wings') this.drawPowerHat(o, R);
+        if (o.power && !['wings', 'shield', 'dash'].includes(o.power)) this.drawPowerHat(o, R);
         else this.drawHat(o, R, f);
+        if (o.power === 'shield' || o.power === 'dash') this.drawPassivePower(o, R, f);
 
         ctx.restore();
 
@@ -2118,9 +2119,32 @@ class Renderer {
         });
     }
 
+    // Shield bubble / dash speed lines (powers with no button)
+    drawPassivePower(o, R, f) {
+        const ctx = this.ctx;
+        if (o.powerMs < 2500 && Math.floor(o.t * 8) % 2 === 0) return; // flicker when running out
+        ctx.save();
+        if (o.power === 'shield') {
+            const pulse = 1 + Math.sin(o.t * 5) * 0.03;
+            ctx.fillStyle = 'rgba(120,200,255,0.22)';
+            ctx.strokeStyle = 'rgba(120,200,255,0.9)';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath(); ctx.ellipse(0, 0, (R + 8) * pulse, (R + 8) * pulse, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(0, 0, (R + 8) * pulse - 4, Math.PI * 1.15, Math.PI * 1.45); ctx.stroke();
+        } else {
+            ctx.strokeStyle = 'rgba(255,210,74,0.9)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+            [-8, 0, 8].forEach((dy, i) => {
+                const len = 14 + Math.sin(o.t * 20 + i) * 4;
+                ctx.beginPath(); ctx.moveTo(-f * (R + 4), dy); ctx.lineTo(-f * (R + 4 + len), dy); ctx.stroke();
+            });
+        }
+        ctx.restore();
+    }
+
     drawPowerHat(o, R) {
         const ctx = this.ctx;
-        if (!o.power || o.power === 'wings') return;
+        if (!o.power || o.power === 'wings' || o.power === 'shield' || o.power === 'dash') return;
         const blink = o.powerMs < 2500 && Math.floor(o.t * 8) % 2 === 0; // flicker when running out
         if (blink) return;
 

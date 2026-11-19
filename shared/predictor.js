@@ -112,6 +112,7 @@
                 spin: me.spinMs > 0,
                 mouth: !!me.mouth,
                 wings: me.power === 'wings',
+                dash: me.power === 'dash',
                 spat: me.spitBodyMs > 0,
                 ballistic: me.spitBodyMs > ME_SPIT_BALLISTIC_FLOOR
             };

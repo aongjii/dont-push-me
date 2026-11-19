@@ -16,7 +16,7 @@ const TUNING = {
     catchUpPushFactor: 1.2
 };
 
-const { ABILITY } = require('./abilities');
+const { ABILITY, PASSIVE_POWERS } = require('./abilities');
 const Movement = require('../shared/movement');
 
 class Player {
@@ -91,7 +91,7 @@ class Player {
         this.swallowTaps = 0;
         this.inhaleImmunity = 0;
         this.beingInhaledMs = 0;
-        this.power = null;         // 'fire' | 'ice' | 'spin' | 'wings'
+        this.power = null;         // 'fire' | 'ice' | 'spin' | 'wings' | 'shield' | 'dash'
         this.powerMs = 0;
         this.spinMs = 0;
         this.spinHit = new Set();
@@ -255,7 +255,7 @@ class Player {
             this.performPush(gameRoom);
         }
         // Power key (V): fire / ice / spin. Wings are passive (jump in mid-air).
-        if (this.input.power && this.power && this.power !== 'wings' && this.powerCd <= 0) {
+        if (this.input.power && this.power && !PASSIVE_POWERS.includes(this.power) && this.powerCd <= 0) {
             this.usePower(gameRoom);
         }
         this.applySpinHits(gameRoom);
@@ -307,6 +307,7 @@ class Player {
             spin: this.spinMs > 0,
             mouth: !!this.mouth,
             wings: this.power === 'wings',
+            dash: this.power === 'dash',
             spat: this.spitBodyMs > 0,
             // just spat out: straight-line flight for the first moments, then you can steer
             ballistic: this.spitBodyMs > ABILITY.spitBodyMs - ABILITY.spitBallisticMs

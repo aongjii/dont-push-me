@@ -36,7 +36,7 @@ test('inhaling a star grants a power; the star comes back later', () => {
     room.level.items = [{ id: 0, type: 'star', x: a.x + 80, y: a.y + 20, homeX: a.x + 80, homeY: a.y + 20, alive: true, respawnMs: 0 }];
     a.input.inhale = true;
     run(room, 1000);
-    assert.ok(['fire', 'ice', 'spin', 'wings'].includes(a.power), `power: ${a.power}`);
+    assert.ok(['fire', 'ice', 'spin', 'wings', 'shield', 'dash'].includes(a.power), `power: ${a.power}`);
     assert.equal(room.level.items[0].alive, false);
 
     a.input.inhale = false;
@@ -412,4 +412,34 @@ test('even a fully charged spit over a pit leaves a (short) window to survive', 
     assert.equal(attempt(2900, 100), true, 'quick reaction after a fully charged spit saves you');
     assert.equal(attempt(2900, 1500), false, 'doing it far too late does not');
     assert.equal(attempt(1500, 300), true);
+});
+
+test('a shield soaks up one hazard hit, then pops', () => {
+    const { room, io, ps: [a] } = setup(1);
+    a.gainPower('shield', room);
+    room.level.hazards.push({ x: a.x - 5, y: a.y - 5, width: 60, height: 60, type: 'spikes', startX: 0, startY: 0, rangeX: 0, rangeY: 0, freq: 2, time: 0 });
+    run(room, 100);
+    assert.equal(a.isDead, false, 'survived the first hit');
+    assert.equal(a.power, null);
+    assert.equal(effects(io, 'shield_break').length, 1);
+    a.invulnMs = 0;
+    run(room, 100);
+    assert.equal(a.isDead, true, 'no shield left: spikes kill');
+});
+
+test('dash makes you run clearly faster, and has no button to press', () => {
+    const dist = (power) => {
+        const { room, ps: [a] } = setup(1);
+        if (power) a.gainPower(power, room);
+        a.input.right = true;
+        const x0 = a.x;
+        run(room, 600);
+        return a.x - x0;
+    };
+    assert.ok(dist('dash') > dist(null) * 1.25);
+    const { room, ps: [a] } = setup(1);
+    a.gainPower('dash', room);
+    a.input.power = true;
+    run(room, 100);
+    assert.ok(a.power === 'dash' && a.powerCd <= 0, 'using the power key does nothing for passive powers');
 });

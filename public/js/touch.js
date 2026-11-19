@@ -107,10 +107,11 @@ const TouchUI = (() => {
         enabled: true,
         // the power button shows what you hold and only works when you hold something
         onPower(power) {
-            const usable = power && power !== 'wings';
+            const passive = power === 'wings' || power === 'shield' || power === 'dash';
+            const usable = power && !passive;
             powerBtn.classList.toggle('ready', !!usable);
-            powerBtn.classList.toggle('passive', power === 'wings');
-            const names = { fire: 'fire', ice: 'ice', spin: 'spin', wings: 'wings' };
+            powerBtn.classList.toggle('passive', passive);
+            const names = { fire: 'fire', ice: 'ice', spin: 'spin', wings: 'wings', shield: 'shield', dash: 'dash' };
             Icons.set(powerBtn, names[power] || 'star', 30);
         }
     };

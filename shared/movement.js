@@ -25,6 +25,7 @@
         spinBoost: 1.25,
         inhaleSlow: 0.5,
         mouthSlow: 0.8,
+        dashBoost: 1.45,       // dash power: run much faster
         bounceForce: -780,     // bounce pad: launches you ~250px up
         iceDrag: 1.8,          // on ice you speed up and slow down very slowly
     };
@@ -101,7 +102,7 @@
 
         // Slower while sucking things in or carrying something; faster while spinning
         const sucking = keys.inhale && !mods.mouth;
-        const speedMul = (mods.spin ? MOVE.spinBoost : 1) *
+        const speedMul = (mods.spin ? MOVE.spinBoost : 1) * (mods.dash ? MOVE.dashBoost : 1) *
             (sucking ? MOVE.inhaleSlow : (mods.mouth ? MOVE.mouthSlow : 1));
 
         const under = p.isGrounded ? groundTile(p, world) : null;

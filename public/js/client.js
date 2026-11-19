@@ -579,9 +579,11 @@ const POWER_INFO = {
     fire:  { icon: 'fire',  name: 'ไฟ',      key: 'V',     how: 'พ่นลูกไฟใส่คนข้างหน้า' },
     ice:   { icon: 'ice',   name: 'น้ำแข็ง', key: 'V',     how: 'แช่แข็งคนที่อยู่ข้างหน้า' },
     spin:  { icon: 'spin',  name: 'ปั่น',    key: 'V',     how: 'หมุนติ้วชนทุกคนรอบตัวให้กระเด็น' },
+    shield: { icon: 'shield', name: 'โล่', key: 'auto', how: 'กันหนาม ลาวา ธนู ได้ 1 ครั้ง (ไม่ต้องกดปุ่ม)' },
+    dash:  { icon: 'dash',  name: 'วิ่งเร็ว', key: 'auto', how: 'วิ่งเร็วขึ้นมากชั่วคราว (ไม่ต้องกดปุ่ม)' },
     wings: { icon: 'wings', name: 'ปีก',     key: 'Space', how: 'กดกระโดดซ้ำกลางอากาศเพื่อกระพือ • กดค้างเพื่อร่อน' }
 };
-const POWER_MS = { fire: 15000, ice: 15000, spin: 15000, wings: 10000 };
+const POWER_MS = { fire: 15000, ice: 15000, spin: 15000, wings: 10000, shield: 20000, dash: 10000 };
 
 // Whether we've used the current power yet (the card pulses until we do)
 let powerUsed = false;
@@ -599,7 +601,7 @@ function updatePowerCard(localP) {
     Icons.set(document.getElementById('power-icon'), info.icon, 34);
     document.getElementById('power-name').textContent = `พลัง${info.name}`;
     document.getElementById('power-how').textContent = info.how;
-    document.getElementById('power-key').textContent = info.key === 'V' ? KeysUI.keyName('power') : KeysUI.keyName('jump');
+    document.getElementById('power-key').textContent = info.key === 'V' ? KeysUI.keyName('power') : (info.key === 'auto' ? '•' : KeysUI.keyName('jump'));
     document.getElementById('power-bar').style.transform =
         `scaleX(${Math.max(0, Math.min(1, localP.powerMs / POWER_MS[localP.power]))})`;
     if (localP.power === 'wings') {

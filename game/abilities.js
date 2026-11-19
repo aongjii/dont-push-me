@@ -3,7 +3,9 @@
 
 const Movement = require('../shared/movement');
 
-const POWERS = ['fire', 'ice', 'spin', 'wings'];
+const POWERS = ['fire', 'ice', 'spin', 'wings', 'shield', 'dash'];
+// Powers that work by themselves: there is no button to press
+const PASSIVE_POWERS = ['wings', 'shield', 'dash'];
 
 const ABILITY = {
     inhaleRange: 150,
@@ -23,7 +25,7 @@ const ABILITY = {
     spitKnock: 700,
     spitChargeBoost: 0.9,  // holding the full 3s makes the spit up to 90% stronger (speed and knock-back)
 
-    powerMs: { fire: 15000, ice: 15000, spin: 15000, wings: 10000 },
+    powerMs: { fire: 15000, ice: 15000, spin: 15000, wings: 10000, shield: 20000, dash: 10000 },
     powerCooldown: { fire: 500, ice: 1600, spin: 1800 },
     fireSpeed: 520,
     iceRange: 150,
@@ -269,4 +271,4 @@ function install(Player) {
     });
 }
 
-module.exports = { install, POWERS, ABILITY };
+module.exports = { install, POWERS, PASSIVE_POWERS, ABILITY };

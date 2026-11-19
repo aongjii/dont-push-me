@@ -90,7 +90,15 @@ class GameLoop {
 
             // Hazard collision checks (someone inside a mouth is carried, not exposed)
             if (!player.swallowedBy && player.invulnMs <= 0 && this.room.level.checkHazards(player)) {
-                player.die();
+                if (player.power === 'shield') {
+                    // the shield soaks up one hit, then pops
+                    player.power = null;
+                    player.powerMs = 0;
+                    player.invulnMs = 1500;
+                    this.room.broadcastEffect('shield_break', { id: player.id, name: player.name });
+                } else {
+                    player.die();
+                }
             }
             if (!player.isDead && !player.isFinished) this.room.updateCheckpoints(player);
 
