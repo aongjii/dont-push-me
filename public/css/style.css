@@ -1174,3 +1174,10 @@ body.touch .tutorial-hint { bottom: 118px; max-width: 54vw; }
     #stats-overlay .help-card { max-width: 860px; }
     #stats-list, #stats-unlocks { grid-template-columns: 1fr 1fr; }
 }
+
+/* highlights replay */
+.replay-bar { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 200; display: none; align-items: center; gap: 10px; background: #2b2140; color: #fff; border-radius: 16px; padding: 8px 12px; font-weight: 600; box-shadow: 0 6px 0 rgba(43,33,64,0.2); }
+.replay-bar .btn { padding: 8px 14px; }
+.replay-bar #replay-label { min-width: 220px; text-align: center; }
+body.replaying .hud, body.replaying .touch-controls, body.replaying .power-card, body.replaying .coach, body.replaying .tutorial-hint, body.replaying .abilities, body.replaying .hud-emotes, body.replaying .hud-spectate { display: none !important; }
+#btn-replay { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }

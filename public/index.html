@@ -152,6 +152,12 @@
 
         <div class="hud-spectate" id="hud-spectate" style="display:none"></div>
         <div class="power-toast" id="power-toast" style="display:none"></div>
+        <div class="replay-bar" id="replay-bar" style="display:none">
+            <button id="btn-replay-prev" class="btn btn-secondary" aria-label="คลิปก่อนหน้า"><i data-icon="arrow_left"></i></button>
+            <span id="replay-label">รีเพลย์</span>
+            <button id="btn-replay-next" class="btn btn-secondary" aria-label="คลิปถัดไป"><i data-icon="arrow_right"></i></button>
+            <button id="btn-replay-close" class="btn btn-primary">กลับ</button>
+        </div>
         <div class="tutorial-hint" id="tutorial-hint" style="display:none"></div>
         <div class="coach" id="coach" style="display:none">
             <span id="coach-text"></span>
@@ -233,6 +239,7 @@
             </div>
 
             <div class="end-actions">
+                <button id="btn-replay" class="btn btn-secondary" style="display: none;"><i data-icon="eyes"></i><span>ดูช่วงเด็ด</span></button>
                 <button id="btn-next-round" class="btn btn-primary" style="display: none;">ด่านต่อไป</button>
                 <p id="next-round-tip" class="host-tip">รอหัวหน้าห้องกดไปด่านถัดไป...</p>
                 <button class="btn btn-leave" data-leave>ออกจากห้อง</button>
@@ -382,6 +389,7 @@
     <script src="js/audio.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/renderer.js"></script>
+    <script src="js/replay.js"></script>
     <script src="js/stats-ui.js"></script>
     <script src="js/skin-ui.js"></script>
     <script src="js/keys-ui.js"></script>

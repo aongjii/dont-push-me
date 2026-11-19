@@ -430,6 +430,7 @@ function updatePlayerLobbyList(players) {
 
 // Loaded Level info
 socket.on('round_load', (data) => {
+    Replay.clear();
     levelData = data;
     predictor.zones = data.zones || [];
     renderer.setTheme(data.theme);
@@ -792,6 +793,7 @@ socket.on('game_state', (state) => {
     // Keep ~1 second of history
     while (snapshots.length > 40) snapshots.shift();
 
+    Replay.record(state);
     detectMotionEffects(state);
     detectObstacleEffects(state);
     updateTutorialHint(state);
@@ -836,7 +838,7 @@ function renderFrame(now) {
     const dt = Math.min(0.1, elapsed / 1000);
     lastFrame = now;
 
-    if (levelData && UI.screens.game.classList.contains('active')) {
+    if (levelData && UI.screens.game.classList.contains('active') && !Replay.active) {
         pumpCommands(now, elapsed);
         const state = interpolatedState(now - INTERP_DELAY_MS);
         if (state) renderer.draw(state, localPlayerId, levelData, dt, updateSpectate(state));
@@ -900,6 +902,10 @@ socket.on('game_effect', (effect) => {
         Sfx.play('death');
         renderer.triggerShake(200, 10);
     }
+
+    if (effect.type === 'stomp') Replay.mark(`${effect.byName} เหยียบหัว ${effect.victimName}`, effect.by);
+    if (effect.type === 'player_died') Replay.mark(effect.killerName ? `${effect.killerName} ส่ง ${effect.name} ลงเหว` : `${effect.name} ร่วง`, effect.id);
+    if (effect.type === 'player_finished' && Replay.count() === 0) Replay.mark(`${effect.name} เข้าเส้นชัย`, effect.id);
 
     if (effect.type === 'stomp') {
         const victim = gameState.players.find(p => p.id === effect.victim);
