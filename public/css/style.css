@@ -1003,6 +1003,7 @@ body.touch .touch-controls {
 #tc-power  { right: 192px; bottom: 84px; opacity: 0.45; }
 #tc-power.ready { opacity: 1; background: rgba(255, 201, 60, 0.85); }
 #tc-power.passive { opacity: 0.85; }
+#tc-interact { right: 124px; bottom: 152px; background: rgba(120, 220, 140, 0.85); }
 
 .tc-small { width: 46px; height: 46px; }
 #tc-emote { left: max(16px, env(safe-area-inset-left)); bottom: 112px; }
@@ -1039,6 +1040,7 @@ body.touch #btn-fullscreen { display: flex; }
     body.touch #tc-push, body.touch #tc-pull { right: 108px; }
     body.touch #tc-inhale, body.touch #tc-power { right: 168px; }
     body.touch #tc-pull, body.touch #tc-power { bottom: 76px; }
+    body.touch #tc-interact { right: 108px; bottom: 134px; }
     body.touch .tc-small { width: 40px; height: 40px; }
     body.touch #tc-emote { bottom: 96px; }
     body.touch .tc-emotes { bottom: 96px; left: 62px; }
@@ -1133,3 +1135,13 @@ body.touch .tutorial-hint { bottom: 150px; font-size: 13px; }
 .skin-option.locked canvas { filter: grayscale(1) brightness(1.1); }
 .skin-option.locked .lock-badge { position: absolute; top: 4px; right: 4px; }
 .skin-option.locked span { font-size: 0.7rem; }
+
+/* phones: the canvas fills the whole screen (no 16:9 side bars, no blank strip under it) */
+body.touch #screen-game { padding: 0; justify-content: flex-start; }
+body.touch #screen-game .canvas-container { width: 100vw; height: 100vh; height: 100dvh; margin: 0; padding: 0; border: none; border-radius: 0; outline: none; }
+body.touch #gameCanvas { width: 100vw; height: 100vh; height: 100dvh; max-width: none; max-height: none; display: block; }
+body.touch #power-key { display: none; }
+body.touch .hud-spectate { pointer-events: auto; }
+body.touch .coach { top: 14%; font-size: 0.85rem; padding: 5px 12px 7px; min-width: 0; max-width: 78vw; border-width: 2px; }
+body.touch .coach-bar { margin-top: 4px; height: 6px; }
+body.touch .tutorial-hint { bottom: 118px; max-width: 54vw; }

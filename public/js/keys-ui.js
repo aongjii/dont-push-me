@@ -26,6 +26,16 @@ const KeysUI = (() => {
         return Keybinds.label(bindings[action][slot]);
     }
 
+    // What to tell the player to press: the key on a keyboard, or the on-screen button on a phone
+    const TOUCH_NAMES = {
+        left: 'ปุ่มซ้าย', right: 'ปุ่มขวา', jump: 'ปุ่มกระโดด', push: 'ปุ่มผลัก', pull: 'ปุ่มดึง',
+        inhale: 'ปุ่มอม', power: 'ปุ่มพลัง', interact: 'ปุ่มสวิตช์'
+    };
+    const isTouchUI = () => document.body.classList.contains('touch');
+    function hint(action) {
+        return isTouchUI() && TOUCH_NAMES[action] ? TOUCH_NAMES[action] : keyName(action);
+    }
+
     // every <kbd data-act="push"> / <span data-act="..."> in the page shows the live binding
     function refreshLabels() {
         document.querySelectorAll('[data-act]').forEach(el => {
@@ -128,6 +138,7 @@ const KeysUI = (() => {
     return {
         actionOf: (code) => Keybinds.actionOf(bindings, code),
         keyName,
+        hint,
         isCapturing: () => !!capture,
         isOpen: () => overlay.classList.contains('active'),
         close,

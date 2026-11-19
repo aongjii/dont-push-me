@@ -495,6 +495,8 @@ function spectateCandidates(state) {
     return state.players.filter(p => p.id !== localPlayerId && !p.isDead && !p.isFinished);
 }
 
+spectateBanner.addEventListener('pointerdown', (e) => { e.preventDefault(); cycleSpectate(1); });
+
 function cycleSpectate(dir) {
     if (!gameState) return;
     const list = spectateCandidates(gameState);
@@ -520,7 +522,7 @@ function updateSpectate(state) {
         spectateBanner.style.display = 'none';
         return localPlayerId;
     }
-    spectateBanner.replaceChildren(Icons.svg('eyes', 22), document.createTextNode(`กำลังดู ${target.name}  (A / D เปลี่ยนคน)`));
+    spectateBanner.replaceChildren(Icons.svg('eyes', 22), document.createTextNode(`กำลังดู ${target.name}  ${document.body.classList.contains('touch') ? '(แตะที่นี่เพื่อเปลี่ยนคน)' : '(A / D เปลี่ยนคน)'}`));
     spectateBanner.style.display = 'block';
     return target.id;
 }
@@ -595,6 +597,18 @@ const POWER_MS = { fire: 15000, ice: 15000, spin: 15000, wings: 10000, shield: 2
 let powerUsed = false;
 
 // Bottom-centre card that always tells you what you hold and how to use it
+// On a phone a lever button appears while you stand next to a switch
+function updateLeverButton(localP) {
+    const btn = document.getElementById('tc-interact');
+    if (!btn || !document.body.classList.contains('touch')) return;
+    let near = false;
+    if (localP && !localP.isDead && !localP.isFinished && levelData) {
+        near = (levelData.switches || []).some(sw =>
+            Math.hypot(sw.x + sw.width / 2 - (localP.x + localP.width / 2), sw.y + sw.height / 2 - (localP.y + localP.height / 2)) < 70);
+    }
+    btn.style.display = near ? 'flex' : 'none';
+}
+
 function updatePowerCard(localP) {
     const card = document.getElementById('power-card');
     if (!localP.power || localP.isDead || localP.isFinished) {
@@ -607,7 +621,7 @@ function updatePowerCard(localP) {
     Icons.set(document.getElementById('power-icon'), info.icon, 34);
     document.getElementById('power-name').textContent = `พลัง${info.name}`;
     document.getElementById('power-how').textContent = info.how;
-    document.getElementById('power-key').textContent = info.key === 'V' ? KeysUI.keyName('power') : (info.key === 'auto' ? '•' : KeysUI.keyName('jump'));
+    document.getElementById('power-key').textContent = info.key === 'V' ? KeysUI.hint('power') : (info.key === 'auto' ? '•' : KeysUI.hint('jump'));
     document.getElementById('power-bar').style.transform =
         `scaleX(${Math.max(0, Math.min(1, localP.powerMs / POWER_MS[localP.power]))})`;
     if (localP.power === 'wings') {
@@ -646,13 +660,19 @@ function updateCoach(p) {
         document.getElementById('coach-fill').style.width = `${Math.min(100, (p.swallowTaps / p.tapsNeeded) * 100)}%`;
     } else if (p.spitBodyMs > 0 && p.recover > 0 && !p.isGrounded && !p.isDead) {
         coach.style.display = 'block';
-        setCoachText('wind', `ถูกพ่น! กด ${KeysUI.keyName('jump')} เพื่อกระโดดเบรก!`);
+        setCoachText('wind', `ถูกพ่น! กด${KeysUI.hint('jump')}เพื่อเบรก!`);
         bar.style.display = 'none';
     } else if (p.mouth && !p.isDead) {
         coach.style.display = 'block';
-        setCoachText('inhale', `อมไว้นานแค่ไหนก็ได้ ยิ่งนานยิ่งพ่นแรง — กด ${KeysUI.keyName('inhale')} เพื่อพ่น`);
-        bar.style.display = 'block';
-        document.getElementById('coach-fill').style.width = `${Math.round(p.charge * 100)}%`;
+        if (p.mouth === 'orb') {
+            // an apple/orb always flies the same: no charging, so no bar
+            setCoachText('inhale', `กด${KeysUI.hint('inhale')}เพื่อพ่นออกไป`);
+            bar.style.display = 'none';
+        } else {
+            setCoachText('inhale', `ยิ่งอมนาน ยิ่งพ่นแรง • กด${KeysUI.hint('inhale')}เพื่อพ่น`);
+            bar.style.display = 'block';
+            document.getElementById('coach-fill').style.width = `${Math.round(p.charge * 100)}%`;
+        }
     } else if (p.isDead && p.respawnMs > 0) {
         coach.style.display = 'block';
         setCoachText('heart', `ฟื้นอีก ${Math.ceil(p.respawnMs / 1000)} วินาที (เหลือ ${p.lives} ชีวิต)`);
@@ -673,7 +693,7 @@ function showPowerToast(info) {
     big.appendChild(document.createTextNode(`ได้พลัง${info.name}!`));
     const how = document.createElement('div');
     how.className = 'toast-how';
-    how.textContent = info.key === 'V' ? `กดปุ่ม ${KeysUI.keyName('power')} เพื่อ${info.how}` : info.how;
+    how.textContent = info.key === 'V' ? `กด${KeysUI.hint('power')}เพื่อ${info.how}` : info.how;
     el.appendChild(big);
     el.appendChild(how);
     el.style.display = 'block';
@@ -698,7 +718,7 @@ function updateTutorialHint(state) {
     if (!me) return;
     let cur = null;
     for (const h of hints) if (h.x <= me.x) cur = h;
-    const text = cur ? cur.text.replace(/\{(\w+)\}/g, (_, a) => KeysUI.keyName(a)) : '';
+    const text = cur ? cur.text.replace(/\{(\w+)\}/g, (_, a) => KeysUI.hint(a)) : '';
     if (text === tutorialHintText) return;
     tutorialHintText = text;
     el.textContent = text;
@@ -725,7 +745,7 @@ function detectObstacleEffects(state) {
             if (prev.active && !pl.active) {
                 Sfx.play('crumble', v);
                 renderer.addParticles(pl.x + pl.width / 2, pl.y + 10, '#b79b78', 10, { spread: Math.min(200, pl.width), up: 20, size: 3 });
-            } else if (pl.active && prev.weight <= 700 && pl.weightMs > 700) {
+            } else if (pl.active && prev.weight <= 450 && pl.weightMs > 450) {
                 Sfx.play('rumble', v);
             }
         }
@@ -794,6 +814,7 @@ socket.on('game_state', (state) => {
         document.getElementById('ability-inhale').classList.toggle('active', localP.inhaling || !!localP.mouth);
 
         updatePowerCard(localP);
+        updateLeverButton(localP);
         updateCoach(localP);
         renderLives(localP.lives);
     }
@@ -1184,7 +1205,7 @@ document.getElementById('btn-remove-bot').addEventListener('click', () => socket
 
 // the in-world "press E / hold C" prompts follow the player's own keys
 function syncPromptKeys() {
-    renderer.keyLabels = { interact: KeysUI.keyName('interact'), inhale: KeysUI.keyName('inhale') };
+    renderer.keyLabels = { interact: KeysUI.hint('interact'), inhale: KeysUI.hint('inhale') };
 }
 KeysUI.onChange(syncPromptKeys);
 syncPromptKeys();

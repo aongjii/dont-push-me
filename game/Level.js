@@ -3,7 +3,7 @@ const path = require('path');
 
 // A switched platform that has been flipped away from its normal state returns by itself after
 // this long, so nobody can be locked out of the rest of a (very long) level for good.
-const CRUMBLE_AFTER_MS = 1800;     // how long you can stand on it before it gives way
+const CRUMBLE_AFTER_MS = 1200;     // how long you can stand on it before it gives way
 const CRUMBLE_RESTORE_MS = 4000;    // ...and until it is back
 const SWITCH_RESTORE_MS = 7000;
 

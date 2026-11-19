@@ -65,6 +65,10 @@ const TouchUI = (() => {
     }
 
     bindHold('tc-jump', 'jump');
+    // the lever button only shows up next to a switch (see client.js); one press = one flip
+    const leverBtn = document.getElementById('tc-interact');
+    leverBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); inputState.interact = true; leverBtn.classList.add('down'); });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => leverBtn.addEventListener(t, () => leverBtn.classList.remove('down')));
     bindHold('tc-push', 'push');
     bindHold('tc-pull', 'pull');
     bindHold('tc-inhale', 'inhale');
@@ -99,6 +103,22 @@ const TouchUI = (() => {
             } catch (err) {}
         });
     }
+
+    // The game fills the whole screen: the canvas takes the phone's own aspect ratio instead of 16:9 bars
+    function fitCanvas() {
+        const cv = document.getElementById('gameCanvas');
+        const aspect = window.innerWidth / Math.max(1, window.innerHeight);
+        if (aspect < 1) return; // portrait shows the "turn your phone" notice instead
+        const w = Math.round(Math.min(1800, Math.max(1100, 720 * aspect)));
+        if (cv.width !== w) {
+            cv.width = w;
+            cv.height = 720;
+            if (typeof renderer !== 'undefined') { renderer.virtualWidth = w; renderer.virtualHeight = 720; }
+        }
+    }
+    fitCanvas();
+    window.addEventListener('resize', fitCanvas);
+    window.addEventListener('orientationchange', () => setTimeout(fitCanvas, 200));
 
     // never leave a button stuck if the page loses focus
     window.addEventListener('blur', () => { padRelease(); });
