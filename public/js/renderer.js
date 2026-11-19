@@ -171,7 +171,7 @@ class Renderer {
             this.drawSurface(p);
             if (shake) this.ctx.restore();
         });
-        (levelData.shooters || []).forEach(sh => this.drawShooter(sh));
+        (levelData.shooters || []).forEach((sh, i) => this.drawShooter(sh, (gameState.shooterTimers || [])[i]));
         (levelData.switches || []).forEach((sw, idx) => {
             this.drawSwitch(sw, this.switchActive(gameState, idx));
             if (localPlayer && !localPlayer.isDead && !localPlayer.isFinished) {
@@ -329,9 +329,12 @@ class Renderer {
     }
 
     // An arrow / rock launcher (a little cannon box where the shots appear)
-    drawShooter(sh) {
+    drawShooter(sh, timer) {
         const ctx = this.ctx;
         ctx.save();
+        // about to fire: the launcher shakes and glows so you can read the timing
+        const warn = timer !== undefined && timer < 550;
+        if (warn) ctx.translate(Math.sin(this.time * 80) * 1.6, 0);
         const rock = sh.kind === 'rock';
         const w = 34, h = 26;
         const cx = sh.x + (sh.width || 30) / 2, cy = sh.y + (sh.height || 14) / 2;
@@ -342,8 +345,13 @@ class Renderer {
         if (rock) ctx.arc(cx, cy + h / 2 - 3, 7, 0, Math.PI * 2);
         else ctx.arc(cx + Math.sign(sh.vx || 1) * (w / 2 - 3), cy, 7, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = '#ffd24a';
-        ctx.beginPath(); ctx.arc(cx - Math.sign(sh.vx || 1) * (rock ? 0 : 6), cy - (rock ? 4 : 0), 3, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = warn ? '#ff5d6c' : '#ffd24a';
+        ctx.beginPath(); ctx.arc(cx - Math.sign(sh.vx || 1) * (rock ? 0 : 6), cy - (rock ? 4 : 0), warn ? 4.2 : 3, 0, Math.PI * 2); ctx.fill();
+        if (warn) {
+            const mx = rock ? cx : cx + Math.sign(sh.vx || 1) * (w / 2 - 3), my = rock ? cy + h / 2 - 3 : cy;
+            ctx.fillStyle = 'rgba(255,93,108,0.35)';
+            ctx.beginPath(); ctx.arc(mx, my, 13, 0, Math.PI * 2); ctx.fill();
+        }
         ctx.restore();
     }
 

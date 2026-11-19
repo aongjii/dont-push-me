@@ -434,7 +434,7 @@ socket.on('round_load', (data) => {
     document.getElementById('coach').style.display = 'none';
     shownLives = null;
     spectateId = null;
-    prevPlayerFlags = {};
+    prevPlayerFlags = {}; prevShotIds = new Set(); prevPlatformFlags = []; prevWarn = [];
     spectateBanner.style.display = 'none';
     document.getElementById('hud-catchup').style.display = 'none';
     Sfx.stopMusic();
@@ -666,11 +666,49 @@ function showPowerToast(info) {
 // Last-seen per-player flags, to detect jumps / landings / breaking free between states
 let prevPlayerFlags = {};
 let prevTimeLeft = null;
+let prevShotIds = new Set();
+let prevPlatformFlags = [];
+let prevWarn = [];
+
+// Sounds and puffs for the obstacles: shots being fired, stones crumbling, springs, launcher warnings
+function detectObstacleEffects(state) {
+    const me = state.players.find(p => p.id === localPlayerId);
+    const mx = me ? me.x : 0, my = me ? me.y : 0;
+    const near = (x, y) => Math.max(0, 1 - Math.hypot(x - mx, y - my) / 900);
+
+    const ids = new Set();
+    (state.shots || []).forEach(sh => {
+        ids.add(sh.id);
+        if (!prevShotIds.has(sh.id) && me) Sfx.play(sh.kind, near(sh.x, sh.y));
+    });
+    prevShotIds = ids;
+
+    (state.platforms || []).forEach((pl, i) => {
+        const prev = prevPlatformFlags[i];
+        if (prev && pl.crumble) {
+            const v = near(pl.x + pl.width / 2, pl.y);
+            if (prev.active && !pl.active) {
+                Sfx.play('crumble', v);
+                renderer.addParticles(pl.x + pl.width / 2, pl.y + 10, '#b79b78', 10, { spread: Math.min(200, pl.width), up: 20, size: 3 });
+            } else if (pl.active && prev.weight <= 700 && pl.weightMs > 700) {
+                Sfx.play('rumble', v);
+            }
+        }
+        prevPlatformFlags[i] = { active: pl.active, weight: pl.weightMs || 0 };
+    });
+
+    (state.shooterTimers || []).forEach((t, i) => {
+        const sh = (levelData && levelData.shooters || [])[i];
+        const warn = t < 550;
+        if (sh && warn && !prevWarn[i] && me) Sfx.play('warn', near(sh.x, sh.y));
+        prevWarn[i] = warn;
+    });
+}
 
 function detectMotionEffects(state) {
     state.players.forEach(p => {
         const prev = prevPlayerFlags[p.id];
-        prevPlayerFlags[p.id] = { grounded: p.isGrounded, pulled: p.pullDuration > 0 };
+        prevPlayerFlags[p.id] = { grounded: p.isGrounded, pulled: p.pullDuration > 0, vy: p.vy };
         if (!prev || p.isDead || p.isFinished) return;
         const isLocal = p.id === localPlayerId;
         const feetX = p.x + p.width / 2;
@@ -684,6 +722,11 @@ function detectMotionEffects(state) {
             if (isLocal) Sfx.play('jump');
         }
         if (isLocal && prev.pulled && !p.pullDuration) Sfx.play('free');
+        // launched by a spring pad
+        if (p.vy < -650 && prev.vy > -450 && !p.isGrounded) {
+            renderer.addParticles(feetX, feetY, '#ff9cc3', 8, { spread: 140, up: 30, size: 3 });
+            if (isLocal) Sfx.play('bounce');
+        }
     });
 }
 
@@ -694,6 +737,7 @@ socket.on('game_state', (state) => {
     while (snapshots.length > 40) snapshots.shift();
 
     detectMotionEffects(state);
+    detectObstacleEffects(state);
 
     const mine = state.players.find(p => p.id === localPlayerId);
     if (mine) predictor.reconcile(mine, state.platforms);

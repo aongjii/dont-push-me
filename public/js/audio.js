@@ -7,6 +7,7 @@ const Sfx = (() => {
     let musicTimer = null;
     let musicStep = 0;
     let muted = false;
+    let scale = 1; // volume multiplier for the effect being played (distance fall-off)
     try { muted = localStorage.getItem('dpm-muted') === '1'; } catch (e) {}
 
     function ensure() {
@@ -33,7 +34,7 @@ const Sfx = (() => {
         osc.frequency.setValueAtTime(freq, t0);
         if (freqEnd) osc.frequency.exponentialRampToValueAtTime(freqEnd, t0 + dur);
         gain.gain.setValueAtTime(0.0001, t0);
-        gain.gain.exponentialRampToValueAtTime(vol, t0 + 0.01);
+        gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol * scale), t0 + 0.01);
         gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
         osc.connect(gain);
         gain.connect(master);
@@ -53,7 +54,7 @@ const Sfx = (() => {
         lp.type = 'lowpass';
         lp.frequency.value = filter;
         const gain = ctx.createGain();
-        gain.gain.setValueAtTime(vol, t0);
+        gain.gain.setValueAtTime(Math.max(0.0002, vol * scale), t0);
         gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
         src.connect(lp);
         lp.connect(gain);
@@ -83,6 +84,13 @@ const Sfx = (() => {
         ice:    () => { tone({ freq: 1800, freqEnd: 900, dur: 0.25, type: 'triangle', vol: 0.18 }); tone({ freq: 2400, freqEnd: 1200, dur: 0.2, type: 'sine', vol: 0.1, delay: 0.05 }); },
         whirl:  () => { tone({ freq: 300, freqEnd: 800, dur: 0.35, type: 'sawtooth', vol: 0.14 }); tone({ freq: 800, freqEnd: 300, dur: 0.35, type: 'sawtooth', vol: 0.1, delay: 0.3 }); },
         flap:   () => { noise({ dur: 0.07, vol: 0.12, filter: 3000 }); },
+        bounce: () => { tone({ freq: 220, freqEnd: 760, dur: 0.22, type: 'sine', vol: 0.28 }); tone({ freq: 330, freqEnd: 1100, dur: 0.18, type: 'triangle', vol: 0.12, delay: 0.03 }); },
+        arrow:  () => { noise({ dur: 0.14, vol: 0.2, filter: 3500 }); tone({ freq: 1200, freqEnd: 500, dur: 0.14, type: 'triangle', vol: 0.1 }); },
+        rock:   () => { tone({ freq: 90, freqEnd: 45, dur: 0.25, type: 'sine', vol: 0.3 }); noise({ dur: 0.18, vol: 0.18, filter: 500 }); },
+        fireball: () => { noise({ dur: 0.3, vol: 0.22, filter: 1500 }); tone({ freq: 200, freqEnd: 120, dur: 0.28, type: 'sawtooth', vol: 0.1 }); },
+        crumble:() => { noise({ dur: 0.35, vol: 0.28, filter: 700 }); noise({ dur: 0.2, vol: 0.2, filter: 400, delay: 0.12 }); },
+        rumble: () => { noise({ dur: 0.1, vol: 0.12, filter: 350 }); },
+        warn:   () => { tone({ freq: 520, dur: 0.05, type: 'square', vol: 0.07 }); },
         win:    () => { [523, 659, 784, 659, 784, 1047].forEach((f, i) => tone({ freq: f, dur: 0.2, type: 'triangle', vol: 0.25, delay: i * 0.12 })); }
     };
 
@@ -98,9 +106,13 @@ const Sfx = (() => {
     }
 
     return {
-        play(name) {
+        // `vol` (0..1) scales the loudness, e.g. for something happening far away
+        play(name, vol = 1) {
             const fn = effects[name];
-            if (fn) fn();
+            if (!fn) return;
+            scale = Math.max(0, Math.min(1, vol));
+            if (scale > 0.02) fn();
+            scale = 1;
         },
         startMusic() {
             if (musicTimer) return;

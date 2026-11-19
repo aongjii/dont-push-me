@@ -104,3 +104,11 @@ test('each level has its own set of obstacles, with nothing shared between level
         assert.deepEqual(shared, [], `levels ${a + 1} and ${b + 1} share ${shared}`);
     }
 });
+
+test('launchers expose a countdown so the client can warn before firing', () => {
+    const lv = new Level(1);
+    const sh = lv.shooters[0];
+    sh.timer = 300;
+    lv.update(16);
+    assert.ok(sh.timer < 300 && sh.timer > 0);
+});

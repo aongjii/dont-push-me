@@ -655,6 +655,7 @@ class GameRoom {
             players: playersData,
             hazards: hazardsData,
             shots: shotsData,
+            shooterTimers: (this.level.shooters || []).map(sh => Math.max(0, Math.round(sh.timer))),
             platforms: this.level.platforms, // send current toggle status
             items: this.level.items.map(it => ({ id: it.id, type: it.type, x: Math.round(it.x), y: Math.round(it.y), alive: it.alive })),
             projectiles: this.projectiles.map(pr => ({ id: pr.id, type: pr.type, x: Math.round(pr.x), y: Math.round(pr.y), vx: pr.vx })),
